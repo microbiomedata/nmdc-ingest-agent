@@ -323,6 +323,53 @@ def fetch_biosamples(accessions: List[str]) -> List[dict]:
 # Lat/lon parsing
 # ---------------------------------------------------------------------------
 
+_MISSING_VALUES = {"", "missing", "not collected", "not applicable", "not provided", "n/a", "na", "unknown"}
+
+
+def _parse_quantity(raw: str, default_unit: Optional[str] = None) -> Optional["nmdc.QuantityValue"]:
+    """Parse a string like '0.2 - 0.3 m', '12.5 cm', or '0 m' into an NMDC QuantityValue.
+
+    Range values populate has_minimum_numeric_value/has_maximum_numeric_value;
+    scalar values populate has_numeric_value. Missing-value sentinels return None.
+    """
+    if not raw:
+        return None
+    stripped = raw.strip()
+    if stripped.lower() in _MISSING_VALUES:
+        return None
+
+    unit_match = re.search(r"([A-Za-zµ°%][A-Za-zµ°%/^0-9\-\.]*)\s*$", stripped)
+    unit = unit_match.group(1) if unit_match else default_unit
+    numeric_part = stripped[: unit_match.start()].strip() if unit_match else stripped
+
+    range_match = re.match(
+        r"([+-]?\d+\.?\d*)\s*(?:-|–|to)\s*([+-]?\d+\.?\d*)\s*$",
+        numeric_part,
+    )
+    if range_match:
+        return nmdc.QuantityValue(
+            has_raw_value=stripped,
+            has_unit=unit,
+            has_minimum_numeric_value=float(range_match.group(1)),
+            has_maximum_numeric_value=float(range_match.group(2)),
+            type="nmdc:QuantityValue",
+        )
+
+    scalar_match = re.match(r"([+-]?\d+\.?\d*)\s*$", numeric_part)
+    if scalar_match:
+        return nmdc.QuantityValue(
+            has_raw_value=stripped,
+            has_unit=unit,
+            has_numeric_value=float(scalar_match.group(1)),
+            type="nmdc:QuantityValue",
+        )
+
+    return nmdc.QuantityValue(
+        has_raw_value=stripped,
+        type="nmdc:QuantityValue",
+    )
+
+
 def parse_lat_lon(raw: str) -> Optional[Tuple[float, float]]:
     """Parse lat/lon strings like '34.27 N 108.08 E' or '34.27, -108.08'."""
     m = re.match(
@@ -431,19 +478,7 @@ def build_biosample(
             has_raw_value=raw_date, type="nmdc:TimestampValue"
         )
 
-    depth = None
-    raw_depth = attrs.get("depth", "")
-    if raw_depth:
-        depth_match = re.match(r"([+-]?\d+\.?\d*)", raw_depth)
-        if depth_match:
-            unit_match = re.search(r"[a-zA-Z]+", raw_depth)
-            unit = unit_match.group() if unit_match else "m"
-            depth = nmdc.QuantityValue(
-                has_numeric_value=float(depth_match.group(1)),
-                has_unit=unit,
-                has_raw_value=raw_depth,
-                type="nmdc:QuantityValue",
-            )
+    depth = _parse_quantity(attrs.get("depth", ""), default_unit="m")
 
     elev = None
     raw_elev = attrs.get("elev", "")
@@ -502,55 +537,21 @@ def _infer_analyte_category(library_source: str, library_strategy: str) -> str:
     return "metagenome"
 
 
-def build_pipeline_records(
+def build_sequencing_records(
     experiment: dict,
     study_id: str,
     biosample_id: str,
 ) -> dict:
-    """Build Extraction, LibraryPreparation, NucleotideSequencing, DataObject,
-    and ProcessedSample records for one SRA experiment."""
+    """Build NucleotideSequencing (DataGeneration) and DataObject records for
+    one SRA experiment. The DataGeneration consumes the Biosample directly;
+    Extraction/LibraryPreparation/ProcessedSample records are intentionally
+    out of scope for NCBI-sourced ingest."""
 
     exp_acc = experiment["experiment_accession"]
-
-    extraction_id = make_id("extrp", exp_acc)
-    extraction_ps_id = make_id("procsm", f"extr-{exp_acc}")
-    libprep_id = make_id("libprp", exp_acc)
-    libprep_ps_id = make_id("procsm", f"lib-{exp_acc}")
     ns_id = make_id("dgns", exp_acc)
 
-    extraction = nmdc.Extraction(
-        id=extraction_id,
-        has_input=[biosample_id],
-        has_output=[extraction_ps_id],
-        type="nmdc:Extraction",
-    )
-
-    extraction_ps = nmdc.ProcessedSample(
-        id=extraction_ps_id,
-        type="nmdc:ProcessedSample",
-    )
-
-    source = (experiment.get("library_source") or "").upper()
-    if "TRANSCRIPTOMIC" in source or "RNA" in source:
-        library_type = "RNA"
-    else:
-        library_type = "DNA"
-
-    libprep = nmdc.LibraryPreparation(
-        id=libprep_id,
-        has_input=[extraction_ps_id],
-        has_output=[libprep_ps_id],
-        library_type=library_type,
-        type="nmdc:LibraryPreparation",
-    )
-
-    libprep_ps = nmdc.ProcessedSample(
-        id=libprep_ps_id,
-        type="nmdc:ProcessedSample",
-    )
-
-    source_lower = (experiment.get("library_source") or "").upper()
-    if "TRANSCRIPTOMIC" in source_lower:
+    source_upper = (experiment.get("library_source") or "").upper()
+    if "TRANSCRIPTOMIC" in source_upper:
         data_object_type = "Metatranscriptome Raw Reads"
     else:
         data_object_type = "Metagenome Raw Reads"
@@ -584,7 +585,7 @@ def build_pipeline_records(
     nuc_seq = nmdc.NucleotideSequencing(
         id=ns_id,
         name=experiment.get("sample_title", "") or exp_acc,
-        has_input=[libprep_ps_id],
+        has_input=[biosample_id],
         has_output=do_ids,
         associated_studies=[study_id],
         instrument_used=instrument_ids,
@@ -594,10 +595,6 @@ def build_pipeline_records(
     )
 
     return {
-        "extraction": extraction,
-        "extraction_processed_sample": extraction_ps,
-        "library_preparation": libprep,
-        "libprep_processed_sample": libprep_ps,
         "nucleotide_sequencing": nuc_seq,
         "data_objects": data_objects,
     }
@@ -677,11 +674,8 @@ def build_nmdc_database(data: dict) -> nmdc.Database:
         nmdc_biosamples.append(bs)
         biosample_acc_to_id[s["accession"]] = bs.id
 
-    all_extractions = []
-    all_libpreps = []
     all_nuc_seqs = []
     all_data_objects = []
-    all_processed_samples = []
 
     warnings = []
     for exp in experiments:
@@ -693,11 +687,7 @@ def build_nmdc_database(data: dict) -> nmdc.Database:
             )
             continue
 
-        records = build_pipeline_records(exp, study_id, biosample_acc_to_id[bs_acc])
-        all_extractions.append(records["extraction"])
-        all_processed_samples.append(records["extraction_processed_sample"])
-        all_libpreps.append(records["library_preparation"])
-        all_processed_samples.append(records["libprep_processed_sample"])
+        records = build_sequencing_records(exp, study_id, biosample_acc_to_id[bs_acc])
         all_nuc_seqs.append(records["nucleotide_sequencing"])
         all_data_objects.extend(records["data_objects"])
 
@@ -707,9 +697,7 @@ def build_nmdc_database(data: dict) -> nmdc.Database:
     database = nmdc.Database()
     database.study_set = [study]
     database.biosample_set = nmdc_biosamples
-    database.material_processing_set = all_extractions + all_libpreps
     database.data_generation_set = all_nuc_seqs
-    database.processed_sample_set = all_processed_samples
     database.data_object_set = all_data_objects
 
     return database
@@ -746,11 +734,8 @@ def main():
 
     print(f"  Study: {database.study_set[0].id}")
     print(f"  Biosamples: {len(database.biosample_set)}")
-    print(f"  Extractions: {len([x for x in database.material_processing_set if isinstance(x, nmdc.Extraction)])}")
-    print(f"  LibraryPreparations: {len([x for x in database.material_processing_set if isinstance(x, nmdc.LibraryPreparation)])}")
-    print(f"  NucleotideSequencings: {len(database.data_generation_set)}")
+    print(f"  DataGenerations: {len(database.data_generation_set)}")
     print(f"  DataObjects: {len(database.data_object_set)}")
-    print(f"  ProcessedSamples: {len(database.processed_sample_set)}")
 
     json_str = json_dumper.dumps(database)
 
