@@ -6,10 +6,10 @@ AI-agent-assisted workflows for translating external metadata sources into NMDC-
 
 A different approach to ingesting external metadata into NMDC. Rather than writing bespoke Dagster-orchestrated ETL pipelines in [nmdc-runtime](https://github.com/microbiomedata/nmdc-runtime), this repo pairs:
 
-- **Python helper scripts** that do the deterministic, mechanical work (API calls, link traversal, assembling `nmdc.Database` objects), and
-- **Claude Code skills** (checked-in Markdown files at `.claude/skills/`) that guide an AI agent through the semantic work a curator has historically done — picking the right ENVO terms for the MIxS env triad, resolving host taxa in NCBITaxon, flagging ambiguous cases for human follow-up.
+- **Python helper/harness methods** that do the deterministic, mechanical work — calling external APIs (e.g. NCBI E-utilities), traversing source-side links (e.g. BioProject → BioSample / SRA), assembling the `nmdc.Database` object, and running schema + deterministic integrity checks on the result.
+- **Claude Code skills** (checked-in Markdown files at `.claude/skills/`) that guide an AI agent through the project-specific harmonization a curator has historically done: parsing and normalizing free-text field values, inferring implicit values from project-level descriptions, and mapping to the right ontology or database fields (e.g. ENVO terms for the MIxS env triad, NCBITaxon for host taxa). Ambiguous cases are flagged for human follow-up rather than silently guessed.
 
-Every generated JSON artifact is validated against the NMDC LinkML schema before being considered complete.
+Every generated JSON artifact is validated against the NMDC LinkML schema, alongside additional deterministic checks, before being considered complete.
 
 ## Sources
 
