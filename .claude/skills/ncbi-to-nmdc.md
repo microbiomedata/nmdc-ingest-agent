@@ -132,6 +132,33 @@ The final JSON file is written to `results/ncbi_<ACCESSION>_nmdc.json` relative 
 
 This skill produces **only** `Study`, `Biosample`, `DataGeneration`, and `DataObject` records. Do **not** create `Pooling`, `Extraction`, `LibraryPreparation`, or other process/material-transformation records — those are out of scope for NCBI-sourced ingest.
 
+## Schema reference
+
+When uncertain how to shape a slot value — especially nested value types like `QuantityValue`, `GeolocationValue`, `TextValue`, `TimestampValue`, `ControlledIdentifiedTermValue`, or any slot with min/max/range semantics — **consult the NMDC LinkML schema** before guessing. Common traps:
+
+- `QuantityValue` uses `has_numeric_value` for scalars but `has_minimum_numeric_value` / `has_maximum_numeric_value` for range strings like `"0.2 - 0.3 m"`. Never put a range into `has_numeric_value`.
+- `ControlledIdentifiedTermValue` wraps an `OntologyClass` with `id` (the CURIE) and `name` (the official label). If you only have free text, use `ControlledTermValue` with `has_raw_value` instead.
+- Slot names use snake_case and often have strict enum value ranges (e.g. `study_category`, `analyte_category`, `data_category`, `data_object_type`).
+
+Two ways to check the schema, in order of preference:
+
+1. **Local package (authoritative for the installed version)** — `nmdc-schema` is a project dependency, so the Python classes are importable and introspectable via `linkml_runtime`:
+
+   ```python
+   from nmdc_schema import nmdc
+   from linkml_runtime.utils.schemaview import SchemaView
+   import nmdc_schema
+
+   # Inspect a slot's range, required flag, pattern, etc.
+   sv = SchemaView(nmdc_schema.get_nmdc_schema_definition())
+   print(sv.induced_slot("depth", "Biosample"))
+
+   # Or just look at a class's expected shape
+   help(nmdc.QuantityValue)
+   ```
+
+2. **Published docs (useful for browsing and cross-referencing)** — https://microbiomedata.github.io/nmdc-schema/. Handy for skimming class hierarchies and allowed enum values, but may be ahead of or behind the installed version — treat the local package as source of truth when they disagree.
+
 ## Reference patterns
 
 The traditional Dagster-orchestrated translators in [microbiomedata/nmdc-runtime](https://github.com/microbiomedata/nmdc-runtime) are still a useful reference for NMDC object construction, but **only** for the four record types in scope above:
