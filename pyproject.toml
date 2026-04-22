@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nmdc-ingest-agent"
+version = "0.1.0"
+description = "AI-agent-assisted workflows for translating external metadata sources into NMDC-schema-compliant JSON"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">= 3.10"
+authors = [
+    { name = "National Microbiome Data Collaborative" },
+]
+keywords = ["nmdc", "microbiome", "metadata", "ingest", "ncbi", "bioproject"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "linkml-runtime",
+    "lxml",
+    "nmdc-schema",
+    "requests",
+]
+
+[project.optional-dependencies]
+ontology = [
+    # For resolving ENVO, NCBITaxon etc. via the skill workflow.
+    "oaklib",
+]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[project.scripts]
+nmdc-ingest-ncbi = "nmdc_ingest_agent.sources.ncbi.translate:main"
+
+[project.urls]
+Homepage = "https://github.com/microbiomedata/nmdc-ingest-agent"
+Issues = "https://github.com/microbiomedata/nmdc-ingest-agent/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nmdc_ingest_agent"]
