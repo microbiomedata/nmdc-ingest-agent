@@ -119,7 +119,7 @@ print('Validation passed!')
 
 Report to the user:
 - Study name and accession
-- Number of Biosamples, Extractions, LibraryPreparations, NucleotideSequencings, DataObjects
+- Number of Biosamples, DataGenerations, DataObjects
 - Any ENVO mappings that were applied or still need manual review
 - The output file path
 - Reminder that IDs are placeholders (shoulder `99`) and need real minting
@@ -128,11 +128,16 @@ Report to the user:
 
 The final JSON file is written to `results/ncbi_<ACCESSION>_nmdc.json` relative to the current working directory.
 
+## Scope
+
+This skill produces **only** `Study`, `Biosample`, `DataGeneration`, and `DataObject` records. Do **not** create `Pooling`, `Extraction`, `LibraryPreparation`, or other process/material-transformation records — those are out of scope for NCBI-sourced ingest.
+
 ## Reference patterns
 
-The traditional Dagster-orchestrated translators in [microbiomedata/nmdc-runtime](https://github.com/microbiomedata/nmdc-runtime) are still the canonical reference for NMDC object construction:
+The traditional Dagster-orchestrated translators in [microbiomedata/nmdc-runtime](https://github.com/microbiomedata/nmdc-runtime) are still a useful reference for NMDC object construction, but **only** for the four record types in scope above:
 
 - `nmdc_runtime/site/translation/translator.py` — base Translator class
-- `nmdc_runtime/site/translation/gold_translator.py` — Study/Biosample/NucleotideSequencing patterns
-- `nmdc_runtime/site/translation/neon_soil_translator.py` — Extraction/LibraryPreparation patterns
+- `nmdc_runtime/site/translation/gold_translator.py` — Study/Biosample/DataGeneration patterns
 - `nmdc_runtime/site/translation/neon_utils.py` — helper functions for NMDC value types
+
+Ignore patterns from `neon_soil_translator.py` (and any other translator) that construct `Extraction`, `LibraryPreparation`, or related process records — those do not apply here.
