@@ -435,14 +435,27 @@ def build_biosample(
     raw_local = attrs.get("env_local_scale", "")
     raw_medium = attrs.get("env_medium", "")
 
-    def _parse_envo_term(raw: str) -> Optional[nmdc.ControlledIdentifiedTermValue]:
-        if not raw:
-            return None
-        envo_match = re.search(r"(ENVO[:\s_]+\d+)", raw, re.IGNORECASE)
+    def _parse_envo_term(raw: str) -> nmdc.ControlledIdentifiedTermValue:
+        """Always returns a schema-valid term. Missing values and unrecognized
+        free text produce an ENVO:00000000 placeholder that flags the slot for
+        manual curation; has_raw_value preserves the submitter string when one
+        was provided."""
+        stripped = (raw or "").strip()
+        if not stripped or stripped.lower() in _MISSING_VALUES:
+            return nmdc.ControlledIdentifiedTermValue(
+                term=nmdc.OntologyClass(
+                    id="ENVO:00000000",
+                    name="(not provided)",
+                    type="nmdc:OntologyClass",
+                ),
+                has_raw_value=stripped,
+                type="nmdc:ControlledIdentifiedTermValue",
+            )
+        envo_match = re.search(r"(ENVO[:\s_]+\d+)", stripped, re.IGNORECASE)
         if envo_match:
             curie = envo_match.group(1).replace(" ", ":").replace("_", ":")
             curie = re.sub(r"ENVO(\d)", r"ENVO:\1", curie)
-            label = re.sub(r"\s*\[.*?\]\s*", "", raw).strip() or raw
+            label = re.sub(r"\s*\[.*?\]\s*", "", stripped).strip() or stripped
             return nmdc.ControlledIdentifiedTermValue(
                 term=nmdc.OntologyClass(id=curie, name=label, type="nmdc:OntologyClass"),
                 type="nmdc:ControlledIdentifiedTermValue",
@@ -450,10 +463,10 @@ def build_biosample(
         return nmdc.ControlledIdentifiedTermValue(
             term=nmdc.OntologyClass(
                 id="ENVO:00000000",
-                name=raw,
+                name=stripped,
                 type="nmdc:OntologyClass",
             ),
-            has_raw_value=raw,
+            has_raw_value=stripped,
             type="nmdc:ControlledIdentifiedTermValue",
         )
 
@@ -746,20 +759,25 @@ def main():
     print("\n⚠ PLACEHOLDER IDS: All IDs use shoulder '99' and are NOT real NMDC IDs.")
     print("  Real IDs must be minted via the NMDC Runtime API before ingest.")
 
-    env_warnings = []
-    for bs in database.biosample_set:
-        if bs.env_broad_scale and hasattr(bs.env_broad_scale, "has_raw_value") and bs.env_broad_scale.has_raw_value:
-            env_warnings.append(f"  {bs.id}: env_broad_scale needs ENVO CURIE (raw: {bs.env_broad_scale.has_raw_value})")
-        if bs.env_local_scale and hasattr(bs.env_local_scale, "has_raw_value") and bs.env_local_scale.has_raw_value:
-            env_warnings.append(f"  {bs.id}: env_local_scale needs ENVO CURIE (raw: {bs.env_local_scale.has_raw_value})")
-        if bs.env_medium and hasattr(bs.env_medium, "has_raw_value") and bs.env_medium.has_raw_value:
-            env_warnings.append(f"  {bs.id}: env_medium needs ENVO CURIE (raw: {bs.env_medium.has_raw_value})")
+    def _needs_curation(term_value) -> bool:
+        if term_value is None:
+            return False
+        term = getattr(term_value, "term", None)
+        return bool(term and getattr(term, "id", "") == "ENVO:00000000")
 
-    if env_warnings:
-        print("\n⚠ ENVO MAPPING NEEDED: The following biosamples have free-text env terms")
-        print("  that should be mapped to proper ENVO CURIEs:")
-        for w in env_warnings:
-            print(w)
+    counts = {"env_broad_scale": 0, "env_local_scale": 0, "env_medium": 0}
+    for bs in database.biosample_set:
+        for slot in counts:
+            if _needs_curation(getattr(bs, slot, None)):
+                counts[slot] += 1
+
+    total_flagged = sum(1 for bs in database.biosample_set
+                        if any(_needs_curation(getattr(bs, s, None)) for s in counts))
+    if total_flagged:
+        print(f"\n⚠ ENVO CURATION NEEDED: {total_flagged} biosample(s) carry ENVO:00000000 placeholders.")
+        for slot, n in counts.items():
+            print(f"    {slot}: {n}")
+        print("  Resolve with runoak and edit the JSON before ingest.")
 
 
 if __name__ == "__main__":
