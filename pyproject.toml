@@ -25,6 +25,7 @@ classifiers = [
 dependencies = [
     "linkml-runtime>=1.9.4,<1.10",
     "lxml",
+    "nmdc-api-utilities>=0.6.1,<1",
     "nmdc-schema>=11.18.1,<12",
     "requests",
 ]

@@ -31,6 +31,21 @@ uv sync --extra ontology
 
 `uv sync` creates `.venv/` and installs the project from the committed `uv.lock`, so every contributor and CI run resolves the same dependency versions. Console scripts (e.g. `nmdc-ingest-ncbi`) are then run via `uv run` — see Usage below.
 
+## Configuration
+
+Real NMDC IDs are minted via the NMDC Runtime API, which authenticates with an API site client ID and secret. Set these in your shell before running with `--mint-real-ids`:
+
+```bash
+export NMDC_RUNTIME_CLIENT_ID=<your client id>
+export NMDC_RUNTIME_CLIENT_SECRET=<your client secret>
+# Optional: target the dev API instance instead of prod
+# export NMDC_RUNTIME_ENV=dev
+```
+
+A template lives at [`.env.example`](.env.example). Site-client credentials are issued by the NMDC team — request them via the [contact form](https://microbiomedata.org/contact/) or your existing NMDC point of contact.
+
+Without `--mint-real-ids`, the translator emits placeholder IDs of the form `nmdc:<typecode>-99-<random>`. Placeholder output is suitable for local review and schema validation, but **must not be ingested**.
+
 ## Usage
 
 ### NCBI BioProject → NMDC
@@ -39,8 +54,11 @@ uv sync --extra ontology
 # Fetch and inspect the raw NCBI data first
 uv run nmdc-ingest-ncbi PRJNA1452545 --fetch-only
 
-# Produce an NMDC-schema-compliant JSON Database
+# Produce an NMDC-schema-compliant JSON Database (placeholder IDs)
 uv run nmdc-ingest-ncbi PRJNA1452545
+
+# Mint real persistent IDs via the NMDC Runtime API
+uv run nmdc-ingest-ncbi PRJNA1452545 --mint-real-ids
 ```
 
 Output lands in `results/ncbi_<ACCESSION>_nmdc.json` relative to your current working directory. The translator creates the `results/` directory if it does not exist.

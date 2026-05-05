@@ -97,7 +97,7 @@ Edit the output JSON to replace each placeholder (`ENVO:00000000`) with the reso
 
 ### Step 5: Fix instrument and host references
 
-- **Instrument**: the script stores SRA `instrument_model` strings verbatim and assigns a placeholder `nmdc:inst-99-*` ID. Leave the ID in place — real Instrument records are resolved at ingest. But verify the string is sensible (e.g. `Illumina NovaSeq X`, `Illumina NovaSeq 6000`, `Illumina HiSeq 2500`, `Illumina MiSeq`).
+- **Instrument**: the script stores SRA `instrument_model` strings verbatim and assigns an instrument ID — placeholder shoulder (`-99-`) by default, or a real minted ID when `--mint-real-ids` was passed. Leave the ID in place — real Instrument records are resolved at ingest. But verify the string is sensible (e.g. `Illumina NovaSeq X`, `Illumina NovaSeq 6000`, `Illumina HiSeq 2500`, `Illumina MiSeq`).
 - **Host / samp_taxon**: if the BioProject implies a host organism (e.g. rhizosphere or host-associated samples), resolve its NCBI taxid via runoak: `uv run --extra ontology runoak -i sqlite:obo:ncbitaxon search "<host name>"`. Only set `host_name` / `host_taxid` when the submitter's intent is unambiguous — otherwise leave unset and flag for PI follow-up.
 
 ### Step 6: Validate
@@ -121,7 +121,7 @@ Report to the user:
 - Number of Biosamples, DataGenerations, DataObjects
 - Any ENVO mappings that were applied or still need manual review
 - The output file path
-- Reminder that IDs are placeholders (shoulder `99`) and need real minting
+- If the run did not use `--mint-real-ids`, remind the user that IDs are placeholders (shoulder `99`) and that the ingest-ready output requires re-running with `--mint-real-ids` (set `NMDC_RUNTIME_CLIENT_ID` and `NMDC_RUNTIME_CLIENT_SECRET` first)
 
 ## Output
 
