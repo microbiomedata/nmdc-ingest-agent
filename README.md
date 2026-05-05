@@ -21,13 +21,15 @@ More sources (GOLD, NEON, EMSL, JGI …) will be added as separate subpackages u
 
 ## Installation
 
+This project uses [`uv`](https://docs.astral.sh/uv/) for environment and command management. From a fresh checkout:
+
 ```bash
-pip install -e .
+uv sync
 # or, with ontology tooling for the skill workflow:
-pip install -e ".[ontology]"
+uv sync --extra ontology
 ```
 
-This installs the package and registers console scripts (e.g. `nmdc-ingest-ncbi`) on your `PATH`.
+`uv sync` creates `.venv/` and installs the project from the committed `uv.lock`, so every contributor and CI run resolves the same dependency versions. Console scripts (e.g. `nmdc-ingest-ncbi`) are then run via `uv run` — see Usage below.
 
 ## Usage
 
@@ -35,13 +37,13 @@ This installs the package and registers console scripts (e.g. `nmdc-ingest-ncbi`
 
 ```bash
 # Fetch and inspect the raw NCBI data first
-nmdc-ingest-ncbi PRJNA1452545 --fetch-only
+uv run nmdc-ingest-ncbi PRJNA1452545 --fetch-only
 
 # Produce an NMDC-schema-compliant JSON Database
-nmdc-ingest-ncbi PRJNA1452545
+uv run nmdc-ingest-ncbi PRJNA1452545
 ```
 
-Output lands in `results/ncbi_<ACCESSION>_nmdc.json` relative to your current working directory.
+Output lands in `results/ncbi_<ACCESSION>_nmdc.json` relative to your current working directory. The translator creates the `results/` directory if it does not exist.
 
 For the full semantic workflow (ontology resolution, validation, curator review), use the Claude Code skill:
 
@@ -59,7 +61,7 @@ The skills in `.claude/skills/` are loaded automatically when you run `claude` i
 cp .claude/skills/*.md ~/.claude/skills/
 ```
 
-The skills invoke the console scripts by name (e.g. `nmdc-ingest-ncbi`), so as long as the package is installed in the active Python environment, they work regardless of CWD.
+The skill steps invoke `uv run nmdc-ingest-ncbi` and `uv run --extra ontology runoak`, which expect to be executed from inside a `uv sync`'d checkout of this repo. To run the console script outside a checkout, install the package globally (`uv pip install nmdc-ingest-agent` into an active environment) and drop the `uv run` prefix.
 
 ## License
 

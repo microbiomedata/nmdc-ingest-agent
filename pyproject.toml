@@ -23,9 +23,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
-    "linkml-runtime",
+    "linkml-runtime>=1.9.4,<1.10",
     "lxml",
-    "nmdc-schema",
+    "nmdc-schema>=11.18.1,<12",
     "requests",
 ]
 
