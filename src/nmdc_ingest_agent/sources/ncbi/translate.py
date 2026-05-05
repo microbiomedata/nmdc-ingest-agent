@@ -18,6 +18,7 @@ import re
 import sys
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 import requests
@@ -622,7 +623,7 @@ def fetch_all(accession: str) -> dict:
     project = fetch_bioproject(accession)
     print(f"  Title: {project['title']}")
 
-    print(f"Fetching SRA experiments...")
+    print("Fetching SRA experiments...")
     experiments = fetch_sra_experiments(accession)
 
     sra_biosample_accessions = {
@@ -630,12 +631,12 @@ def fetch_all(accession: str) -> dict:
     }
     print(f"  Found {len(sra_biosample_accessions)} unique BioSamples across SRA records.")
 
-    print(f"Querying elink for all BioSamples linked to BioProject...")
+    print("Querying elink for all BioSamples linked to BioProject...")
     linked_uids = fetch_linked_biosample_uids(project["uid"])
 
     if linked_uids is not None:
         print(f"  elink returned {len(linked_uids)} BioSample UIDs.")
-        print(f"Fetching BioSamples by UID (covers both sequenced and unsequenced samples)...")
+        print("Fetching BioSamples by UID (covers both sequenced and unsequenced samples)...")
         biosamples = _fetch_biosample_records(linked_uids)
         linked_accessions = {s["accession"] for s in biosamples if s.get("accession")}
 
@@ -660,7 +661,7 @@ def fetch_all(accession: str) -> dict:
             "  elink unavailable — falling back to SRA-derived BioSample set only. "
             "Re-run later for a complete list."
         )
-        print(f"Fetching BioSamples...")
+        print("Fetching BioSamples...")
         biosamples = fetch_biosamples(sorted(sra_biosample_accessions))
 
     print(f"  Retrieved {len(biosamples)} BioSample records.")
@@ -731,6 +732,7 @@ def main():
 
     accession = args.accession.strip()
     out_path = args.out or f"results/ncbi_{accession}_nmdc.json"
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
 
     data = fetch_all(accession)
 

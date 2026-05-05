@@ -9,15 +9,14 @@ Given a BioProject accession (e.g. `PRJNA1452545`), fetch linked BioSample and S
 
 ## Prerequisites
 
-The `nmdc-ingest-agent` package must be installed in the active Python environment:
+This skill assumes the working directory is inside a checkout of `nmdc-ingest-agent` that has been synced with `uv`:
 
 ```bash
-pip install nmdc-ingest-agent
-# or, from a local checkout:
-pip install -e /path/to/nmdc-ingest-agent
+# from the repo root
+uv sync --extra ontology
 ```
 
-This registers the `nmdc-ingest-ncbi` console script, which the steps below invoke. The skill works from any working directory as long as the script is on `PATH`.
+`uv sync` provisions `.venv/` from the committed `uv.lock`. The steps below invoke `uv run nmdc-ingest-ncbi` (and `uv run --extra ontology runoak` for ontology lookups), which use that environment without requiring an active shell venv.
 
 ## Arguments
 
@@ -30,7 +29,7 @@ The user provides an NCBI BioProject accession as the argument (e.g. `/ncbi-to-n
 Run the helper script in fetch-only mode to see the raw NCBI data:
 
 ```bash
-nmdc-ingest-ncbi <ACCESSION> --fetch-only
+uv run nmdc-ingest-ncbi <ACCESSION> --fetch-only
 ```
 
 Read the intermediate JSON file and review:
@@ -43,7 +42,7 @@ Read the intermediate JSON file and review:
 Run the script without `--fetch-only`:
 
 ```bash
-nmdc-ingest-ncbi <ACCESSION>
+uv run nmdc-ingest-ncbi <ACCESSION>
 ```
 
 ### Step 3: Resolve ontology terms with `runoak`
@@ -59,20 +58,20 @@ Useful runoak subcommands:
 
 ```bash
 # Fuzzy search for a label
-runoak -i sqlite:obo:envo search "forest floor"
+uv run --extra ontology runoak -i sqlite:obo:envo search "forest floor"
 
 # Fetch label + definition + synonyms for a known CURIE
-runoak -i sqlite:obo:envo info ENVO:00002042
+uv run --extra ontology runoak -i sqlite:obo:envo info ENVO:00002042
 
 # Check ancestry (e.g. is this term under biome?)
-runoak -i sqlite:obo:envo ancestors -p i ENVO:01000174
+uv run --extra ontology runoak -i sqlite:obo:envo ancestors -p i ENVO:01000174
 
 # List all descendants of an anchor class (used to constrain env triad — see below)
-runoak -i sqlite:obo:envo descendants -p i ENVO:00000428
+uv run --extra ontology runoak -i sqlite:obo:envo descendants -p i ENVO:00000428
 
 # NCBITaxon lookup by scientific name
-runoak -i sqlite:obo:ncbitaxon search "Phallus rugulosus"
-runoak -i sqlite:obo:ncbitaxon info NCBITaxon:5260
+uv run --extra ontology runoak -i sqlite:obo:ncbitaxon search "Phallus rugulosus"
+uv run --extra ontology runoak -i sqlite:obo:ncbitaxon info NCBITaxon:5260
 ```
 
 ### Step 4: Map the env triad using MIxS value sets
@@ -89,7 +88,7 @@ For **soil** biosamples (MIxS `soil` or `MIMS.me.soil.*` package), the submissio
 
 Workflow for each free-text value in the intermediate JSON:
 
-1. Search ENVO: `runoak -i sqlite:obo:envo search "<raw value>"`
+1. Search ENVO: `uv run --extra ontology runoak -i sqlite:obo:envo search "<raw value>"`
 2. Filter hits to descendants of the correct anchor class
 3. Pick the closest match; record its CURIE and label
 4. If no good match, leave a placeholder and note it in the report
@@ -99,14 +98,14 @@ Edit the output JSON to replace each placeholder (`ENVO:00000000`) with the reso
 ### Step 5: Fix instrument and host references
 
 - **Instrument**: the script stores SRA `instrument_model` strings verbatim and assigns a placeholder `nmdc:inst-99-*` ID. Leave the ID in place — real Instrument records are resolved at ingest. But verify the string is sensible (e.g. `Illumina NovaSeq X`, `Illumina NovaSeq 6000`, `Illumina HiSeq 2500`, `Illumina MiSeq`).
-- **Host / samp_taxon**: if the BioProject implies a host organism (e.g. rhizosphere or host-associated samples), resolve its NCBI taxid via runoak: `runoak -i sqlite:obo:ncbitaxon search "<host name>"`. Only set `host_name` / `host_taxid` when the submitter's intent is unambiguous — otherwise leave unset and flag for PI follow-up.
+- **Host / samp_taxon**: if the BioProject implies a host organism (e.g. rhizosphere or host-associated samples), resolve its NCBI taxid via runoak: `uv run --extra ontology runoak -i sqlite:obo:ncbitaxon search "<host name>"`. Only set `host_name` / `host_taxid` when the submitter's intent is unambiguous — otherwise leave unset and flag for PI follow-up.
 
 ### Step 6: Validate
 
 Validate the output JSON against the NMDC schema:
 
-```python
-python -c "
+```bash
+uv run python -c "
 from nmdc_schema import nmdc
 from linkml_runtime.loaders import json_loader
 db = json_loader.load('results/ncbi_<ACCESSION>_nmdc.json', target_class=nmdc.Database)
