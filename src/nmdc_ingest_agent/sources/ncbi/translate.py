@@ -12,7 +12,6 @@ Or as a module:
 """
 
 import argparse
-import hashlib
 import json
 import re
 import sys
@@ -25,6 +24,12 @@ import requests
 from lxml import etree
 from nmdc_schema import nmdc
 from linkml_runtime.dumpers import json_dumper
+
+from nmdc_ingest_agent.minting import (
+    Minter,
+    PlaceholderMinter,
+    runtime_minter_from_env,
+)
 
 EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 RATE_LIMIT_DELAY = 0.35
@@ -62,15 +67,6 @@ def efetch_xml(db: str, ids: List[str]) -> List[etree._Element]:
         })
         roots.append(etree.fromstring(raw))
     return roots
-
-
-# ---------------------------------------------------------------------------
-# Placeholder ID minting
-# ---------------------------------------------------------------------------
-
-def make_id(typecode: str, source_id: str) -> str:
-    short_hash = hashlib.sha256(source_id.encode()).hexdigest()[:8]
-    return f"nmdc:{typecode}-99-{short_hash}"
 
 
 # ---------------------------------------------------------------------------
@@ -397,9 +393,8 @@ def parse_lat_lon(raw: str) -> Optional[Tuple[float, float]]:
 # NMDC object builders
 # ---------------------------------------------------------------------------
 
-def build_study(project_data: dict) -> nmdc.Study:
+def build_study(project_data: dict, study_id: str) -> nmdc.Study:
     accession = project_data["accession"]
-    study_id = make_id("sty", accession)
 
     now = datetime.now(tz=timezone.utc)
     provenance = nmdc.ProvenanceMetadata(
@@ -422,10 +417,9 @@ def build_study(project_data: dict) -> nmdc.Study:
 
 
 def build_biosample(
-    sample_data: dict, study_id: str
+    sample_data: dict, study_id: str, biosample_id: str
 ) -> nmdc.Biosample:
     accession = sample_data["accession"]
-    biosample_id = make_id("bsm", accession)
     attrs = sample_data["attributes"]
 
     env_broad = None
@@ -555,6 +549,9 @@ def build_sequencing_records(
     experiment: dict,
     study_id: str,
     biosample_id: str,
+    nucleotide_sequencing_id: str,
+    data_object_ids: List[str],
+    instrument_id: Optional[str],
 ) -> dict:
     """Build NucleotideSequencing (DataGeneration) and DataObject records for
     one SRA experiment. The DataGeneration consumes the Biosample directly;
@@ -562,7 +559,13 @@ def build_sequencing_records(
     out of scope for NCBI-sourced ingest."""
 
     exp_acc = experiment["experiment_accession"]
-    ns_id = make_id("dgns", exp_acc)
+
+    runs = experiment.get("runs", [])
+    if len(data_object_ids) != len(runs):
+        raise ValueError(
+            f"build_sequencing_records: expected {len(runs)} DataObject IDs "
+            f"for experiment {exp_acc}, got {len(data_object_ids)}"
+        )
 
     source_upper = (experiment.get("library_source") or "").upper()
     if "TRANSCRIPTOMIC" in source_upper:
@@ -571,11 +574,8 @@ def build_sequencing_records(
         data_object_type = "Metagenome Raw Reads"
 
     data_objects = []
-    do_ids = []
-    for run in experiment.get("runs", []):
+    for run, do_id in zip(runs, data_object_ids):
         run_acc = run["accession"]
-        do_id = make_id("dobj", run_acc)
-        do_ids.append(do_id)
         data_objects.append(nmdc.DataObject(
             id=do_id,
             name=run_acc,
@@ -591,16 +591,13 @@ def build_sequencing_records(
         experiment.get("library_strategy", ""),
     )
 
-    instrument_model = experiment.get("instrument_model", "")
-    instrument_ids = []
-    if instrument_model:
-        instrument_ids = [make_id("inst", instrument_model)]
+    instrument_ids = [instrument_id] if instrument_id else []
 
     nuc_seq = nmdc.NucleotideSequencing(
-        id=ns_id,
+        id=nucleotide_sequencing_id,
         name=experiment.get("sample_title", "") or exp_acc,
         has_input=[biosample_id],
-        has_output=do_ids,
+        has_output=list(data_object_ids),
         associated_studies=[study_id],
         instrument_used=instrument_ids,
         analyte_category=analyte_category,
@@ -673,39 +670,80 @@ def fetch_all(accession: str) -> dict:
     }
 
 
-def build_nmdc_database(data: dict) -> nmdc.Database:
+def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
     project = data["bioproject"]
     biosamples = data["biosamples"]
     experiments = data["sra_experiments"]
 
-    study = build_study(project)
-    study_id = study.id
+    [study_id] = minter.mint("nmdc:Study", 1)
+    study = build_study(project, study_id)
 
-    biosample_acc_to_id = {}
-    nmdc_biosamples = []
-    for s in biosamples:
-        bs = build_biosample(s, study_id)
+    biosample_ids = (
+        minter.mint("nmdc:Biosample", len(biosamples)) if biosamples else []
+    )
+    biosample_acc_to_id: dict[str, str] = {}
+    nmdc_biosamples: list[nmdc.Biosample] = []
+    for sample, biosample_id in zip(biosamples, biosample_ids):
+        bs = build_biosample(sample, study_id, biosample_id)
         nmdc_biosamples.append(bs)
-        biosample_acc_to_id[s["accession"]] = bs.id
+        biosample_acc_to_id[sample["accession"]] = bs.id
 
-    all_nuc_seqs = []
-    all_data_objects = []
-
-    warnings = []
+    kept_experiments: list[dict] = []
+    skip_warnings: list[str] = []
     for exp in experiments:
         bs_acc = exp["biosample_accession"]
         if bs_acc not in biosample_acc_to_id:
-            warnings.append(
+            skip_warnings.append(
                 f"SRA experiment {exp['experiment_accession']} references "
                 f"BioSample {bs_acc} which was not fetched. Skipping."
             )
             continue
+        kept_experiments.append(exp)
 
-        records = build_sequencing_records(exp, study_id, biosample_acc_to_id[bs_acc])
+    ns_ids = (
+        minter.mint("nmdc:NucleotideSequencing", len(kept_experiments))
+        if kept_experiments
+        else []
+    )
+
+    total_runs = sum(len(exp.get("runs", [])) for exp in kept_experiments)
+    do_pool = iter(
+        minter.mint("nmdc:DataObject", total_runs) if total_runs else []
+    )
+
+    unique_models: list[str] = []
+    seen_models: set[str] = set()
+    for exp in kept_experiments:
+        model = (exp.get("instrument_model") or "").strip()
+        if model and model not in seen_models:
+            seen_models.add(model)
+            unique_models.append(model)
+    instrument_ids = (
+        minter.mint("nmdc:Instrument", len(unique_models))
+        if unique_models
+        else []
+    )
+    model_to_instrument_id = dict(zip(unique_models, instrument_ids))
+
+    all_nuc_seqs: list[nmdc.NucleotideSequencing] = []
+    all_data_objects: list[nmdc.DataObject] = []
+    for exp, ns_id in zip(kept_experiments, ns_ids):
+        run_count = len(exp.get("runs", []))
+        run_do_ids = [next(do_pool) for _ in range(run_count)]
+        model = (exp.get("instrument_model") or "").strip()
+        instrument_id = model_to_instrument_id.get(model) if model else None
+        records = build_sequencing_records(
+            exp,
+            study_id,
+            biosample_acc_to_id[exp["biosample_accession"]],
+            ns_id,
+            run_do_ids,
+            instrument_id,
+        )
         all_nuc_seqs.append(records["nucleotide_sequencing"])
         all_data_objects.extend(records["data_objects"])
 
-    for w in warnings:
+    for w in skip_warnings:
         print(f"WARNING: {w}")
 
     database = nmdc.Database()
@@ -728,11 +766,29 @@ def main():
         action="store_true",
         help="Only fetch and dump intermediate NCBI data as JSON (no NMDC conversion).",
     )
+    parser.add_argument(
+        "--mint-real-ids",
+        action="store_true",
+        help=(
+            "Mint persistent NMDC IDs via the runtime API instead of placeholders. "
+            "Requires NMDC_RUNTIME_CLIENT_ID and NMDC_RUNTIME_CLIENT_SECRET in the "
+            "environment. Without this flag, output uses placeholder shoulder '99'."
+        ),
+    )
     args = parser.parse_args()
 
     accession = args.accession.strip()
     out_path = args.out or f"results/ncbi_{accession}_nmdc.json"
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+
+    minter: Minter
+    if args.mint_real_ids:
+        try:
+            minter = runtime_minter_from_env()
+        except RuntimeError as e:
+            sys.exit(f"ERROR: {e}")
+    else:
+        minter = PlaceholderMinter()
 
     data = fetch_all(accession)
 
@@ -745,7 +801,7 @@ def main():
         return
 
     print("\nBuilding NMDC Database...")
-    database = build_nmdc_database(data)
+    database = build_nmdc_database(data, minter)
 
     print(f"  Study: {database.study_set[0].id}")
     print(f"  Biosamples: {len(database.biosample_set)}")
@@ -758,8 +814,9 @@ def main():
         f.write(json_str)
     print(f"\nNMDC Database JSON written to {out_path}")
 
-    print("\n⚠ PLACEHOLDER IDS: All IDs use shoulder '99' and are NOT real NMDC IDs.")
-    print("  Real IDs must be minted via the NMDC Runtime API before ingest.")
+    if not args.mint_real_ids:
+        print("\n⚠ PLACEHOLDER IDS: All IDs use shoulder '99' and are NOT real NMDC IDs.")
+        print("  Re-run with --mint-real-ids to mint real IDs via the NMDC Runtime API.")
 
     def _needs_curation(term_value) -> bool:
         if term_value is None:
