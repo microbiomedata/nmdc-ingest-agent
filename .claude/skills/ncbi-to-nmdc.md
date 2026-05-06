@@ -7,7 +7,8 @@ description: Translate an NCBI BioProject (with BioSamples + SRA runs) into an N
 
 Given a BioProject accession (e.g. `PRJNA1452545`), fetch linked BioSample and SRA data from NCBI and produce an NMDC-schema-compliant `nmdc.Database` JSON file. This skill owns the source-specific transport (fetch, generate, validate, report). Curation steps that are not NCBI-specific are handled by sibling skills:
 
-- `.claude/skills/nmdc-env-triad.md` — ENVO term selection for `env_broad_scale` / `env_local_scale` / `env_medium`
+- `.claude/skills/nmdc-curation-rules.md` — evidence-first rules every commit must satisfy (cross-skill)
+- `.claude/skills/nmdc-env-triad.md` — ENVO term selection / inference for `env_broad_scale` / `env_local_scale` / `env_medium`
 - `.claude/skills/nmdc-taxon-resolution.md` — NCBITaxon resolution for host / `samp_taxon`
 - `.claude/skills/nmdc-schema-reference.md` — LinkML slot ranges, value-type wrappers, enum traps
 
@@ -49,11 +50,16 @@ Run the script without `--fetch-only`:
 uv run nmdc-ingest-ncbi <ACCESSION>
 ```
 
-The script always emits `ENVO:00000000` sentinels for the env triad (preserving the raw submitter string in `has_raw_value`) and only forwards taxon information that NCBI itself supplied. Resolving sentinels and disambiguating hosts is the next two steps' job.
+The script always emits `ENVO:00000000` sentinels for the env triad (preserving the raw submitter string in `has_raw_value` when one was provided, or empty + `name="(not provided)"` when the source had nothing) and only forwards taxon information that NCBI itself supplied. Resolving sentinels and disambiguating hosts is the next two steps' job.
+
+The script also writes two sidecar files alongside the NMDC JSON:
+
+- `results/ncbi_<ACCESSION>_nmdc_curation_inputs.json` — BioProject context + full NCBI attributes per biosample (the inputs the env-triad skill reads when filling gaps).
+- `results/ncbi_<ACCESSION>_nmdc_curation_report.json` — skeleton with one row per (biosample, slot), all initialized to `outcome: "left_sentinel"`. The agent updates this in place.
 
 ### Step 3: Resolve env-triad sentinels
 
-Read `.claude/skills/nmdc-env-triad.md` and apply its per-placeholder workflow to every `ENVO:00000000` sentinel in the generated JSON. Replace each sentinel with the resolved CURIE and the ENVO-official label. Leave sentinels in place and flag for review when no good match exists — do not guess.
+Read `.claude/skills/nmdc-curation-rules.md` and `.claude/skills/nmdc-env-triad.md`. Apply the per-placeholder workflow to every `ENVO:00000000` sentinel in the generated JSON, choosing the resolution branch (§1a, when `has_raw_value` is non-empty) or the inference branch (§1b, when the value was genuinely missing). Update the curation-report row for each (biosample, slot) per the outcome you reach. Validate every committed CURIE per § Validate every committed CURIE.
 
 ### Step 4: Resolve host / `samp_taxon` if needed
 
@@ -84,10 +90,10 @@ When a validation failure points at a non-trivial slot value (nested wrappers, e
 Report to the user:
 - Study name and accession
 - Number of Biosamples, DataGenerations, DataObjects
-- Any ENVO mappings that were applied or still need manual review
+- **Per-slot curation summary** computed from `results/ncbi_<ACCESSION>_nmdc_curation_report.json`. For each of `env_broad_scale`, `env_local_scale`, `env_medium`, count outcomes: `predicted`, `resolved_from_raw`, `resolved_at_pipeline`, `left_sentinel`, `validator_rejected`. The `left_sentinel` count is the curator-follow-up backlog.
 - For soil-package biosamples, whether the MIxS soil-package valueset constraint was enforced (see `nmdc-env-triad.md` § Soil package). If `nmdc-submission-schema` was not importable, surface this explicitly as a known gap in the report — never silent fall-back.
 - Any host / taxon fields left unset and flagged for PI follow-up
-- The output file path
+- The three output file paths: NMDC JSON, curation inputs sidecar, curation report
 - If the run did not use `--mint-real-ids`, remind the user that IDs are placeholders (shoulder `99`) and that the ingest-ready output requires re-running with `--mint-real-ids` (set `NMDC_RUNTIME_CLIENT_ID` and `NMDC_RUNTIME_CLIENT_SECRET` first)
 
 ## Output
