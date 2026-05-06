@@ -1,11 +1,15 @@
 ---
 name: ncbi-to-nmdc
-description: Translate an NCBI BioProject (with BioSamples + SRA runs) into an NMDC-schema-compliant Database JSON file
+description: Translate an NCBI BioProject (with BioSamples + SRA runs) into an NMDC-schema-compliant Database JSON file, then hand off curation to the nmdc-env-triad, nmdc-taxon-resolution, and nmdc-schema-reference skills.
 ---
 
 # NCBI BioProject → NMDC JSON Translation
 
-Given a BioProject accession (e.g. `PRJNA1452545`), fetch linked BioSample and SRA data from NCBI and produce an NMDC-schema-compliant `nmdc.Database` JSON file.
+Given a BioProject accession (e.g. `PRJNA1452545`), fetch linked BioSample and SRA data from NCBI and produce an NMDC-schema-compliant `nmdc.Database` JSON file. This skill owns the source-specific transport (fetch, generate, validate, report). Curation steps that are not NCBI-specific are handled by sibling skills:
+
+- `.claude/skills/nmdc-env-triad.md` — ENVO term selection for `env_broad_scale` / `env_local_scale` / `env_medium`
+- `.claude/skills/nmdc-taxon-resolution.md` — NCBITaxon resolution for host / `samp_taxon`
+- `.claude/skills/nmdc-schema-reference.md` — LinkML slot ranges, value-type wrappers, enum traps
 
 ## Prerequisites
 
@@ -16,7 +20,7 @@ This skill assumes the working directory is inside a checkout of `nmdc-ingest-ag
 uv sync --extra ontology
 ```
 
-`uv sync` provisions `.venv/` from the committed `uv.lock`. The steps below invoke `uv run nmdc-ingest-ncbi` (and `uv run --extra ontology runoak` for ontology lookups), which use that environment without requiring an active shell venv.
+`uv sync` provisions `.venv/` from the committed `uv.lock`. The steps below invoke `uv run nmdc-ingest-ncbi` (and the curation skills' `uv run --extra ontology runoak` commands), which use that environment without requiring an active shell venv.
 
 ## Arguments
 
@@ -45,60 +49,19 @@ Run the script without `--fetch-only`:
 uv run nmdc-ingest-ncbi <ACCESSION>
 ```
 
-### Step 3: Resolve ontology terms with `runoak`
+The script always emits `ENVO:00000000` sentinels for the env triad (preserving the raw submitter string in `has_raw_value`) and only forwards taxon information that NCBI itself supplied. Resolving sentinels and disambiguating hosts is the next two steps' job.
 
-Use `runoak` (the oaklib CLI) for **all** ontology lookups — ENVO for the env triad, NCBITaxon for host/samp taxon, etc. Do not hand-pick CURIEs from memory; look them up.
+### Step 3: Resolve env-triad sentinels
 
-Common adapters:
-- `sqlite:obo:envo` — ENVO (downloads the SQLite dump on first use, then cached)
-- `sqlite:obo:ncbitaxon` — NCBITaxon
-- `ols:envo` / `ols:ncbitaxon` — live OLS API (slower, no install footprint)
+Read `.claude/skills/nmdc-env-triad.md` and apply its per-placeholder workflow to every `ENVO:00000000` sentinel in the generated JSON. Replace each sentinel with the resolved CURIE and the ENVO-official label. Leave sentinels in place and flag for review when no good match exists — do not guess.
 
-Useful runoak subcommands:
+### Step 4: Resolve host / `samp_taxon` if needed
 
-```bash
-# Fuzzy search for a label
-uv run --extra ontology runoak -i sqlite:obo:envo search "forest floor"
+If the BioProject implies a host organism (e.g. host-associated samples, rhizosphere studies that name the plant) or a `samp_taxon` value needs lifting from free text, read `.claude/skills/nmdc-taxon-resolution.md` and follow its lookup + disambiguation pattern. Apply the unambiguous-intent rule: leave host fields unset and flag for PI follow-up rather than guessing.
 
-# Fetch label + definition + synonyms for a known CURIE
-uv run --extra ontology runoak -i sqlite:obo:envo info ENVO:00002042
+### Step 5: Verify instrument records
 
-# Check ancestry (e.g. is this term under biome?)
-uv run --extra ontology runoak -i sqlite:obo:envo ancestors -p i ENVO:01000174
-
-# List all descendants of an anchor class (used to constrain env triad — see below)
-uv run --extra ontology runoak -i sqlite:obo:envo descendants -p i ENVO:00000428
-
-# NCBITaxon lookup by scientific name
-uv run --extra ontology runoak -i sqlite:obo:ncbitaxon search "Phallus rugulosus"
-uv run --extra ontology runoak -i sqlite:obo:ncbitaxon info NCBITaxon:5260
-```
-
-### Step 4: Map the env triad using MIxS value sets
-
-The NMDC schema inherits MIxS env-triad semantics: each of the three slots must point into a specific ENVO subtree. Constrain `runoak search` output to these subtrees — **do not** pick arbitrary ENVO terms.
-
-| Slot | Anchor class | MIxS intent |
-|---|---|---|
-| `env_broad_scale` | `ENVO:00000428` (biome) | The coarse biome containing the sample |
-| `env_local_scale` | `ENVO:01000813` (astronomical body part) — practically, environmental features | Causal environmental entity at the sample's vicinity |
-| `env_medium` | `ENVO:00010483` (environmental material) | The material the sample is composed of |
-
-For **soil** biosamples (MIxS `soil` or `MIMS.me.soil.*` package), the submission schema further restricts each slot to a package-specific value set (a small curated list of ENVO terms). If `nmdc-submission-schema` is installed in the environment, pull the allowed values from there; otherwise fall back to the anchor-class descendants above and flag any choice outside the MIxS soil value set for manual review.
-
-Workflow for each free-text value in the intermediate JSON:
-
-1. Search ENVO: `uv run --extra ontology runoak -i sqlite:obo:envo search "<raw value>"`
-2. Filter hits to descendants of the correct anchor class
-3. Pick the closest match; record its CURIE and label
-4. If no good match, leave a placeholder and note it in the report
-
-Edit the output JSON to replace each placeholder (`ENVO:00000000`) with the resolved CURIE and the ENVO-official label (not the raw submitter string).
-
-### Step 5: Fix instrument and host references
-
-- **Instrument**: the script stores SRA `instrument_model` strings verbatim and assigns an instrument ID — placeholder shoulder (`-99-`) by default, or a real minted ID when `--mint-real-ids` was passed. Leave the ID in place — real Instrument records are resolved at ingest. But verify the string is sensible (e.g. `Illumina NovaSeq X`, `Illumina NovaSeq 6000`, `Illumina HiSeq 2500`, `Illumina MiSeq`).
-- **Host / samp_taxon**: if the BioProject implies a host organism (e.g. rhizosphere or host-associated samples), resolve its NCBI taxid via runoak: `uv run --extra ontology runoak -i sqlite:obo:ncbitaxon search "<host name>"`. Only set `host_name` / `host_taxid` when the submitter's intent is unambiguous — otherwise leave unset and flag for PI follow-up.
+The script stores SRA `instrument_model` strings verbatim and assigns an instrument ID — placeholder shoulder (`-99-`) by default, or a real minted ID when `--mint-real-ids` was passed. Leave the ID in place — real Instrument records are resolved at ingest. But verify the string is sensible (e.g. `Illumina NovaSeq X`, `Illumina NovaSeq 6000`, `Illumina HiSeq 2500`, `Illumina MiSeq`).
 
 ### Step 6: Validate
 
@@ -114,12 +77,16 @@ print('Validation passed!')
 "
 ```
 
+When a validation failure points at a non-trivial slot value (nested wrappers, enum ranges, range/scalar confusion), read `.claude/skills/nmdc-schema-reference.md` before guessing at the fix.
+
 ### Step 7: Report summary
 
 Report to the user:
 - Study name and accession
 - Number of Biosamples, DataGenerations, DataObjects
 - Any ENVO mappings that were applied or still need manual review
+- For soil-package biosamples, whether the MIxS soil-package valueset constraint was enforced (see `nmdc-env-triad.md` § Soil package). If `nmdc-submission-schema` was not importable, surface this explicitly as a known gap in the report — never silent fall-back.
+- Any host / taxon fields left unset and flagged for PI follow-up
 - The output file path
 - If the run did not use `--mint-real-ids`, remind the user that IDs are placeholders (shoulder `99`) and that the ingest-ready output requires re-running with `--mint-real-ids` (set `NMDC_RUNTIME_CLIENT_ID` and `NMDC_RUNTIME_CLIENT_SECRET` first)
 
@@ -131,33 +98,6 @@ The final JSON file is written to `results/ncbi_<ACCESSION>_nmdc.json` relative 
 
 This skill produces **only** `Study`, `Biosample`, `DataGeneration`, and `DataObject` records. Do **not** create `Pooling`, `Extraction`, `LibraryPreparation`, or other process/material-transformation records — those are out of scope for NCBI-sourced ingest.
 
-## Schema reference
-
-When uncertain how to shape a slot value — especially nested value types like `QuantityValue`, `GeolocationValue`, `TextValue`, `TimestampValue`, `ControlledIdentifiedTermValue`, or any slot with min/max/range semantics — **consult the NMDC LinkML schema** before guessing. Common traps:
-
-- `QuantityValue` uses `has_numeric_value` for scalars but `has_minimum_numeric_value` / `has_maximum_numeric_value` for range strings like `"0.2 - 0.3 m"`. Never put a range into `has_numeric_value`.
-- `ControlledIdentifiedTermValue` wraps an `OntologyClass` with `id` (the CURIE) and `name` (the official label). If you only have free text, use `ControlledTermValue` with `has_raw_value` instead.
-- Slot names use snake_case and often have strict enum value ranges (e.g. `study_category`, `analyte_category`, `data_category`, `data_object_type`).
-
-Two ways to check the schema, in order of preference:
-
-1. **Local package (authoritative for the installed version)** — `nmdc-schema` is a project dependency, so the Python classes are importable and introspectable via `linkml_runtime`:
-
-   ```python
-   from nmdc_schema import nmdc
-   from linkml_runtime.utils.schemaview import SchemaView
-   import nmdc_schema
-
-   # Inspect a slot's range, required flag, pattern, etc.
-   sv = SchemaView(nmdc_schema.get_nmdc_schema_definition())
-   print(sv.induced_slot("depth", "Biosample"))
-
-   # Or just look at a class's expected shape
-   help(nmdc.QuantityValue)
-   ```
-
-2. **Published docs (useful for browsing and cross-referencing)** — https://microbiomedata.github.io/nmdc-schema/. Handy for skimming class hierarchies and allowed enum values, but may be ahead of or behind the installed version — treat the local package as source of truth when they disagree.
-
 ## Reference patterns
 
 The traditional Dagster-orchestrated translators in [microbiomedata/nmdc-runtime](https://github.com/microbiomedata/nmdc-runtime) are still a useful reference for NMDC object construction, but **only** for the four record types in scope above:
@@ -166,4 +106,4 @@ The traditional Dagster-orchestrated translators in [microbiomedata/nmdc-runtime
 - `nmdc_runtime/site/translation/gold_translator.py` — Study/Biosample/DataGeneration patterns
 - `nmdc_runtime/site/translation/neon_utils.py` — helper functions for NMDC value types
 
-Ignore patterns from `neon_soil_translator.py` (and any other translator) that construct `Extraction`, `LibraryPreparation`, or related process records — those do not apply here.
+Ignore patterns from `neon_soil_translator.py` (and any other translator) that construct `Extraction`, `LibraryPreparation`, or related process records — those do not apply to NCBI ingest.
