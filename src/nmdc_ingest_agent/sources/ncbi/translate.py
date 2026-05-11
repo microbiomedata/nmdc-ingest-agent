@@ -36,6 +36,13 @@ RATE_LIMIT_DELAY = 0.35
 BATCH_SIZE = 200
 
 
+def _is_missing(value: str) -> bool:
+    """Treat empty strings and NCBI 'NA'/'N/A' placeholders (any case) as missing."""
+    if not value:
+        return True
+    return value.strip().upper() in {"NA", "N/A"}
+
+
 # ---------------------------------------------------------------------------
 # E-utils helpers
 # ---------------------------------------------------------------------------
@@ -274,6 +281,12 @@ def _fetch_biosample_records(ids: List[str]) -> List[dict]:
                 if key:
                     attrs[key] = attr.text or ""
 
+            sample_name = ""
+            for id_el in bs.findall(".//Ids/Id"):
+                if id_el.get("db_label") == "Sample name" and id_el.text:
+                    sample_name = id_el.text.strip()
+                    break
+
             title_el = bs.find(".//Description/Title")
             organism_el = bs.find(".//Description/Organism")
             org_name = ""
@@ -291,6 +304,7 @@ def _fetch_biosample_records(ids: List[str]) -> List[dict]:
             samples.append({
                 "accession": accession,
                 "title": title_el.text if title_el is not None else "",
+                "sample_name": sample_name,
                 "organism": org_name,
                 "taxonomy_id": taxonomy_id,
                 "package": package,
@@ -528,11 +542,20 @@ def build_biosample(
 
     habitat = _clean_str_attr("habitat")
     host_name = _clean_str_attr("host")
-    samp_name = _clean_str_attr("samp_name")
+
+    title = sample_data.get("title", "")
+    sample_name = sample_data.get("sample_name", "")
+    if not _is_missing(title):
+        biosample_name = title
+    elif sample_name:
+        biosample_name = sample_name
+    else:
+        biosample_name = accession
 
     biosample = nmdc.Biosample(
         id=biosample_id,
-        name=sample_data.get("title", "") or accession,
+        name=biosample_name,
+        samp_name=sample_name or None,
         env_broad_scale=env_broad,
         env_local_scale=env_local,
         env_medium=env_medium,
@@ -544,7 +567,6 @@ def build_biosample(
         geo_loc_name=geo_loc_name,
         habitat=habitat,
         host_name=host_name,
-        samp_name=samp_name,
         samp_taxon_id=samp_taxon_id,
         associated_studies=[study_id],
         insdc_biosample_identifiers=[f"biosample:{accession}"],
