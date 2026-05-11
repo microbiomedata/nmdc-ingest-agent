@@ -1,0 +1,63 @@
+{
+  "id": "nmdc:bsm-99-771dfcb1",
+  "type": "nmdc:Biosample",
+  "name": "NA",
+  "associated_studies": [
+    "nmdc:sty-99-3a8ddf78"
+  ],
+  "env_broad_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "Soil",
+    "term": {
+      "id": "ENVO:01000249",
+      "type": "nmdc:OntologyClass",
+      "name": "urban biome"
+    }
+  },
+  "env_local_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "Subterranean Urban",
+    "term": {
+      "id": "ENVO:00000000",
+      "type": "nmdc:OntologyClass",
+      "name": "Subterranean Urban"
+    }
+  },
+  "env_medium": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "Subterranean Urban",
+    "term": {
+      "id": "ENVO:00001998",
+      "type": "nmdc:OntologyClass",
+      "name": "soil"
+    }
+  },
+  "insdc_biosample_identifiers": [
+    "biosample:SAMN40012607"
+  ],
+  "collection_date": {
+    "type": "nmdc:TimestampValue",
+    "has_raw_value": "2019-10-15"
+  },
+  "env_package": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "MIMAG.6.0"
+  },
+  "geo_loc_name": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Denmark"
+  },
+  "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": 57.1088,
+    "longitude": 10.0826
+  },
+  "samp_taxon_id": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+      "id": "NCBITaxon:3069120",
+      "type": "nmdc:OntologyClass",
+      "name": "Candidatus Acidiferrum sp."
+    }
+  }
+}

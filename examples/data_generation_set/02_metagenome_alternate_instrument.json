@@ -1,0 +1,21 @@
+{
+  "id": "nmdc:dgns-99-829d7843",
+  "type": "nmdc:NucleotideSequencing",
+  "name": "NA",
+  "has_input": [
+    "nmdc:bsm-99-6dc7720e"
+  ],
+  "has_output": [
+    "nmdc:dobj-99-b4c8deaf"
+  ],
+  "analyte_category": "metagenome",
+  "associated_studies": [
+    "nmdc:sty-99-3a8ddf78"
+  ],
+  "instrument_used": [
+    "nmdc:inst-99-815feee8"
+  ],
+  "insdc_experiment_identifiers": [
+    "insdc.sra:SRX23628290"
+  ]
+}
