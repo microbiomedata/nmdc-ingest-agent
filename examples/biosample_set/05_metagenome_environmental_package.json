@@ -1,0 +1,58 @@
+{
+  "id": "nmdc:bsm-99-10d49338",
+  "type": "nmdc:Biosample",
+  "name": "NA",
+  "associated_studies": [
+    "nmdc:sty-99-3a8ddf78"
+  ],
+  "env_broad_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:00000000",
+      "type": "nmdc:OntologyClass",
+      "name": "(not provided)"
+    }
+  },
+  "env_local_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:00000000",
+      "type": "nmdc:OntologyClass",
+      "name": "(not provided)"
+    }
+  },
+  "env_medium": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:00000000",
+      "type": "nmdc:OntologyClass",
+      "name": "(not provided)"
+    }
+  },
+  "insdc_biosample_identifiers": [
+    "biosample:SAMN39950283"
+  ],
+  "collection_date": {
+    "type": "nmdc:TimestampValue",
+    "has_raw_value": "2019-08-29"
+  },
+  "env_package": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Metagenome.environmental.1.0"
+  },
+  "geo_loc_name": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Denmark"
+  },
+  "samp_taxon_id": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+      "id": "NCBITaxon:256318",
+      "type": "nmdc:OntologyClass",
+      "name": "metagenome"
+    }
+  }
+}
