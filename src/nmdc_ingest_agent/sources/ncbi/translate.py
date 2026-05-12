@@ -239,28 +239,55 @@ def fetch_sra_experiments(bioproject_accession: str) -> List[dict]:
 # XML parsing: BioSamples
 # ---------------------------------------------------------------------------
 
-def fetch_linked_biosample_uids(bioproject_uid: str) -> Optional[List[str]]:
+def fetch_linked_biosample_uids(
+    bioproject_uid: str, max_attempts: int = 5
+) -> Optional[List[str]]:
     """Return BioSample UIDs linked to a BioProject via elink.
 
-    Returns None if the elink query fails (NCBI outage, transient error, etc.)
-    so callers can distinguish 'no biosamples' from 'lookup failed'.
+    NCBI's bp→biosample elink endpoint intermittently returns HTTP 200 with a
+    ``<ERROR>`` body containing ``TXCLIENT(CException::eUnknown) ... readAll()``
+    failures — observed flapping at ~50% rate on large BioProjects. Empirically
+    retrying with a short backoff recovers quickly, so attempt up to
+    ``max_attempts`` times before giving up. Returns None if every attempt
+    fails so callers can distinguish 'no biosamples' from 'lookup failed' and
+    fall back to the SRA-derived BioSample set.
     """
-    try:
-        raw = _eutils_get("elink.fcgi", {
-            "dbfrom": "bioproject",
-            "db": "biosample",
-            "id": bioproject_uid,
-            "linkname": "bioproject_biosample_all",
-        })
-        root = etree.fromstring(raw)
-        err_el = root.find(".//ERROR")
-        if err_el is not None and err_el.text:
-            print(f"  WARNING: elink bioproject→biosample returned error: {err_el.text.strip()}")
+    last_error = ""
+    for attempt in range(1, max_attempts + 1):
+        try:
+            raw = _eutils_get("elink.fcgi", {
+                "dbfrom": "bioproject",
+                "db": "biosample",
+                "id": bioproject_uid,
+                "linkname": "bioproject_biosample_all",
+            })
+            root = etree.fromstring(raw)
+            err_el = root.find(".//ERROR")
+            if err_el is not None and err_el.text:
+                last_error = err_el.text.strip().splitlines()[0]
+                if attempt < max_attempts:
+                    time.sleep(2.0 * attempt)
+                    continue
+                print(
+                    f"  WARNING: elink bioproject→biosample returned error "
+                    f"after {attempt} attempts: {last_error}"
+                )
+                return None
+            uids = [el.text for el in root.findall(".//LinkSetDb/Link/Id") if el.text]
+            if attempt > 1:
+                print(f"  elink bioproject→biosample recovered on attempt {attempt}")
+            return uids
+        except Exception as e:
+            last_error = str(e)
+            if attempt < max_attempts:
+                time.sleep(2.0 * attempt)
+                continue
+            print(
+                f"  WARNING: elink bioproject→biosample call failed after "
+                f"{attempt} attempts: {last_error}"
+            )
             return None
-        return [el.text for el in root.findall(".//LinkSetDb/Link/Id") if el.text]
-    except Exception as e:
-        print(f"  WARNING: elink bioproject→biosample call failed: {e}")
-        return None
+    return None
 
 
 def _fetch_biosample_records(ids: List[str]) -> List[dict]:
