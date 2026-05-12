@@ -772,10 +772,46 @@ def fetch_all(accession: str) -> dict:
     }
 
 
+_MAG_PACKAGE_PREFIXES = ("MIMAG", "MISAG")
+
+
+def _is_mag_package(package: str) -> bool:
+    """Return True if the MIxS package indicates a single-organism genome
+    assembly rather than an environmental sample.
+
+    MIMAG = Minimum Information about a Metagenome-Assembled Genome.
+    MISAG = Minimum Information about a Single Amplified Genome.
+
+    Records using these packages represent derived genome assemblies (a
+    single inferred organism per record, with a concrete ``samp_taxon_id``),
+    not the environmental samples the NMDC Biosample class models. They are
+    out of scope for environmental-sample ingest.
+    """
+    p = (package or "").strip()
+    return any(p.startswith(prefix) for prefix in _MAG_PACKAGE_PREFIXES)
+
+
 def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
     project = data["bioproject"]
-    biosamples = data["biosamples"]
+    raw_biosamples = data["biosamples"]
     experiments = data["sra_experiments"]
+
+    biosamples: list[dict] = []
+    excluded_packages: dict[str, int] = {}
+    for sample in raw_biosamples:
+        pkg = sample.get("package", "") or ""
+        if _is_mag_package(pkg):
+            excluded_packages[pkg] = excluded_packages.get(pkg, 0) + 1
+            continue
+        biosamples.append(sample)
+
+    if excluded_packages:
+        total_excluded = sum(excluded_packages.values())
+        per_pkg = ", ".join(f"{pkg}={n}" for pkg, n in sorted(excluded_packages.items()))
+        print(
+            f"  Excluded {total_excluded} BioSample(s) using MAG-only MIxS "
+            f"packages ({per_pkg}); NMDC Biosample is for environmental samples."
+        )
 
     [study_id] = minter.mint("nmdc:Study", 1)
     study = build_study(project, study_id)
