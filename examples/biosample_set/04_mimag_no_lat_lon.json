@@ -1,0 +1,59 @@
+{
+  "id": "nmdc:bsm-99-30e8a056",
+  "type": "nmdc:Biosample",
+  "name": "MFD13966_ilm_asm_bin2",
+  "associated_studies": [
+    "nmdc:sty-99-87ca4b51"
+  ],
+  "env_broad_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "Soil",
+    "term": {
+      "id": "ENVO:00000000",
+      "type": "nmdc:OntologyClass",
+      "name": "Soil"
+    }
+  },
+  "env_local_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "Natural Grassland formations",
+    "term": {
+      "id": "ENVO:00000000",
+      "type": "nmdc:OntologyClass",
+      "name": "Natural Grassland formations"
+    }
+  },
+  "env_medium": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "Natural Grassland formations",
+    "term": {
+      "id": "ENVO:00000000",
+      "type": "nmdc:OntologyClass",
+      "name": "Natural Grassland formations"
+    }
+  },
+  "insdc_biosample_identifiers": [
+    "biosample:SAMN40012601"
+  ],
+  "collection_date": {
+    "type": "nmdc:TimestampValue",
+    "has_raw_value": "2022-09-18"
+  },
+  "env_package": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "MIMAG.6.0"
+  },
+  "geo_loc_name": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Denmark"
+  },
+  "samp_name": "MFD13966_ilm_asm_bin2",
+  "samp_taxon_id": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+      "id": "NCBITaxon:1960880",
+      "type": "nmdc:OntologyClass",
+      "name": "Pseudolabrys sp."
+    }
+  }
+}

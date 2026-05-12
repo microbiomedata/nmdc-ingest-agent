@@ -239,28 +239,55 @@ def fetch_sra_experiments(bioproject_accession: str) -> List[dict]:
 # XML parsing: BioSamples
 # ---------------------------------------------------------------------------
 
-def fetch_linked_biosample_uids(bioproject_uid: str) -> Optional[List[str]]:
+def fetch_linked_biosample_uids(
+    bioproject_uid: str, max_attempts: int = 5
+) -> Optional[List[str]]:
     """Return BioSample UIDs linked to a BioProject via elink.
 
-    Returns None if the elink query fails (NCBI outage, transient error, etc.)
-    so callers can distinguish 'no biosamples' from 'lookup failed'.
+    NCBI's bp→biosample elink endpoint intermittently returns HTTP 200 with a
+    ``<ERROR>`` body containing ``TXCLIENT(CException::eUnknown) ... readAll()``
+    failures — observed flapping at ~50% rate on large BioProjects. Empirically
+    retrying with a short backoff recovers quickly, so attempt up to
+    ``max_attempts`` times before giving up. Returns None if every attempt
+    fails so callers can distinguish 'no biosamples' from 'lookup failed' and
+    fall back to the SRA-derived BioSample set.
     """
-    try:
-        raw = _eutils_get("elink.fcgi", {
-            "dbfrom": "bioproject",
-            "db": "biosample",
-            "id": bioproject_uid,
-            "linkname": "bioproject_biosample_all",
-        })
-        root = etree.fromstring(raw)
-        err_el = root.find(".//ERROR")
-        if err_el is not None and err_el.text:
-            print(f"  WARNING: elink bioproject→biosample returned error: {err_el.text.strip()}")
+    last_error = ""
+    for attempt in range(1, max_attempts + 1):
+        try:
+            raw = _eutils_get("elink.fcgi", {
+                "dbfrom": "bioproject",
+                "db": "biosample",
+                "id": bioproject_uid,
+                "linkname": "bioproject_biosample_all",
+            })
+            root = etree.fromstring(raw)
+            err_el = root.find(".//ERROR")
+            if err_el is not None and err_el.text:
+                last_error = err_el.text.strip().splitlines()[0]
+                if attempt < max_attempts:
+                    time.sleep(2.0 * attempt)
+                    continue
+                print(
+                    f"  WARNING: elink bioproject→biosample returned error "
+                    f"after {attempt} attempts: {last_error}"
+                )
+                return None
+            uids = [el.text for el in root.findall(".//LinkSetDb/Link/Id") if el.text]
+            if attempt > 1:
+                print(f"  elink bioproject→biosample recovered on attempt {attempt}")
+            return uids
+        except Exception as e:
+            last_error = str(e)
+            if attempt < max_attempts:
+                time.sleep(2.0 * attempt)
+                continue
+            print(
+                f"  WARNING: elink bioproject→biosample call failed after "
+                f"{attempt} attempts: {last_error}"
+            )
             return None
-        return [el.text for el in root.findall(".//LinkSetDb/Link/Id") if el.text]
-    except Exception as e:
-        print(f"  WARNING: elink bioproject→biosample call failed: {e}")
-        return None
+    return None
 
 
 def _fetch_biosample_records(ids: List[str]) -> List[dict]:
@@ -318,16 +345,16 @@ def _fetch_biosample_records(ids: List[str]) -> List[dict]:
 def fetch_biosamples(accessions: List[str]) -> List[dict]:
     """Fetch BioSample records by accession (e.g. SAMN*).
 
-    Looks up UIDs via esearch, then efetches. Falls back to passing the
-    accession strings directly to efetch if esearch returns nothing.
+    Passes accessions directly to efetch (db=biosample accepts accession
+    strings as ids). Earlier versions used an esearch round-trip to
+    translate accessions to internal UIDs, but that built ``OR``-joined
+    query strings that NCBI rejects with HTTP 414 for BioProjects with
+    >~150 linked BioSamples. ``efetch_xml`` already batches the id list,
+    so the comma-joined ``id=`` URL stays well under NCBI's limit.
     """
     if not accessions:
         return []
-
-    ids = esearch("biosample", " OR ".join(f"{a}[Accession]" for a in accessions))
-    if not ids:
-        ids = accessions
-    return _fetch_biosample_records(ids)
+    return _fetch_biosample_records(list(accessions))
 
 
 # ---------------------------------------------------------------------------
@@ -527,6 +554,22 @@ def build_biosample(
             type="nmdc:ControlledIdentifiedTermValue",
         )
 
+    env_package = None
+    raw_package = (sample_data.get("package") or "").strip()
+    if raw_package and raw_package.lower() not in _MISSING_VALUES:
+        env_package = nmdc.TextValue(
+            has_raw_value=raw_package, type="nmdc:TextValue"
+        )
+
+    def _clean_str_attr(name: str) -> Optional[str]:
+        raw = (attrs.get(name, "") or "").strip()
+        if not raw or raw.lower() in _MISSING_VALUES:
+            return None
+        return raw
+
+    habitat = _clean_str_attr("habitat")
+    host_name = _clean_str_attr("host")
+
     title = sample_data.get("title", "")
     sample_name = sample_data.get("sample_name", "")
     if not _is_missing(title):
@@ -543,11 +586,14 @@ def build_biosample(
         env_broad_scale=env_broad,
         env_local_scale=env_local,
         env_medium=env_medium,
+        env_package=env_package,
         lat_lon=lat_lon,
         collection_date=collection_date,
         depth=depth,
         elev=elev,
         geo_loc_name=geo_loc_name,
+        habitat=habitat,
+        host_name=host_name,
         samp_taxon_id=samp_taxon_id,
         associated_studies=[study_id],
         insdc_biosample_identifiers=[f"biosample:{accession}"],
@@ -779,6 +825,102 @@ def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
     return database
 
 
+_TRIAD_SLOTS = ("env_broad_scale", "env_local_scale", "env_medium")
+
+
+def build_curation_inputs_sidecar(data: dict, database: nmdc.Database) -> dict:
+    """Inputs file the curation agent reads when filling env-triad gaps.
+
+    Bundles BioProject context plus the full raw NCBI attributes dict per
+    biosample, keyed by NMDC biosample id. The NMDC schema doesn't model
+    every NCBI attribute (e.g. isol_growth_condt, ecosystem*), so the agent
+    needs this sidecar to do evidence-based inference per nmdc-env-triad.md.
+    """
+    project = data.get("bioproject", {})
+    raw_biosamples = {bs["accession"]: bs for bs in data.get("biosamples", [])}
+
+    biosamples_out: dict[str, dict] = {}
+    for bs in database.biosample_set:
+        nmdc_id = bs.id
+        accession = ""
+        for ident in (bs.insdc_biosample_identifiers or []):
+            if ident.startswith("biosample:"):
+                accession = ident.split(":", 1)[1]
+                break
+        raw = raw_biosamples.get(accession, {})
+        biosamples_out[nmdc_id] = {
+            "ncbi_accession": accession,
+            "ncbi_title": raw.get("title", ""),
+            "package": raw.get("package", ""),
+            "models": raw.get("models", []),
+            "attributes": raw.get("attributes", {}),
+        }
+
+    return {
+        "study": {
+            "id": database.study_set[0].id if database.study_set else "",
+            "name": project.get("name", ""),
+            "title": project.get("title", ""),
+            "description": project.get("description", ""),
+            "publications": project.get("publications", []),
+        },
+        "biosamples": biosamples_out,
+    }
+
+
+def build_curation_report_skeleton(database: nmdc.Database) -> dict:
+    """Skeleton report file pre-populated with one row per (biosample, slot).
+
+    Each row starts in outcome=left_sentinel; the agent flips outcomes to
+    predicted/resolved_from_raw/validator_rejected as it processes the
+    triad. Schema matches what nmdc-env-triad.md expects.
+    """
+    rows: list[dict] = []
+    for bs in database.biosample_set:
+        for slot in _TRIAD_SLOTS:
+            term_value = getattr(bs, slot, None)
+            term = getattr(term_value, "term", None) if term_value else None
+            term_id = getattr(term, "id", "") if term else ""
+            raw = getattr(term_value, "has_raw_value", "") if term_value else ""
+            is_sentinel = term_id == "ENVO:00000000"
+            rows.append({
+                "biosample_id": bs.id,
+                "slot": slot,
+                "outcome": "left_sentinel" if is_sentinel else "resolved_at_pipeline",
+                "raw_input": raw,
+                "committed_curie": term_id if not is_sentinel else None,
+                "committed_label": getattr(term, "name", "") if (term and not is_sentinel) else None,
+                "evidence": [],
+                "candidates_considered": [],
+                "validator": {
+                    "info_ok": None,
+                    "anchor_ok": None,
+                    "valueset_ok": None,
+                },
+            })
+    return {"rows": rows}
+
+
+def summarize_curation_report(report: dict) -> dict:
+    """Per-slot count of outcome values, for the Step-7 stderr summary."""
+    counts: dict[str, dict[str, int]] = {
+        slot: {
+            "predicted": 0,
+            "resolved_from_raw": 0,
+            "left_sentinel": 0,
+            "validator_rejected": 0,
+            "resolved_at_pipeline": 0,
+        }
+        for slot in _TRIAD_SLOTS
+    }
+    for row in report.get("rows", []):
+        slot = row["slot"]
+        outcome = row["outcome"]
+        if slot in counts and outcome in counts[slot]:
+            counts[slot][outcome] += 1
+    return counts
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Translate an NCBI BioProject to NMDC schema JSON."
@@ -838,29 +980,37 @@ def main():
         f.write(json_str)
     print(f"\nNMDC Database JSON written to {out_path}")
 
+    inputs_path = out_path.replace(".json", "_curation_inputs.json")
+    report_path = out_path.replace(".json", "_curation_report.json")
+
+    inputs_sidecar = build_curation_inputs_sidecar(data, database)
+    with open(inputs_path, "w") as f:
+        json.dump(inputs_sidecar, f, indent=2, default=str)
+    print(f"Curation inputs sidecar written to {inputs_path}")
+
+    if Path(report_path).exists():
+        with open(report_path) as f:
+            report = json.load(f)
+        print(f"Curation report exists at {report_path} (preserved; not overwritten)")
+    else:
+        report = build_curation_report_skeleton(database)
+        with open(report_path, "w") as f:
+            json.dump(report, f, indent=2, default=str)
+        print(f"Curation report skeleton written to {report_path}")
+
     if not args.mint_real_ids:
         print("\n⚠ PLACEHOLDER IDS: All IDs use shoulder '99' and are NOT real NMDC IDs.")
         print("  Re-run with --mint-real-ids to mint real IDs via the NMDC Runtime API.")
 
-    def _needs_curation(term_value) -> bool:
-        if term_value is None:
-            return False
-        term = getattr(term_value, "term", None)
-        return bool(term and getattr(term, "id", "") == "ENVO:00000000")
-
-    counts = {"env_broad_scale": 0, "env_local_scale": 0, "env_medium": 0}
-    for bs in database.biosample_set:
-        for slot in counts:
-            if _needs_curation(getattr(bs, slot, None)):
-                counts[slot] += 1
-
-    total_flagged = sum(1 for bs in database.biosample_set
-                        if any(_needs_curation(getattr(bs, s, None)) for s in counts))
-    if total_flagged:
-        print(f"\n⚠ ENVO CURATION NEEDED: {total_flagged} biosample(s) carry ENVO:00000000 placeholders.")
-        for slot, n in counts.items():
-            print(f"    {slot}: {n}")
-        print("  Resolve with runoak and edit the JSON before ingest.")
+    counts = summarize_curation_report(report)
+    total_sentinels = sum(c["left_sentinel"] for c in counts.values())
+    if total_sentinels:
+        print(f"\n⚠ ENVO CURATION NEEDED: {total_sentinels} (slot, biosample) pair(s) carry ENVO:00000000 sentinels.")
+        for slot, c in counts.items():
+            parts = [f"{k}={v}" for k, v in c.items() if v]
+            print(f"    {slot}: {', '.join(parts) if parts else '0'}")
+        print("  Run /ncbi-to-nmdc to fill gaps via the nmdc-env-triad skill, ")
+        print(f"  using the curation inputs sidecar and updating {report_path} in place.")
 
 
 if __name__ == "__main__":

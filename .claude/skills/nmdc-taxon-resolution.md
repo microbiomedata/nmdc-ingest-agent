@@ -7,6 +7,8 @@ description: Resolve organism names to NCBITaxon CURIEs via runoak for samp_taxo
 
 Resolve organism names to NCBITaxon CURIEs for `samp_taxon`, `host_taxid`, and related slots. Source skills hand off here when the deterministic pipeline has either left a host slot unset or recorded a free-text organism string that needs lifting to a CURIE.
 
+Before committing any value, **read `.claude/skills/nmdc-curation-rules.md`** — its evidence-first / no-tautology / omit-rather-than-guess rules govern every commit you make in this skill. The host-disambiguation rule below is a slot-specific application of those general rules.
+
 ## Runoak setup
 
 See **Runoak setup** in `.claude/skills/nmdc-env-triad.md` — the same `uv sync --extra ontology` install and the same `runoak` invocation pattern apply here. Use the `sqlite:obo:ncbitaxon` adapter (or `ols:ncbitaxon` for the live API).
@@ -30,9 +32,7 @@ For each organism string to resolve:
 
 Only set `host_name` / `host_taxid` when the submitter's intent is unambiguous. A BioProject title that names a host species, a BioSample with an explicit `host` attribute, or a study description that calls out a single host taxon all qualify.
 
-Do **not** infer a host from rhizosphere or host-associated context alone (e.g. "tree-associated soil samples" does not justify guessing the tree species). When intent is ambiguous, leave the host slots unset and flag for PI follow-up in the source skill's run report.
-
-The "leave placeholder + flag" pattern mirrors the env-triad workflow — see `.claude/skills/nmdc-env-triad.md` for the canonical statement.
+Do **not** infer a host from rhizosphere or host-associated context alone (e.g. "tree-associated soil samples" does not justify guessing the tree species). When intent is ambiguous, leave the host slots unset and flag for PI follow-up in the source skill's run report — this is the omit-rather-than-guess rule (`nmdc-curation-rules.md` Rule 4) applied to host fields.
 
 ## Slot value shape
 
