@@ -55,10 +55,42 @@ def _eutils_get(endpoint: str, params: dict) -> bytes:
     return resp.content
 
 
-def esearch(db: str, term: str, retmax: int = 9999) -> List[str]:
-    raw = _eutils_get("esearch.fcgi", {"db": db, "term": term, "retmax": retmax})
-    root = etree.fromstring(raw)
-    return [el.text for el in root.findall(".//Id")]
+def esearch(db: str, term: str, batch: int = 9999) -> List[str]:
+    """Return all NCBI UIDs matching ``term`` in ``db``, paginating as needed.
+
+    NCBI caps a single esearch response at ``retmax`` records (9999 is the
+    practical upper bound for the JSON-free XML response we use). Earlier
+    versions of this helper hardcoded ``retmax=9999`` with no pagination,
+    which silently truncated results for BioProjects with more than ~10k
+    matching records. Observed truncation: PRJNA1071982 has 11,995 SRA
+    experiments but we were only fetching 9,999.
+
+    Iterates ``retstart`` over the ``<Count>`` total reported by the first
+    response. Each page is at most ``batch`` records.
+    """
+    ids: List[str] = []
+    retstart = 0
+    total: Optional[int] = None
+    while True:
+        raw = _eutils_get("esearch.fcgi", {
+            "db": db,
+            "term": term,
+            "retmax": batch,
+            "retstart": retstart,
+        })
+        root = etree.fromstring(raw)
+        page = [el.text for el in root.findall(".//IdList/Id") if el.text]
+        ids.extend(page)
+        if total is None:
+            count_el = root.find(".//Count")
+            try:
+                total = int(count_el.text) if count_el is not None and count_el.text else len(page)
+            except ValueError:
+                total = len(page)
+        if not page or len(ids) >= total:
+            break
+        retstart += batch
+    return ids
 
 
 def efetch_xml(db: str, ids: List[str]) -> List[etree._Element]:
