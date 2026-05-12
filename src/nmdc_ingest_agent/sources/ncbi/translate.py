@@ -318,16 +318,16 @@ def _fetch_biosample_records(ids: List[str]) -> List[dict]:
 def fetch_biosamples(accessions: List[str]) -> List[dict]:
     """Fetch BioSample records by accession (e.g. SAMN*).
 
-    Looks up UIDs via esearch, then efetches. Falls back to passing the
-    accession strings directly to efetch if esearch returns nothing.
+    Passes accessions directly to efetch (db=biosample accepts accession
+    strings as ids). Earlier versions used an esearch round-trip to
+    translate accessions to internal UIDs, but that built ``OR``-joined
+    query strings that NCBI rejects with HTTP 414 for BioProjects with
+    >~150 linked BioSamples. ``efetch_xml`` already batches the id list,
+    so the comma-joined ``id=`` URL stays well under NCBI's limit.
     """
     if not accessions:
         return []
-
-    ids = esearch("biosample", " OR ".join(f"{a}[Accession]" for a in accessions))
-    if not ids:
-        ids = accessions
-    return _fetch_biosample_records(ids)
+    return _fetch_biosample_records(list(accessions))
 
 
 # ---------------------------------------------------------------------------
