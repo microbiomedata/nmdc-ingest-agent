@@ -4,40 +4,49 @@ Single-record JSON files demonstrating the shapes of records this repo produces 
 
 **Source.** All examples were extracted verbatim from `results/ncbi_PRJNA1071982_nmdc.json` (NCBI BioProject [PRJNA1071982](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA1071982) — *MicroFlora Danica*) using `jq`. No record was hand-edited.
 
+**Pre-curation snapshot.** These records are the output of the **deterministic pipeline** (`nmdc-ingest-ncbi`) only — no agent curation has run on them. That means:
+
+- Every biosample's `env_broad_scale`, `env_local_scale`, and `env_medium` carries the `ENVO:00000000` sentinel CURIE. The submitter's free-text string is preserved in `has_raw_value` and echoed into `term.name` so the agent can resolve it via the `nmdc-env-triad` skill. Resolved CURIEs (e.g. `grassland biome`, `forest ecosystem`) appear only after that downstream curation pass — they are not visible here.
+- `name` and `samp_name` are populated from NCBI's `<Ids>/<Id db_label="Sample name">` element with a `title → sample_name → accession` fallback (no `name: "NA"` here).
+
 **Scope.** Database collections only (`study_set`, `biosample_set`, `data_generation_set`, `data_object_set`). The curation sidecars (`*_curation_inputs.json`, `*_curation_report.json`) are not represented here.
 
-**ID note.** Every example uses placeholder NMDC IDs (`-99-` shoulder). Real ingest requires re-running the pipeline with `--mint-real-ids` against the NMDC Runtime API.
+**ID note.** Every example uses placeholder NMDC IDs (`-99-` shoulder). Real ingest requires re-running the pipeline with `--mint-real-ids` against the NMDC Runtime API. Placeholder IDs are randomly minted each run, so re-extracting from a fresh `results/ncbi_PRJNA1071982_nmdc.json` will produce different ids matching the same criteria.
 
-**These are reference documents, not test fixtures.** They illustrate the variation that actually shows up in pipeline output; they are not asserted-against by any automated test.
+**These are reference documents, not test fixtures.** They illustrate the variation that shows up in pipeline output; they are not asserted-against by any automated test.
 
 ## study_set/
 
 | File | Source id | Demonstrates |
 |---|---|---|
-| `01_research_study.json` | `nmdc:sty-99-3a8ddf78` | Minimal NMDC `Study` shape — id, name, type. Most other slots (PI, abstract, associated files) are absent because NCBI's BioProject record had nothing to populate them with. |
+| `01_research_study.json` | `nmdc:sty-99-87ca4b51` | Minimal NMDC `Study` shape for an NCBI BioProject — id, name (`"MicroFlora Danica"`), description, type. PI / abstract / associated files are absent because NCBI's BioProject record had nothing to populate them with. |
 
 ## biosample_set/
 
-Seven examples spanning the axes that vary in the pilot output: MIxS package, env-triad completeness, geolocation presence, and resolved-vs-sentinel CURIE patterns.
+Six examples spanning the axes that actually vary in deterministic pipeline output: **MIxS package** (MIMAG.6.0 vs Metagenome.environmental.1.0), **env-triad raw text** (Soil / Water / Sediment / empty), **`lat_lon` presence**, and **`samp_taxon_id`** (NCBI metagenome taxa vs cultured/Candidatus taxa).
 
-| File | Source id | env_package | env_broad_scale | env_local_scale | env_medium | Notes |
-|---|---|---|---|---|---|---|
-| `01_mimag_fully_resolved_envtriad.json` | `nmdc:bsm-99-6b29577f` | `MIMAG.6.0` | `ENVO:01000177` (grassland biome) | `ENVO:01001206` (grassland ecosystem) | `ENVO:00001998` (soil) | "Clean" triad: all three slots have non-sentinel CURIEs. **Caveat:** `grassland biome` is-a `grassland ecosystem` per ENVO's `is-a` graph, so the broad slot is more specific than the local slot — a hierarchy inversion. Common in pipeline output; flag for curator review. |
-| `02_mimag_local_sentinel.json` | `nmdc:bsm-99-771dfcb1` | `MIMAG.6.0` | `ENVO:01000249` (urban biome) | `ENVO:00000000` (Subterranean Urban) | `ENVO:00001998` (soil) | Submitter's `env_local_scale` raw text didn't lift to a CURIE. The sentinel preserves the raw string in `term.name` and `has_raw_value`. |
-| `03_mimag_broad_sentinel.json` | `nmdc:bsm-99-16ebbf45` | `MIMAG.6.0` | `ENVO:00000000` (Soil) | `ENVO:01000687` (coast) | `ENVO:00001998` (soil) | Mirror case: broad is the sentinel, local resolved. The raw `"Soil"` in `env_broad_scale` is itself a *material* — a swap pattern where the submitter put a medium value in the broad slot. |
-| `04_mimag_both_envtriad_sentinels.json` | `nmdc:bsm-99-6f38c172` | `MIMAG.6.0` | `ENVO:00000000` (Soil) | `ENVO:00000000` (Natural NA) | `ENVO:00001998` (soil) | Heavy curator-follow-up case: neither broad nor local lifted. Note the raw `"Natural NA"` — NCBI's `"NA"` missing-value placeholder bleeding through. |
-| `05_metagenome_environmental_package.json` | `nmdc:bsm-99-10d49338` | `Metagenome.environmental.1.0` | `ENVO:00000000` ((not provided)) | `ENVO:00000000` ((not provided)) | `ENVO:00000000` ((not provided)) | Distinct MIxS package from MIMAG (~70% of records in this BioProject use this package). All three triad slots are *genuinely missing* (empty `has_raw_value`, `term.name = "(not provided)"`), not just unlifted — the inference branch of the env-triad skill applies. |
-| `06_mimag_no_lat_lon.json` | `nmdc:bsm-99-0b60380b` | `MIMAG.6.0` | `ENVO:01000177` (grassland biome) | `ENVO:01001206` (grassland ecosystem) | `ENVO:00001998` (soil) | Same env-triad shape as example #1, but `lat_lon` is null. Demonstrates the no-geolocation case (~20% of biosamples in this pilot). |
-| `07_cropland_agricultural_field.json` | `nmdc:bsm-99-642bf9ca` | `MIMAG.6.0` | `ENVO:01000245` (cropland biome) | `ENVO:00000114` (agricultural field) | `ENVO:00002259` (agricultural soil) | A coherent broad/local/medium triple (cropland biome → agricultural field → agricultural soil) that contrasts with example #1's inversion. Also the only example whose medium is more specific than generic `soil`. |
+| File | Source id | Package | env_broad_scale raw | lat_lon | samp_taxon_id |
+|---|---|---|---|---|---|
+| `01_mimag_soil.json` | `nmdc:bsm-99-c8f1bc5b` | `MIMAG.6.0` | `"Soil"` | 56.90, 10.26 | `NCBITaxon:2283092` *Pyrinomonadaceae bacterium* |
+| `02_mimag_water.json` | `nmdc:bsm-99-d0a0168c` | `MIMAG.6.0` | `"Water"` | 56.62, 8.90 | `NCBITaxon:28263` *Arcanobacterium sp.* |
+| `03_mimag_sediment.json` | `nmdc:bsm-99-69dc0e32` | `MIMAG.6.0` | `"Sediment"` | 56.33, 9.64 | *Thermoplasmata archaeon* — also an archaeal taxon, not a bacterium |
+| `04_mimag_no_lat_lon.json` | `nmdc:bsm-99-30e8a056` | `MIMAG.6.0` | `"Soil"` | **null** | *Pseudolabrys sp.* — geolocation-missing case |
+| `05_metagenome_environmental_with_lat_lon.json` | `nmdc:bsm-99-03b31ff5` | `Metagenome.environmental.1.0` | `""` (empty) | 56.10, 10.46 | `NCBITaxon:749907` sediment metagenome — all three env-triad raws are empty (the `nmdc-env-triad` skill's §1b inference path applies) |
+| `06_metagenome_environmental_no_lat_lon.json` | `nmdc:bsm-99-d9d5e434` | `Metagenome.environmental.1.0` | `""` (empty) | **null** | `NCBITaxon:256318` metagenome (generic) — env-triad empty AND no geolocation: the hardest case for inference |
+
+**Notes:**
+
+- All MIMAG biosamples in this BioProject have non-empty submitter strings in env-triad raws (`Soil` / `Water` / `Sediment` for broad, more specific phrases like `"Natural Grassland formations"` / `"Urban Biogas"` / `"Natural Freshwater"` for local/medium). All Metagenome.environmental biosamples have empty triad raws — the source provided no per-sample environment text. This drives which §1a/§1b path the env-triad skill takes per biosample.
+- All biosamples in this BioProject have `geo_loc_name = "Denmark"` and Denmark-area `lat_lon` when present; geographic variation does not appear within this pilot.
 
 ## data_generation_set/
 
-The pilot BioProject is uniform in analyte category (`metagenome`) and library shape — every record has one `has_input` biosample and one `has_output` data object. The only variation is which of three instruments was used.
+The pilot is uniform in analyte category (`metagenome`) and library shape — every record has one `has_input` biosample and one `has_output` data object. The only variation is which of three instruments was used.
 
-| File | Source id | Instrument | Demonstrates |
+| File | Source id | Instrument id | Demonstrates |
 |---|---|---|---|
-| `01_metagenome_nucleotide_sequencing.json` | `nmdc:dgns-99-b2309df4` | `nmdc:inst-99-dca36248` (~89% of records) | The modal `NucleotideSequencing` record: metagenome analyte, single input biosample, single output data object, INSDC SRA experiment identifier. |
-| `02_metagenome_alternate_instrument.json` | `nmdc:dgns-99-829d7843` | `nmdc:inst-99-815feee8` (~7% of records) | Same shape, different instrument — documents that this BioProject uses three distinct sequencers without scanning the full record set. |
+| `01_metagenome_nucleotide_sequencing.json` | `nmdc:dgns-99-9073f69d` | `nmdc:inst-99-6ee135f8` (~89%) | Modal `NucleotideSequencing` record: metagenome analyte, single input biosample, single output data object, INSDC SRA experiment identifier. |
+| `02_metagenome_alternate_instrument.json` | `nmdc:dgns-99-45c24320` | `nmdc:inst-99-2607284e` (~7%) | Same shape, different instrument — documents that this BioProject uses three distinct sequencers without scanning the full record set. |
 
 ## data_object_set/
 
@@ -45,7 +54,7 @@ The pilot has only one data-object type, so a single example suffices.
 
 | File | Source id | Demonstrates |
 |---|---|---|
-| `01_metagenome_raw_reads.json` | `nmdc:dobj-99-1820725d` | `data_object_type="Metagenome Raw Reads"`, `data_category="instrument_data"`, NCBI SRA URL. **Caveat:** `md5_checksum` and `file_size_bytes` are null — NCBI's source-side metadata does not expose these for SRA runs, so they cannot be populated at this layer. They would need to be filled when files are actually retrieved/staged for ingest. |
+| `01_metagenome_raw_reads.json` | `nmdc:dobj-99-9d0a191d` | `data_object_type="Metagenome Raw Reads"`, `data_category="instrument_data"`, NCBI SRA URL. **Caveat:** `md5_checksum` and `file_size_bytes` are null — NCBI's source-side metadata does not expose these for SRA runs, so they cannot be populated at this layer. They would need to be filled when files are actually retrieved/staged for ingest. |
 
 ## Validation snippet
 
@@ -67,12 +76,20 @@ for col, cls in target.items():
 "
 ```
 
-If an example fails validation after a schema bump, **do not edit the record content** — pick a fresh representative from a current `results/ncbi_<ACC>_nmdc.json` output using a `jq` filter that captures the same axis (the criteria are in commit history / the original PR description).
+## Regenerating from a fresh ingest
+
+Placeholder ids are random each run, so a fresh ingest produces records with different ids matching the same criteria. To refresh:
+
+1. `uv run nmdc-ingest-ncbi PRJNA1071982` (note: NCBI's elink endpoint is occasionally flaky; the script retries 5 times per the fix in `fetch_linked_biosample_uids`).
+2. For each example file, re-extract the record matching its criterion via `jq` against `results/ncbi_PRJNA1071982_nmdc.json`. The criteria are encoded in each row of the tables above.
+3. Update the `Source id` column above with the new ids.
+4. Run the validation snippet.
+5. Do not hand-edit record content — these are extracted-as-is examples.
 
 ## Adding a new example
 
-1. Identify the axis of variation it covers that isn't already represented in this folder.
+1. Identify the axis of variation it covers that isn't already represented.
 2. Pick a representative from a pipeline output via `jq`.
-3. Extract with `jq '.<collection>[] | select(.id=="<id>")' results/<output>.json > examples/<collection>/NN_<short_label>.json` (next available number prefix).
+3. Extract: `jq '.<collection>[] | select(.id=="<id>")' results/<output>.json > examples/<collection>/NN_<short_label>.json` (next available number prefix).
 4. Run the validation snippet.
-5. Add a row to the table above with the new file's name, source id, and what it demonstrates.
+5. Add a row to the matching table above.

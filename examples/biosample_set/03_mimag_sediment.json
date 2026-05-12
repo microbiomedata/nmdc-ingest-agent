@@ -1,58 +1,64 @@
 {
-  "id": "nmdc:bsm-99-10d49338",
+  "id": "nmdc:bsm-99-69dc0e32",
   "type": "nmdc:Biosample",
-  "name": "NA",
+  "name": "MFD13565_ilm_asm_bin2",
   "associated_studies": [
-    "nmdc:sty-99-3a8ddf78"
+    "nmdc:sty-99-87ca4b51"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "",
+    "has_raw_value": "Sediment",
     "term": {
       "id": "ENVO:00000000",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "Sediment"
     }
   },
   "env_local_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "",
+    "has_raw_value": "Natural Freshwater",
     "term": {
       "id": "ENVO:00000000",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "Natural Freshwater"
     }
   },
   "env_medium": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "",
+    "has_raw_value": "Natural Freshwater",
     "term": {
       "id": "ENVO:00000000",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "Natural Freshwater"
     }
   },
   "insdc_biosample_identifiers": [
-    "biosample:SAMN39950283"
+    "biosample:SAMN40012596"
   ],
   "collection_date": {
     "type": "nmdc:TimestampValue",
-    "has_raw_value": "2019-08-29"
+    "has_raw_value": "2023-02-13"
   },
   "env_package": {
     "type": "nmdc:TextValue",
-    "has_raw_value": "Metagenome.environmental.1.0"
+    "has_raw_value": "MIMAG.6.0"
   },
   "geo_loc_name": {
     "type": "nmdc:TextValue",
     "has_raw_value": "Denmark"
   },
+  "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": 56.3261,
+    "longitude": 9.6356
+  },
+  "samp_name": "MFD13565_ilm_asm_bin2",
   "samp_taxon_id": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "term": {
-      "id": "NCBITaxon:256318",
+      "id": "NCBITaxon:1906666",
       "type": "nmdc:OntologyClass",
-      "name": "metagenome"
+      "name": "Thermoplasmata archaeon"
     }
   }
 }

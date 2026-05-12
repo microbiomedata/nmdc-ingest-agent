@@ -1,63 +1,59 @@
 {
-  "id": "nmdc:bsm-99-642bf9ca",
+  "id": "nmdc:bsm-99-d9d5e434",
   "type": "nmdc:Biosample",
-  "name": "NA",
+  "name": "MFD10339",
   "associated_studies": [
-    "nmdc:sty-99-3a8ddf78"
+    "nmdc:sty-99-87ca4b51"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "Soil",
+    "has_raw_value": "",
     "term": {
-      "id": "ENVO:01000245",
+      "id": "ENVO:00000000",
       "type": "nmdc:OntologyClass",
-      "name": "cropland biome"
+      "name": "(not provided)"
     }
   },
   "env_local_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "Agriculture Fields",
+    "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000114",
+      "id": "ENVO:00000000",
       "type": "nmdc:OntologyClass",
-      "name": "agricultural field"
+      "name": "(not provided)"
     }
   },
   "env_medium": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "Agriculture Fields",
+    "has_raw_value": "",
     "term": {
-      "id": "ENVO:00002259",
+      "id": "ENVO:00000000",
       "type": "nmdc:OntologyClass",
-      "name": "agricultural soil"
+      "name": "(not provided)"
     }
   },
   "insdc_biosample_identifiers": [
-    "biosample:SAMN40011853"
+    "biosample:SAMN39950283"
   ],
   "collection_date": {
     "type": "nmdc:TimestampValue",
-    "has_raw_value": "2023-01-27"
+    "has_raw_value": "2019-08-29"
   },
   "env_package": {
     "type": "nmdc:TextValue",
-    "has_raw_value": "MIMAG.6.0"
+    "has_raw_value": "Metagenome.environmental.1.0"
   },
   "geo_loc_name": {
     "type": "nmdc:TextValue",
     "has_raw_value": "Denmark"
   },
-  "lat_lon": {
-    "type": "nmdc:GeolocationValue",
-    "latitude": 56.13284061,
-    "longitude": 10.49820521
-  },
+  "samp_name": "MFD10339",
   "samp_taxon_id": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "term": {
-      "id": "NCBITaxon:1965321",
+      "id": "NCBITaxon:256318",
       "type": "nmdc:OntologyClass",
-      "name": "Methyloceanibacter sp."
+      "name": "metagenome"
     }
   }
 }

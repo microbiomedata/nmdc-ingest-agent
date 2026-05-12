@@ -1,43 +1,43 @@
 {
-  "id": "nmdc:bsm-99-6b29577f",
+  "id": "nmdc:bsm-99-d0a0168c",
   "type": "nmdc:Biosample",
-  "name": "NA",
+  "name": "MFD13469_ilm_asm_bin9",
   "associated_studies": [
-    "nmdc:sty-99-3a8ddf78"
+    "nmdc:sty-99-87ca4b51"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "Soil",
+    "has_raw_value": "Water",
     "term": {
-      "id": "ENVO:01000177",
+      "id": "ENVO:00000000",
       "type": "nmdc:OntologyClass",
-      "name": "grassland biome"
+      "name": "Water"
     }
   },
   "env_local_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "Natural Grassland formations",
+    "has_raw_value": "Urban Biogas",
     "term": {
-      "id": "ENVO:01001206",
+      "id": "ENVO:00000000",
       "type": "nmdc:OntologyClass",
-      "name": "grassland ecosystem"
+      "name": "Urban Biogas"
     }
   },
   "env_medium": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "Natural Grassland formations",
+    "has_raw_value": "Urban Biogas",
     "term": {
-      "id": "ENVO:00001998",
+      "id": "ENVO:00000000",
       "type": "nmdc:OntologyClass",
-      "name": "soil"
+      "name": "Urban Biogas"
     }
   },
   "insdc_biosample_identifiers": [
-    "biosample:SAMN40012608"
+    "biosample:SAMN40012593"
   ],
   "collection_date": {
     "type": "nmdc:TimestampValue",
-    "has_raw_value": "2020-08-03"
+    "has_raw_value": "2022-11-27"
   },
   "env_package": {
     "type": "nmdc:TextValue",
@@ -49,15 +49,16 @@
   },
   "lat_lon": {
     "type": "nmdc:GeolocationValue",
-    "latitude": 56.90037,
-    "longitude": 10.26043
+    "latitude": 56.6161,
+    "longitude": 8.8966
   },
+  "samp_name": "MFD13469_ilm_asm_bin9",
   "samp_taxon_id": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "term": {
-      "id": "NCBITaxon:2283092",
+      "id": "NCBITaxon:72409",
       "type": "nmdc:OntologyClass",
-      "name": "Pyrinomonadaceae bacterium"
+      "name": "Arcanobacterium sp."
     }
   }
 }
