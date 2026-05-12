@@ -1,9 +1,9 @@
 {
-  "id": "nmdc:bsm-99-03b31ff5",
+  "id": "nmdc:bsm-99-ab2a60dc",
   "type": "nmdc:Biosample",
-  "name": "MFD10419",
+  "name": "MFD10339",
   "associated_studies": [
-    "nmdc:sty-99-87ca4b51"
+    "nmdc:sty-99-8716b7b8"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
@@ -33,11 +33,11 @@
     }
   },
   "insdc_biosample_identifiers": [
-    "biosample:SAMN39879185"
+    "biosample:SAMN39950283"
   ],
   "collection_date": {
     "type": "nmdc:TimestampValue",
-    "has_raw_value": "2016-04-01"
+    "has_raw_value": "2019-08-29"
   },
   "env_package": {
     "type": "nmdc:TextValue",
@@ -47,18 +47,13 @@
     "type": "nmdc:TextValue",
     "has_raw_value": "Denmark"
   },
-  "lat_lon": {
-    "type": "nmdc:GeolocationValue",
-    "latitude": 56.103,
-    "longitude": 10.457
-  },
-  "samp_name": "MFD10419",
+  "samp_name": "MFD10339",
   "samp_taxon_id": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "term": {
-      "id": "NCBITaxon:749907",
+      "id": "NCBITaxon:256318",
       "type": "nmdc:OntologyClass",
-      "name": "sediment metagenome"
+      "name": "metagenome"
     }
   }
 }

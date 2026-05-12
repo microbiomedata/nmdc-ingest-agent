@@ -1,59 +1,64 @@
 {
-  "id": "nmdc:bsm-99-30e8a056",
+  "id": "nmdc:bsm-99-485c0f3f",
   "type": "nmdc:Biosample",
-  "name": "MFD13966_ilm_asm_bin2",
+  "name": "MFD13535",
   "associated_studies": [
-    "nmdc:sty-99-87ca4b51"
+    "nmdc:sty-99-8716b7b8"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "Soil",
+    "has_raw_value": "",
     "term": {
       "id": "ENVO:00000000",
       "type": "nmdc:OntologyClass",
-      "name": "Soil"
+      "name": "(not provided)"
     }
   },
   "env_local_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "Natural Grassland formations",
+    "has_raw_value": "",
     "term": {
       "id": "ENVO:00000000",
       "type": "nmdc:OntologyClass",
-      "name": "Natural Grassland formations"
+      "name": "(not provided)"
     }
   },
   "env_medium": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "Natural Grassland formations",
+    "has_raw_value": "",
     "term": {
       "id": "ENVO:00000000",
       "type": "nmdc:OntologyClass",
-      "name": "Natural Grassland formations"
+      "name": "(not provided)"
     }
   },
   "insdc_biosample_identifiers": [
-    "biosample:SAMN40012601"
+    "biosample:SAMN39879180"
   ],
   "collection_date": {
     "type": "nmdc:TimestampValue",
-    "has_raw_value": "2022-09-18"
+    "has_raw_value": "2022-11-19"
   },
   "env_package": {
     "type": "nmdc:TextValue",
-    "has_raw_value": "MIMAG.6.0"
+    "has_raw_value": "Metagenome.environmental.1.0"
   },
   "geo_loc_name": {
     "type": "nmdc:TextValue",
     "has_raw_value": "Denmark"
   },
-  "samp_name": "MFD13966_ilm_asm_bin2",
+  "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": 56.0761,
+    "longitude": 9.5939
+  },
+  "samp_name": "MFD13535",
   "samp_taxon_id": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "term": {
-      "id": "NCBITaxon:1960880",
+      "id": "NCBITaxon:410658",
       "type": "nmdc:OntologyClass",
-      "name": "Pseudolabrys sp."
+      "name": "soil metagenome"
     }
   }
 }

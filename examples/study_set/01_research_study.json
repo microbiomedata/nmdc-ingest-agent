@@ -1,5 +1,5 @@
 {
-  "id": "nmdc:sty-99-87ca4b51",
+  "id": "nmdc:sty-99-8716b7b8",
   "type": "nmdc:Study",
   "name": "MicroFlora Danica",
   "description": "This BioProject encompasses the short-read metagenomes, short-read-based metagenome-assembled genomes, full-length 16S rRNA gene, and rRNA gene operon sequence data belonging to the Microflora Danica project. The Microflora Danica project encompasses over 10,000 samples from across Denmark, taken between 2019 and 2023 and capturing the habitat types. It provides a reference database of all the microorganisms found in Denmark. This project is supported by the Poul Due Jensen/Grundfos foundation. Associated metadata are also available in github (https://github.com/cmc-aau/mfd_wiki)",
@@ -9,8 +9,8 @@
   ],
   "provenance_metadata": {
     "type": "nmdc:ProvenanceMetadata",
-    "add_date": "2026-05-12T18:16:16.501943+00:00",
-    "mod_date": "2026-05-12T18:16:16.501943+00:00",
+    "add_date": "2026-05-12T20:50:45.506542+00:00",
+    "mod_date": "2026-05-12T20:50:45.506542+00:00",
     "source_system_of_record": "NCBI"
   },
   "title": "MicroFlora Danica"
