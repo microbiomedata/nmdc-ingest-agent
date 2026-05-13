@@ -1,43 +1,43 @@
 {
-  "id": "nmdc:bsm-99-485c0f3f",
+  "id": "nmdc:bsm-99-c3cb9c21",
   "type": "nmdc:Biosample",
-  "name": "MFD13535",
+  "name": "MFD00564",
   "associated_studies": [
-    "nmdc:sty-99-8716b7b8"
+    "nmdc:sty-99-1e6aca8f"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000000",
+      "id": "ENVO:01000245",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "cropland biome"
     }
   },
   "env_local_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000000",
+      "id": "ENVO:00000114",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "agricultural field"
     }
   },
   "env_medium": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000000",
+      "id": "ENVO:00002259",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "agricultural soil"
     }
   },
   "insdc_biosample_identifiers": [
-    "biosample:SAMN39879180"
+    "biosample:SAMN39865436"
   ],
   "collection_date": {
     "type": "nmdc:TimestampValue",
-    "has_raw_value": "2022-11-19"
+    "has_raw_value": "2015-07-16"
   },
   "env_package": {
     "type": "nmdc:TextValue",
@@ -47,12 +47,7 @@
     "type": "nmdc:TextValue",
     "has_raw_value": "Denmark"
   },
-  "lat_lon": {
-    "type": "nmdc:GeolocationValue",
-    "latitude": 56.0761,
-    "longitude": 9.5939
-  },
-  "samp_name": "MFD13535",
+  "samp_name": "MFD00564",
   "samp_taxon_id": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "term": {

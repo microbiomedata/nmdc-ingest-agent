@@ -1,43 +1,43 @@
 {
-  "id": "nmdc:bsm-99-ab2a60dc",
+  "id": "nmdc:bsm-99-0e0ee33e",
   "type": "nmdc:Biosample",
-  "name": "MFD10339",
+  "name": "MFD10459",
   "associated_studies": [
-    "nmdc:sty-99-8716b7b8"
+    "nmdc:sty-99-1e6aca8f"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000000",
+      "id": "ENVO:01000219",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "anthropogenic terrestrial biome"
     }
   },
   "env_local_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000000",
+      "id": "ENVO:00002043",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "wastewater treatment plant"
     }
   },
   "env_medium": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000000",
+      "id": "ENVO:00002001",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "waste water"
     }
   },
   "insdc_biosample_identifiers": [
-    "biosample:SAMN39950283"
+    "biosample:SAMN39874321"
   ],
   "collection_date": {
     "type": "nmdc:TimestampValue",
-    "has_raw_value": "2019-08-29"
+    "has_raw_value": "2019-09-16"
   },
   "env_package": {
     "type": "nmdc:TextValue",
@@ -47,13 +47,18 @@
     "type": "nmdc:TextValue",
     "has_raw_value": "Denmark"
   },
-  "samp_name": "MFD10339",
+  "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": 56.2133,
+    "longitude": 10.2424
+  },
+  "samp_name": "MFD10459",
   "samp_taxon_id": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "term": {
-      "id": "NCBITaxon:256318",
+      "id": "NCBITaxon:527639",
       "type": "nmdc:OntologyClass",
-      "name": "metagenome"
+      "name": "wastewater metagenome"
     }
   }
 }

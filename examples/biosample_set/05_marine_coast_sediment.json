@@ -1,0 +1,64 @@
+{
+  "id": "nmdc:bsm-99-94d1161b",
+  "type": "nmdc:Biosample",
+  "name": "MFD02832",
+  "associated_studies": [
+    "nmdc:sty-99-1e6aca8f"
+  ],
+  "env_broad_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:00000447",
+      "type": "nmdc:OntologyClass",
+      "name": "marine biome"
+    }
+  },
+  "env_local_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:00000485",
+      "type": "nmdc:OntologyClass",
+      "name": "sea shore"
+    }
+  },
+  "env_medium": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:03000033",
+      "type": "nmdc:OntologyClass",
+      "name": "marine sediment"
+    }
+  },
+  "insdc_biosample_identifiers": [
+    "biosample:SAMN39867510"
+  ],
+  "collection_date": {
+    "type": "nmdc:TimestampValue",
+    "has_raw_value": "2020-07-19"
+  },
+  "env_package": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Metagenome.environmental.1.0"
+  },
+  "geo_loc_name": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Denmark"
+  },
+  "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": 55.0538,
+    "longitude": 14.7874
+  },
+  "samp_name": "MFD02832",
+  "samp_taxon_id": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+      "id": "NCBITaxon:749907",
+      "type": "nmdc:OntologyClass",
+      "name": "sediment metagenome"
+    }
+  }
+}

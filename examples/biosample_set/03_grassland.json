@@ -1,0 +1,64 @@
+{
+  "id": "nmdc:bsm-99-e9974aa5",
+  "type": "nmdc:Biosample",
+  "name": "MFD00004",
+  "associated_studies": [
+    "nmdc:sty-99-1e6aca8f"
+  ],
+  "env_broad_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:01000177",
+      "type": "nmdc:OntologyClass",
+      "name": "grassland biome"
+    }
+  },
+  "env_local_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:01001206",
+      "type": "nmdc:OntologyClass",
+      "name": "grassland ecosystem"
+    }
+  },
+  "env_medium": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:00001998",
+      "type": "nmdc:OntologyClass",
+      "name": "soil"
+    }
+  },
+  "insdc_biosample_identifiers": [
+    "biosample:SAMN39864936"
+  ],
+  "collection_date": {
+    "type": "nmdc:TimestampValue",
+    "has_raw_value": "2019-08-28"
+  },
+  "env_package": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Metagenome.environmental.1.0"
+  },
+  "geo_loc_name": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Denmark"
+  },
+  "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": 55.66642,
+    "longitude": 9.27156
+  },
+  "samp_name": "MFD00004",
+  "samp_taxon_id": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+      "id": "NCBITaxon:410658",
+      "type": "nmdc:OntologyClass",
+      "name": "soil metagenome"
+    }
+  }
+}
