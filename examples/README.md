@@ -1,68 +1,43 @@
 # NMDC record examples
 
-Single-record JSON files demonstrating the shapes of records this repo produces for each NMDC `Database` collection. Useful as reference when reading the NMDC LinkML schema, designing downstream tooling, or sanity-checking ingest output.
+Reference JSON files showing the shapes of records this repo produces for each NMDC `Database` collection. Examples are organised **by source project** so that records from different BioProjects (with different MIxS packages, env-triad patterns, MFD-style or other custom ontologies, etc.) can coexist without conflating their per-collection variation.
 
-**Source.** All examples were extracted verbatim from `results/ncbi_PRJNA1071982_nmdc.json` (NCBI BioProject [PRJNA1071982](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA1071982) — *MicroFlora Danica*) using `jq`. No record was hand-edited.
+## Layout
 
-**Post-curation snapshot.** These records reflect the state of the NMDC JSON **after** an agent curation pass resolved env-triad sentinels. The two-stage architecture is:
+```
+examples/
+├── README.md                # this file — project index
+└── <project>/
+    ├── README.md            # project-specific framing, source links, per-collection tables
+    ├── study_set/
+    ├── biosample_set/
+    ├── data_generation_set/
+    └── data_object_set/
+```
 
-1. **Deterministic pipeline** (`nmdc-ingest-ncbi`) emits records with `ENVO:00000000` sentinels in every env-triad slot, plus `curation_inputs.json` and `curation_report.json` sidecars.
-2. **Agent curation pass** (driven by `.claude/skills/nmdc-env-triad.md` §1a Resolution and §1b Inference, with project-specific guidance from `.claude/skills/mfd-project-vocabulary.md`) replaces sentinels with resolved ENVO CURIEs and updates the curation-report rows.
+Each project subfolder is self-contained: extracted-verbatim single-record JSON files (no hand-edits), a README explaining the project's framing and what each example demonstrates, and a validation snippet scoped to that subfolder.
 
-For PRJNA1071982 specifically, after MIMAG/MISAG exclusion (10,689 surviving biosamples), the curation pass produced:
-- **76.6% all-three-slots resolved** (8,182 biosamples)
-- **13.8% broad+medium resolved, local sentinel** (1,474)
-- **8.9% local+medium resolved, broad sentinel** (955)
-- **0.7% medium-only resolved** (77)
-- **<0.1% all-three-sentinel** (1)
+## Projects
 
-The examples below mostly cover the all-resolved case (most common); one example (`07_partial_sentinel_broad`) demonstrates the partial-resolution outcome.
-
-**Scope.** Database collections only (`study_set`, `biosample_set`, `data_generation_set`, `data_object_set`). The curation sidecars are not represented here.
-
-**ID note.** Every example uses placeholder NMDC IDs (`-99-` shoulder). Real ingest requires re-running with `--mint-real-ids`. Placeholder IDs are randomly minted each run, so re-extracting from a fresh ingest will produce different ids matching the same criteria.
-
-**These are reference documents, not test fixtures.** They illustrate the variation that shows up in pipeline output; they are not asserted-against by any automated test.
-
-## study_set/
-
-| File | Source id | Demonstrates |
+| Folder | Source | Records |
 |---|---|---|
-| `01_research_study.json` | `nmdc:sty-99-1e6aca8f` | NMDC `Study` for the MicroFlora Danica BioProject — id, name, description (NCBI-provided, mentions the project scope and metadata GitHub repo), type. |
+| [`microflora-danica/`](microflora-danica/) | NCBI BioProject [PRJNA1071982](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA1071982) — *MicroFlora Danica* ([Sereika et al., Nature 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12823411/)) | 1 study · 8 biosamples · 2 data_generations · 1 data_object |
 
-## biosample_set/
+## Conventions
 
-Eight examples spanning the resolved MFDO categories the curation pass populated, plus one partial-resolution case and one missing-geolocation case.
+- **Projects are named by human-readable label**, not by accession (e.g. `microflora-danica/`, not `PRJNA1071982/`). When a project name overlaps with another source, suffix with the source (e.g. `microflora-danica-ncbi/` vs `microflora-danica-gold/`).
+- **Files are named `NN_<short-label>.json`** within each collection — numeric prefixes give a canonical sort and let a reader skim the most representative cases first.
+- **Records are extracted verbatim** from real pipeline output. No hand-edits. If a record can't be regenerated under current pipeline logic, the README documents why.
+- **Placeholder NMDC IDs** (`-99-` shoulder) — real ingest requires `--mint-real-ids`. Ids are randomly minted each run, so regenerating produces different ids matching the same criteria.
 
-| File | Source id | env_broad_scale | env_local_scale | env_medium | samp_taxon_id | Notes |
-|---|---|---|---|---|---|---|
-| `01_cropland_agricultural_field.json` | `nmdc:bsm-99-c9045404` | `ENVO:01000245` cropland biome | `ENVO:00000114` agricultural field | `ENVO:00002259` agricultural soil | soil metagenome | The **modal** MFDO mapping — every slot has a precise ENVO term. 3,002 biosamples (~28%) follow this pattern. Gold-standard for what a clean post-curation record looks like. |
-| `02_forest.json` | `nmdc:bsm-99-39be023e` | `ENVO:01000174` forest biome | `ENVO:01001243` forest ecosystem | `ENVO:00001998` soil | soil metagenome | Forest sample — 1,328 records (~12%) follow this triple. |
-| `03_grassland.json` | `nmdc:bsm-99-e9974aa5` | `ENVO:01000177` grassland biome | `ENVO:01001206` grassland ecosystem | `ENVO:00001998` soil | soil metagenome | Grassland sample — 1,393 records (~13%). **Caveat:** `grassland biome` IS-A `grassland ecosystem` per ENVO's `is-a` graph (broad is more specific than local). Common MIxS submitter pattern; reviewers should expect this. |
-| `04_urban_park.json` | `nmdc:bsm-99-9df69346` | `ENVO:01000249` urban biome | `ENVO:00000562` park | `ENVO:00001998` soil | soil metagenome | Urban green-space sample. Demonstrates the `urban biome` + park feature mapping. |
-| `05_marine_coast_sediment.json` | `nmdc:bsm-99-94d1161b` | `ENVO:00000447` marine biome | `ENVO:00000485` sea shore | `ENVO:03000033` marine sediment | sediment metagenome | Coastal sediment sample. Different sample-type axis (Sediment, not Soil) → different env_medium (marine sediment). |
-| `06_wastewater_treatment.json` | `nmdc:bsm-99-0e0ee33e` | `ENVO:01000219` anthropogenic terrestrial biome | `ENVO:00002043` wastewater treatment plant | `ENVO:00002001` waste water | wastewater metagenome | Built-environment sample. Different from the natural/agricultural categories above. `samp_taxon_id` also reflects the environment. |
-| `07_partial_sentinel_broad.json` | `nmdc:bsm-99-ca7f4f52` | `ENVO:00000000` (sentinel) | `ENVO:00000170` dune | `ENVO:00001998` soil | soil metagenome | **Partial resolution** — agent couldn't commit a broad biome (no clean ENVO term under the biome anchor for the Natural Dunes MFDO context), so left that slot as sentinel. Local and medium did resolve. ~9% of records have this shape (broad sentinel, local+medium resolved). The curation-report row for this biosample's broad slot is `left_sentinel` — curator follow-up territory. |
-| `08_no_lat_lon.json` | `nmdc:bsm-99-c3cb9c21` | `ENVO:01000245` cropland biome | `ENVO:00000114` agricultural field | `ENVO:00002259` agricultural soil | soil metagenome | Same env triad as `01` but `lat_lon` is null. Demonstrates that geolocation is independently sparse — the curation pass populated the triad based on the MFDO label even without coordinates. |
+## Adding a new project
 
-## data_generation_set/
+1. Create `examples/<project>/` with the four collection subfolders (`study_set/`, `biosample_set/`, `data_generation_set/`, `data_object_set/`) and a `README.md` describing the source.
+2. Extract representative records via `jq` from the ingest output.
+3. Validate every file (snippet below).
+4. Add a row to the **Projects** table above linking to the new subfolder.
 
-The pilot is uniform in analyte category (`metagenome`) and library shape — every record has one `has_input` biosample and one `has_output` data object. Variation is the choice of one of three sequencers.
-
-| File | Source id | Instrument id | Demonstrates |
-|---|---|---|---|
-| `01_metagenome_nucleotide_sequencing.json` | `nmdc:dgns-99-f45fec84` | `nmdc:inst-99-9993b29f` (~89%) | Modal `NucleotideSequencing` record: metagenome analyte, single input biosample, single output data object, INSDC SRA experiment identifier. |
-| `02_metagenome_alternate_instrument.json` | `nmdc:dgns-99-a2ff7d7f` | `nmdc:inst-99-a8b6978c` (~7%) | Same shape, different instrument — documents that this BioProject uses three distinct sequencers. |
-
-## data_object_set/
-
-One data-object type, one example.
-
-| File | Source id | Demonstrates |
-|---|---|---|
-| `01_metagenome_raw_reads.json` | `nmdc:dobj-99-7bc50732` | `data_object_type="Metagenome Raw Reads"`, `data_category="instrument_data"`, NCBI SRA URL. **Caveat:** `md5_checksum` and `file_size_bytes` are null — NCBI's source-side metadata does not expose these for SRA runs; they need to be filled when files are actually retrieved/staged for ingest. |
-
-## Validation snippet
+## Validation snippet (all projects)
 
 ```bash
 uv run python -c "
@@ -73,28 +48,14 @@ target = {'study_set': nmdc.Study,
           'biosample_set': nmdc.Biosample,
           'data_generation_set': nmdc.NucleotideSequencing,
           'data_object_set': nmdc.DataObject}
-for col, cls in target.items():
-    for p in sorted(pathlib.Path(f'examples/{col}').glob('*.json')):
-        json_loader.loads(p.read_text(), target_class=cls)
-        print(f'OK  {p}')
+for project_dir in sorted(pathlib.Path('examples').iterdir()):
+    if not project_dir.is_dir():
+        continue
+    for col, cls in target.items():
+        for p in sorted((project_dir / col).glob('*.json')):
+            json_loader.loads(p.read_text(), target_class=cls)
+            print(f'OK  {p}')
 "
 ```
 
-## Regenerating from a fresh ingest + curation pass
-
-Placeholder ids are random each run.
-
-1. `uv run nmdc-ingest-ncbi PRJNA1071982` — deterministic pipeline. Produces JSON with all triad slots as sentinels.
-2. Run the agent curation pass (interactive `/ncbi-to-nmdc PRJNA1071982` in `claude`, or programmatic equivalent like `scripts/apply_mfd_env_triad.py`) — resolves sentinels per the env-triad skill.
-3. For each example file, re-extract the record matching its criterion via `jq` against the curated `results/ncbi_PRJNA1071982_nmdc.json`. The criteria are encoded in each row's term IDs in the tables above.
-4. Update the `Source id` column above with the new ids.
-5. Run the validation snippet.
-6. Do not hand-edit record content — these are extracted-as-is examples.
-
-## Adding a new example
-
-1. Identify the axis of variation it covers that isn't already represented.
-2. Pick a representative from a pipeline output via `jq`.
-3. Extract: `jq '.<collection>[] | select(.id=="<id>")' results/<output>.json > examples/<collection>/NN_<short_label>.json` (next available number prefix).
-4. Run the validation snippet.
-5. Add a row to the matching table above.
+For project-scoped validation, each project's own README has a snippet limited to that subfolder.
