@@ -1,0 +1,64 @@
+{
+  "id": "nmdc:bsm-99-9df69346",
+  "type": "nmdc:Biosample",
+  "name": "MFD00450",
+  "associated_studies": [
+    "nmdc:sty-99-1e6aca8f"
+  ],
+  "env_broad_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:01000249",
+      "type": "nmdc:OntologyClass",
+      "name": "urban biome"
+    }
+  },
+  "env_local_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:00000562",
+      "type": "nmdc:OntologyClass",
+      "name": "park"
+    }
+  },
+  "env_medium": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:00001998",
+      "type": "nmdc:OntologyClass",
+      "name": "soil"
+    }
+  },
+  "insdc_biosample_identifiers": [
+    "biosample:SAMN39865323"
+  ],
+  "collection_date": {
+    "type": "nmdc:TimestampValue",
+    "has_raw_value": "2017-11-02"
+  },
+  "env_package": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Metagenome.environmental.1.0"
+  },
+  "geo_loc_name": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Denmark"
+  },
+  "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": 55.70273161,
+    "longitude": 12.56768694
+  },
+  "samp_name": "MFD00450",
+  "samp_taxon_id": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+      "id": "NCBITaxon:410658",
+      "type": "nmdc:OntologyClass",
+      "name": "soil metagenome"
+    }
+  }
+}

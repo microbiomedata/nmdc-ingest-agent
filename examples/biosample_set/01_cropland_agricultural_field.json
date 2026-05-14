@@ -1,0 +1,64 @@
+{
+  "id": "nmdc:bsm-99-c9045404",
+  "type": "nmdc:Biosample",
+  "name": "MFD00249",
+  "associated_studies": [
+    "nmdc:sty-99-1e6aca8f"
+  ],
+  "env_broad_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:01000245",
+      "type": "nmdc:OntologyClass",
+      "name": "cropland biome"
+    }
+  },
+  "env_local_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:00000114",
+      "type": "nmdc:OntologyClass",
+      "name": "agricultural field"
+    }
+  },
+  "env_medium": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:00002259",
+      "type": "nmdc:OntologyClass",
+      "name": "agricultural soil"
+    }
+  },
+  "insdc_biosample_identifiers": [
+    "biosample:SAMN39865123"
+  ],
+  "collection_date": {
+    "type": "nmdc:TimestampValue",
+    "has_raw_value": "2014-11-18"
+  },
+  "env_package": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Metagenome.environmental.1.0"
+  },
+  "geo_loc_name": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Denmark"
+  },
+  "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": 57.5169,
+    "longitude": 9.9261
+  },
+  "samp_name": "MFD00249",
+  "samp_taxon_id": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+      "id": "NCBITaxon:410658",
+      "type": "nmdc:OntologyClass",
+      "name": "soil metagenome"
+    }
+  }
+}

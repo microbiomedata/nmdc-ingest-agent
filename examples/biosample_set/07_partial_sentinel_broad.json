@@ -1,9 +1,9 @@
 {
-  "id": "nmdc:bsm-99-b73617f0",
+  "id": "nmdc:bsm-99-ca7f4f52",
   "type": "nmdc:Biosample",
-  "name": "MFD13439",
+  "name": "MFD00010",
   "associated_studies": [
-    "nmdc:sty-99-8716b7b8"
+    "nmdc:sty-99-1e6aca8f"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
@@ -18,26 +18,26 @@
     "type": "nmdc:ControlledIdentifiedTermValue",
     "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000000",
+      "id": "ENVO:00000170",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "dune"
     }
   },
   "env_medium": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000000",
+      "id": "ENVO:00001998",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "soil"
     }
   },
   "insdc_biosample_identifiers": [
-    "biosample:SAMN39879043"
+    "biosample:SAMN39864942"
   ],
   "collection_date": {
     "type": "nmdc:TimestampValue",
-    "has_raw_value": "2019-10-24"
+    "has_raw_value": "2019-08-01"
   },
   "env_package": {
     "type": "nmdc:TextValue",
@@ -49,16 +49,16 @@
   },
   "lat_lon": {
     "type": "nmdc:GeolocationValue",
-    "latitude": 56.4694,
-    "longitude": 9.3429
+    "latitude": 57.65409,
+    "longitude": 10.40661
   },
-  "samp_name": "MFD13439",
+  "samp_name": "MFD00010",
   "samp_taxon_id": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "term": {
-      "id": "NCBITaxon:527639",
+      "id": "NCBITaxon:410658",
       "type": "nmdc:OntologyClass",
-      "name": "wastewater metagenome"
+      "name": "soil metagenome"
     }
   }
 }

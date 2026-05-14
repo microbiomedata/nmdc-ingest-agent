@@ -1,0 +1,64 @@
+{
+  "id": "nmdc:bsm-99-39be023e",
+  "type": "nmdc:Biosample",
+  "name": "MFD00001",
+  "associated_studies": [
+    "nmdc:sty-99-1e6aca8f"
+  ],
+  "env_broad_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:01000174",
+      "type": "nmdc:OntologyClass",
+      "name": "forest biome"
+    }
+  },
+  "env_local_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:01001243",
+      "type": "nmdc:OntologyClass",
+      "name": "forest ecosystem"
+    }
+  },
+  "env_medium": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+      "id": "ENVO:00001998",
+      "type": "nmdc:OntologyClass",
+      "name": "soil"
+    }
+  },
+  "insdc_biosample_identifiers": [
+    "biosample:SAMN39864933"
+  ],
+  "collection_date": {
+    "type": "nmdc:TimestampValue",
+    "has_raw_value": "2019-08-29"
+  },
+  "env_package": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Metagenome.environmental.1.0"
+  },
+  "geo_loc_name": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Denmark"
+  },
+  "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": 55.6771,
+    "longitude": 9.27783
+  },
+  "samp_name": "MFD00001",
+  "samp_taxon_id": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+      "id": "NCBITaxon:410658",
+      "type": "nmdc:OntologyClass",
+      "name": "soil metagenome"
+    }
+  }
+}
