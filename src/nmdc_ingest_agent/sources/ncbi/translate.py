@@ -466,6 +466,29 @@ def parse_lat_lon(raw: str) -> Optional[Tuple[float, float]]:
 # NMDC object builders
 # ---------------------------------------------------------------------------
 
+_DOI_PREFIX_RE = re.compile(r"^(?:doi:|https?://(?:dx\.)?doi\.org/)", re.IGNORECASE)
+
+
+def _to_doi_curie(raw: str) -> Optional[str]:
+    """Normalize a DOI string into ``doi:<value>`` CURIE form.
+
+    NCBI's BioProject ``<Publication>/<Reference>`` element returns DOIs in
+    various shapes — bare (``10.1038/...``), prefixed (``doi:10.1038/...``),
+    or as full URLs (``https://doi.org/10.1038/...``). All forms collapse
+    to the CURIE form ``doi:<bare-value>`` required by the NMDC schema's
+    ``Doi.doi_value`` slot. Returns None if the input does not contain a
+    DOI-shaped value (e.g. PMID strings, which the caller filters out).
+    """
+    if not raw:
+        return None
+    stripped = raw.strip()
+    bare = _DOI_PREFIX_RE.sub("", stripped)
+    # DOIs start with "10." per the DOI handbook
+    if not bare.startswith("10."):
+        return None
+    return f"doi:{bare}"
+
+
 def build_study(project_data: dict, study_id: str) -> nmdc.Study:
     accession = project_data["accession"]
 
@@ -477,6 +500,23 @@ def build_study(project_data: dict, study_id: str) -> nmdc.Study:
         type="nmdc:ProvenanceMetadata",
     )
 
+    # NCBI BioProject <Publication> elements emit either PMID strings or
+    # DOI strings (see fetch_bioproject). Map the DOI-shaped entries onto
+    # NMDC's associated_dois slot. PMIDs aren't DOIs; a separate curation
+    # step would have to PMID->DOI resolve via NCBI's API, out of scope here.
+    associated_dois: list[nmdc.Doi] = []
+    seen: set[str] = set()
+    for pub in project_data.get("publications") or []:
+        curie = _to_doi_curie(pub)
+        if curie is None or curie in seen:
+            continue
+        seen.add(curie)
+        associated_dois.append(nmdc.Doi(
+            doi_value=curie,
+            doi_category=nmdc.DoiCategoryEnum.publication_doi.text,
+            type="nmdc:Doi",
+        ))
+
     return nmdc.Study(
         id=study_id,
         name=project_data["title"],
@@ -484,6 +524,7 @@ def build_study(project_data: dict, study_id: str) -> nmdc.Study:
         description=project_data["description"],
         study_category=nmdc.StudyCategoryEnum.research_study.text,
         insdc_bioproject_identifiers=[f"insdc.sra:{accession}"],
+        associated_dois=associated_dois or None,
         type="nmdc:Study",
         provenance_metadata=provenance,
     )
