@@ -25,6 +25,7 @@ Computable data files consumed by the skills under [`.claude/skills/`](../.claud
 2. **Edits go to the TSV first.** If a skill references the TSV, the TSV is the source of truth — update the TSV and let the skill's quoted examples be refreshed from it, not the other way around.
 3. **Schema bumps require re-validation.** When ENVO publishes a new release, re-run the validators on every CURIE. Deprecations and label changes become bugs to fix here.
 4. **No tabs in field values.** TSVs are unforgiving — keep notes and labels free of tab characters. Use spaces.
+5. **No double-quote characters in field values.** RFC 4180-style parsers (including GitHub's TSV renderer) reject bare `"` inside a field as "illegal quoting." Use backticks for emphasis (`` `dune biome` ``) instead of `"dune biome"`.
 
 ## Loading examples
 
