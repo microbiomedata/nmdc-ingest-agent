@@ -32,49 +32,43 @@ The crosswalk below maps each `(Sample Type, Area+MFDO1)` tuple to candidate CUR
 
 ## Crosswalk
 
-Each row lists candidate CURIEs (with labels) for the three MIxS slots, plus a Notes column. The agent **must validate every candidate** with `runoak info <CURIE>` and `runoak ancestors -p i <CURIE>` per `nmdc-env-triad.md` §2 before committing — these are starting points, not authoritative picks. `(refuse via §1b)` means no good ENVO term exists for that slot under the slot's anchor class; the agent leaves the sentinel and proceeds to the §1b inference path for that slot only.
+The full 25-row crosswalk lives at [`data/mfd_envo_crosswalk.tsv`](../../data/mfd_envo_crosswalk.tsv) — that file is the single source of truth and the artifact downstream tooling consumes. The agent **must** load that TSV when curating an MFD biosample; the examples below are just enough to show the shape.
 
-Sample counts come from PRJNA1071982's pre-MIMAG-exclusion dataset.
+`(refuse via §1b)` is encoded as `ENVO:00000000` in any of the three `*_curie` columns, with the matching `*_label` left empty. This means no good ENVO term exists for that slot under the slot's anchor class — the agent leaves the sentinel and proceeds to `nmdc-env-triad.md` §1b inference for that slot only (other slots in the same biosample can still commit if their crosswalk picks validate).
 
-### Soil sample type
+Every CURIE in the TSV is a *candidate*, not a commit. Per `nmdc-env-triad.md` §2, run `runoak info <CURIE>` and `runoak ancestors -p i <CURIE>` against each pick before flipping the curation-report row off `left_sentinel`.
 
-| Area + MFDO1 | n | `env_broad_scale` | `env_local_scale` | `env_medium` | Notes |
-|---|---:|---|---|---|---|
-| Natural Forests | 648 | `ENVO:01000174` forest biome | `ENVO:01001243` forest ecosystem | `ENVO:00001998` soil | Clean — all three candidates pass anchor checks. |
-| Natural Bogs, mires and fens | 295 | `ENVO:01000190` flooded savanna biome | (refuse via §1b) | `ENVO:00005774` peat soil | No ENVO wetland-feature term under `ENVO:01000813`; `peatland` / `wetland ecosystem` / `fen` / `marsh` all fail the anchor. Broad pick is approximate. |
-| Natural Dunes | 263 | (refuse via §1b) | `ENVO:00000170` dune | `ENVO:00001998` soil | No specific "dune biome" in ENVO; coastal/desert too broad. Defer broad to §1b. |
-| Natural Temperate heath and scrub | 229 | `ENVO:01000176` shrubland biome | `ENVO:00000107` heath | `ENVO:00001998` soil | Reasonable mapping. |
-| Natural Grassland formations | 207 | `ENVO:01000177` grassland biome | `ENVO:01001206` grassland ecosystem | `ENVO:00001998` soil | Clean. **Caveat:** `grassland biome` IS-A `grassland ecosystem` per ENVO `is-a` graph — broad is more specific than local. Common MIxS submitter pattern; reviewers see this as expected. |
-| Natural Coastal | 160 | `ENVO:00000447` marine biome | `ENVO:00000303` sea coast | `ENVO:00001998` soil | Reasonable; could also use `ENVO:00000485` sea shore for local. |
-| Subterranean Urban | 205 | `ENVO:01000249` urban biome | `ENVO:00000067` cave | `ENVO:00001998` soil | Subterranean urban likely means tunnels / basements / underground urban features — `cave` is the closest ENVO term under the feature anchor. Flag for curator review on important records. |
-| Urban Greenspaces | 78 | `ENVO:01000249` urban biome | `ENVO:00000562` park | `ENVO:00001998` soil | Clean. |
-| Urban Other | 2 | `ENVO:01000219` anthropogenic terrestrial biome | (refuse via §1b) | `ENVO:00001998` soil | "Other" is intentionally non-specific — local feature unknown. |
-| Agriculture Fields | 180 | `ENVO:01000245` cropland biome | `ENVO:00000114` agricultural field | `ENVO:00002259` agricultural soil | Gold-standard MFDO ⇄ ENVO mapping — every slot has a precise term. |
-| Natural Sclerophyllous scrub | 17 | `ENVO:01000176` shrubland biome | `ENVO:00000300` scrubland area | `ENVO:00001998` soil | Reasonable. |
-| Natural Rocky habitats and caves | 1 | (refuse via §1b) | `ENVO:00000067` cave | `ENVO:00001998` soil | No "rocky biome" in ENVO. Only 1 sample; flag for curator review. |
-| Natural NA | 28 | (refuse via §1b) | (refuse via §1b) | `ENVO:00001998` soil | `NA` = submitter did not provide MFDO Level 2+3. Only the material is known. |
+### Example rows (5 of 25)
 
-### Water sample type
+Sample counts come from PRJNA1071982's pre-MIMAG-exclusion dataset; see the TSV for all rows.
 
-| Area + MFDO1 | n | `env_broad_scale` | `env_local_scale` | `env_medium` | Notes |
-|---|---:|---|---|---|---|
-| Urban Wastewater | 622 | `ENVO:01000219` anthropogenic terrestrial biome | `ENVO:00002043` wastewater treatment plant | `ENVO:00002001` waste water | Clean. |
-| Urban Biogas | 453 | `ENVO:01000219` anthropogenic terrestrial biome | (refuse via §1b) | `ENVO:01000556` biogas | ENVO has `biogas` as material but no canonical biogas-reactor feature term. |
-| Urban Drinking water | 111 | `ENVO:01000219` anthropogenic terrestrial biome | (refuse via §1b) | `ENVO:00003064` drinking water | No specific feature term for drinking-water infrastructure. |
-| Natural Saltwater | 57 | `ENVO:00000447` marine biome | `ENVO:00000485` sea shore | `ENVO:00002006` liquid water | Note: `marine pelagic biome` (`ENVO:01000023`) is also a reasonable broad pick if the sample was open-ocean rather than coastal. |
-| Subterranean Freshwater | 84 | (refuse via §1b) | `ENVO:00000067` cave | `ENVO:00002006` liquid water | No "subterranean freshwater biome" in ENVO; cave is the closest feature. |
-| Urban Sandfilter | 12 | `ENVO:01000219` anthropogenic terrestrial biome | (refuse via §1b) | `ENVO:00002006` liquid water | Sand filter — no specific ENVO term. |
+| Sample Type | Area + MFDO1 | n | `env_broad_scale` | `env_local_scale` | `env_medium` | Pattern |
+|---|---|---:|---|---|---|---|
+| Soil | Agriculture Fields | 180 | `ENVO:01000245` cropland biome | `ENVO:00000114` agricultural field | `ENVO:00002259` agricultural soil | Gold-standard — every slot has a precise term. |
+| Soil | Natural Forests | 648 | `ENVO:01000174` forest biome | `ENVO:01001243` forest ecosystem | `ENVO:00001998` soil | Clean — modal soil case. |
+| Water | Urban Wastewater | 622 | `ENVO:01000219` anthropogenic terrestrial biome | `ENVO:00002043` wastewater treatment plant | `ENVO:00002001` waste water | Built-environment, water sample type. |
+| Sediment | Natural Saltwater | 171 | `ENVO:00000447` marine biome | `ENVO:00000485` sea shore | `ENVO:03000033` marine sediment | Sediment sample type → different env_medium. |
+| Soil | Natural Dunes | 263 | `ENVO:00000000` (refuse) | `ENVO:00000170` dune | `ENVO:00001998` soil | Partial — no "dune biome" in ENVO. Defer broad to §1b. |
 
-### Sediment sample type
+### Loading the full crosswalk
 
-| Area + MFDO1 | n | `env_broad_scale` | `env_local_scale` | `env_medium` | Notes |
-|---|---:|---|---|---|---|
-| Urban Saltwater | 210 | `ENVO:01000219` anthropogenic terrestrial biome | (refuse via §1b) | `ENVO:03000033` marine sediment | Constructed saltwater (harbour, marina) — no specific feature term. |
-| Natural Saltwater | 171 | `ENVO:00000447` marine biome | `ENVO:00000485` sea shore | `ENVO:03000033` marine sediment | Clean. |
-| Subterranean Saltwater | 163 | (refuse via §1b) | `ENVO:00000067` cave | `ENVO:00002007` sediment | No "subterranean marine biome" in ENVO; cave is the closest feature. |
-| Natural Freshwater | 160 | `ENVO:00000873` freshwater biome | `ENVO:00000020` lake | `ENVO:00002007` sediment | Lake is the modal water body in Denmark — could also be `ENVO:00000022` river or `ENVO:00000033` pond; check per-sample context if available. |
-| Urban Freshwater | 139 | `ENVO:01000219` anthropogenic terrestrial biome | (refuse via §1b) | `ENVO:00002007` sediment | Constructed freshwater (stormwater pond, retention basin) — no clean feature term. |
-| Urban Other | 122 | `ENVO:01000219` anthropogenic terrestrial biome | (refuse via §1b) | `ENVO:00002007` sediment | "Other" is intentionally non-specific. |
+```python
+import csv, pathlib
+with pathlib.Path("data/mfd_envo_crosswalk.tsv").open() as f:
+    rows = list(csv.DictReader(f, delimiter="\t"))
+
+def lookup(sample_type: str, area_mfdo1: str) -> dict | None:
+    for r in rows:
+        if r["sample_type"] == sample_type and r["area_mfdo1_label"] == area_mfdo1:
+            return r
+    return None
+
+row = lookup("Soil", "Agriculture Fields")
+# row["env_broad_curie"] == "ENVO:01000245", etc.
+# Skip slots where r[f"env_{slot}_curie"] == "ENVO:00000000" — refuse via §1b.
+```
+
+For shell pipelines: `awk -F'\t' 'NR==1 || ($1=="<Sample Type>" && $2=="<label>")' data/mfd_envo_crosswalk.tsv`.
 
 ## Validation rules
 
@@ -97,12 +91,15 @@ This skill remains useful for:
 
 ## Maintaining this crosswalk
 
-When adding a new (Sample Type, Area+MFDO1) tuple or refreshing CURIE picks:
+Edits go to [`data/mfd_envo_crosswalk.tsv`](../../data/mfd_envo_crosswalk.tsv) — that file is the single source of truth. When the TSV changes meaningfully (new rows, CURIE corrections), refresh the **Example rows** table above by hand-picking 3–5 representative rows from the new TSV. Do not duplicate the entire table here.
 
-1. Confirm the tuple appears in real data via `jq` on an MFD ingest output (with MIMAG biosamples preserved).
+When adding a new (Sample Type, Area+MFDO1) tuple to the TSV:
+
+1. Confirm the tuple appears in real data via `jq` on an MFD ingest output (with MIMAG biosamples preserved). Record the integer count as `count_observed`.
 2. Run `runoak search "<query terms from the label>"` to surface candidate CURIEs.
-3. For each candidate, run `runoak ancestors -p i <CURIE>` and verify the slot's anchor class appears.
+3. For each candidate, run `runoak ancestors -p i <CURIE>` and verify the slot's anchor class appears (`ENVO:00000428` for broad, `ENVO:01000813` for local, `ENVO:00010483` for medium).
 4. Run `runoak info <CURIE>` to confirm exists + label correct + not deprecated.
-5. Add the row; record any ambiguity in Notes; default to `(refuse via §1b)` rather than a low-confidence pick.
+5. Add the row to the TSV; record any ambiguity in `notes`; default to `ENVO:00000000` (with an empty label column) rather than a low-confidence pick.
+6. Re-sort the TSV by `count_observed` descending.
 
-See `nmdc-curation-rules.md` Rule 6 — no CURIE picked from memory.
+See [`data/README.md`](../../data/README.md) for the TSV's schema conventions and `nmdc-curation-rules.md` Rule 6 (no CURIEs from memory).
