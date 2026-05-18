@@ -489,16 +489,17 @@ def _to_doi_curie(raw: str) -> Optional[str]:
     return f"doi:{bare}"
 
 
-def build_study(project_data: dict, study_id: str) -> nmdc.Study:
-    accession = project_data["accession"]
-
-    now = datetime.now(tz=timezone.utc)
-    provenance = nmdc.ProvenanceMetadata(
+def _build_provenance_metadata(now: datetime) -> nmdc.ProvenanceMetadata:
+    return nmdc.ProvenanceMetadata(
         add_date=now,
         mod_date=now,
         source_system_of_record=nmdc.SourceSystemEnum.NCBI.text,
         type="nmdc:ProvenanceMetadata",
     )
+
+
+def build_study(project_data: dict, study_id: str, now: datetime) -> nmdc.Study:
+    accession = project_data["accession"]
 
     # NCBI BioProject <Publication> elements emit either PMID strings or
     # DOI strings (see fetch_bioproject). Map the DOI-shaped entries onto
@@ -526,12 +527,12 @@ def build_study(project_data: dict, study_id: str) -> nmdc.Study:
         insdc_bioproject_identifiers=[f"insdc.sra:{accession}"],
         associated_dois=associated_dois or None,
         type="nmdc:Study",
-        provenance_metadata=provenance,
+        provenance_metadata=_build_provenance_metadata(now),
     )
 
 
 def build_biosample(
-    sample_data: dict, study_id: str, biosample_id: str
+    sample_data: dict, study_id: str, biosample_id: str, now: datetime
 ) -> nmdc.Biosample:
     accession = sample_data["accession"]
     attrs = sample_data["attributes"]
@@ -671,6 +672,7 @@ def build_biosample(
         associated_studies=[study_id],
         insdc_biosample_identifiers=[f"biosample:{accession}"],
         type="nmdc:Biosample",
+        provenance_metadata=_build_provenance_metadata(now),
     )
 
     return biosample
@@ -695,6 +697,7 @@ def build_sequencing_records(
     nucleotide_sequencing_id: str,
     data_object_ids: List[str],
     instrument_id: Optional[str],
+    now: datetime,
 ) -> dict:
     """Build NucleotideSequencing (DataGeneration) and DataObject records for
     one SRA experiment. The DataGeneration consumes the Biosample directly;
@@ -746,6 +749,7 @@ def build_sequencing_records(
         analyte_category=analyte_category,
         insdc_experiment_identifiers=[f"insdc.sra:{exp_acc}"],
         type="nmdc:NucleotideSequencing",
+        provenance_metadata=_build_provenance_metadata(now),
     )
 
     return {
@@ -837,6 +841,8 @@ def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
     raw_biosamples = data["biosamples"]
     experiments = data["sra_experiments"]
 
+    now = datetime.now(tz=timezone.utc)
+
     biosamples: list[dict] = []
     excluded_packages: dict[str, int] = {}
     for sample in raw_biosamples:
@@ -855,7 +861,7 @@ def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
         )
 
     [study_id] = minter.mint("nmdc:Study", 1)
-    study = build_study(project, study_id)
+    study = build_study(project, study_id, now)
 
     biosample_ids = (
         minter.mint("nmdc:Biosample", len(biosamples)) if biosamples else []
@@ -863,7 +869,7 @@ def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
     biosample_acc_to_id: dict[str, str] = {}
     nmdc_biosamples: list[nmdc.Biosample] = []
     for sample, biosample_id in zip(biosamples, biosample_ids):
-        bs = build_biosample(sample, study_id, biosample_id)
+        bs = build_biosample(sample, study_id, biosample_id, now)
         nmdc_biosamples.append(bs)
         biosample_acc_to_id[sample["accession"]] = bs.id
 
@@ -918,6 +924,7 @@ def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
             ns_id,
             run_do_ids,
             instrument_id,
+            now,
         )
         all_nuc_seqs.append(records["nucleotide_sequencing"])
         all_data_objects.extend(records["data_objects"])
