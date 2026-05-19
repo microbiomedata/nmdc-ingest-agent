@@ -1010,6 +1010,7 @@ def build_curation_report_skeleton(database: nmdc.Database) -> dict:
                 "candidates_considered": [],
                 "validator": {
                     "info_ok": None,
+                    "label_ok": None,
                     "anchor_ok": None,
                     "valueset_ok": None,
                 },
@@ -1035,6 +1036,71 @@ def summarize_curation_report(report: dict) -> dict:
         if slot in counts and outcome in counts[slot]:
             counts[slot][outcome] += 1
     return counts
+
+
+def _run_term_validation_step(
+    *,
+    database: nmdc.Database,
+    out_path: str,
+    report: dict,
+    report_path: str,
+    report_existed: bool,
+) -> None:
+    """Auto-run term validation when the ontology extra is installed.
+
+    Writes a *_term_validation_report.json sidecar regardless, and merges
+    findings into the curation_report's per-row validator stub only when the
+    curation_report was freshly created on this run (so we never clobber a
+    curator's in-flight edits).
+    """
+    try:
+        from nmdc_ingest_agent.validators.extract import extract_observed_terms
+        from nmdc_ingest_agent.validators.run import (
+            merge_into_curation_report,
+            run_term_validation,
+        )
+    except ImportError as exc:
+        print(
+            f"Term validation skipped: validators package import failed ({exc})",
+            file=sys.stderr,
+        )
+        return
+
+    observed = extract_observed_terms(database)
+    validation_path = out_path.replace(".json", "_term_validation_report.json")
+    work_dir = Path(out_path).parent
+
+    result = run_term_validation(observed, work_dir=work_dir)
+
+    payload = {
+        "input": out_path,
+        "observed_terms": observed["observed_terms"],
+        **result,
+    }
+    with open(validation_path, "w") as f:
+        json.dump(payload, f, indent=2, default=str)
+
+    if result.get("skipped"):
+        print(
+            f"Term validation skipped: {result['reason']}",
+            file=sys.stderr,
+        )
+        print(f"Term validation report written to {validation_path}")
+        return
+
+    summary = result["summary"]
+    print(
+        f"Term validation: {summary['errors']} errors, {summary['warnings']} warnings "
+        f"({summary['checked']} terms checked)",
+        file=sys.stderr,
+    )
+    print(f"Term validation report written to {validation_path}")
+
+    if not report_existed:
+        merge_into_curation_report(report, result, observed)
+        with open(report_path, "w") as f:
+            json.dump(report, f, indent=2, default=str)
+        print(f"Curation report updated with validator results: {report_path}")
 
 
 def main():
@@ -1104,7 +1170,8 @@ def main():
         json.dump(inputs_sidecar, f, indent=2, default=str)
     print(f"Curation inputs sidecar written to {inputs_path}")
 
-    if Path(report_path).exists():
+    report_existed = Path(report_path).exists()
+    if report_existed:
         with open(report_path) as f:
             report = json.load(f)
         print(f"Curation report exists at {report_path} (preserved; not overwritten)")
@@ -1113,6 +1180,14 @@ def main():
         with open(report_path, "w") as f:
             json.dump(report, f, indent=2, default=str)
         print(f"Curation report skeleton written to {report_path}")
+
+    _run_term_validation_step(
+        database=database,
+        out_path=out_path,
+        report=report,
+        report_path=report_path,
+        report_existed=report_existed,
+    )
 
     if not args.mint_real_ids:
         print("\n⚠ PLACEHOLDER IDS: All IDs use shoulder '99' and are NOT real NMDC IDs.")

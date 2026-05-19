@@ -1,0 +1,8 @@
+# Per-prefix OAK adapters consumed by linkml-term-validator.
+#
+# Phase 1 configures ENVO only. Existence and label checks run for any prefix
+# listed here. NCBITaxon is intentionally omitted: sqlite:obo:ncbitaxon would
+# download a ~2GB sqlite file on first use; pick an adapter (ols:, bioportal:,
+# or sqlite:obo:ncbitaxon) when adding samp_taxon_id validation in a follow-up.
+ontology_adapters:
+  ENVO: sqlite:obo:envo
