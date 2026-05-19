@@ -36,7 +36,9 @@
     "type": "nmdc:ProvenanceMetadata",
     "add_date": "2026-05-13T18:50:56.295321+00:00",
     "mod_date": "2026-05-13T18:50:56.295321+00:00",
-    "source_system_of_record": "NCBI"
+    "source_system_of_record": "NCBI",
+    "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
+    "version": "0.1.0"
   },
   "insdc_biosample_identifiers": [
     "biosample:SAMN39865436"
