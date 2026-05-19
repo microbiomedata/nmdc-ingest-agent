@@ -25,6 +25,7 @@ from lxml import etree
 from nmdc_schema import nmdc
 from linkml_runtime.dumpers import json_dumper
 
+from nmdc_ingest_agent import GIT_URL as INGEST_AGENT_GIT_URL, __version__ as INGEST_AGENT_VERSION
 from nmdc_ingest_agent.minting import (
     Minter,
     PlaceholderMinter,
@@ -494,6 +495,8 @@ def _build_provenance_metadata(now: datetime) -> nmdc.ProvenanceMetadata:
         add_date=now,
         mod_date=now,
         source_system_of_record=nmdc.SourceSystemEnum.NCBI.text,
+        git_url=INGEST_AGENT_GIT_URL,
+        version=INGEST_AGENT_VERSION,
         type="nmdc:ProvenanceMetadata",
     )
 
