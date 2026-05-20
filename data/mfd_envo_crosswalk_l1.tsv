@@ -5,22 +5,23 @@ Water	Urban Biogas	453	ENVO:01000219	anthropogenic terrestrial biome	ENVO:000000
 Soil	Natural Bogs, mires and fens	295	ENVO:01000190	flooded savanna biome	ENVO:00000000		ENVO:00005774	peat soil	No ENVO wetland-feature term under `ENVO:01000813`; `peatland` / `wetland ecosystem` / `fen` / `marsh` all fail the anchor. Broad pick is approximate.
 Soil	Natural Dunes	263	ENVO:00000000		ENVO:00000170	dune	ENVO:00001998	soil	No specific "dune biome" in ENVO; coastal/desert too broad. Defer broad to §1b.
 Soil	Natural Temperate heath and scrub	229	ENVO:01000176	shrubland biome	ENVO:00000107	heath	ENVO:00001998	soil	Reasonable mapping.
-Sediment	Urban Saltwater	210	ENVO:01000219	anthropogenic terrestrial biome	ENVO:00000000		ENVO:03000033	marine sediment	Constructed saltwater (harbour, marina) — no specific feature term.
+Sediment	Urban Saltwater	210	ENVO:01000219	anthropogenic terrestrial biome	ENVO:00000463	harbour	ENVO:03000033	marine sediment	Constructed saltwater (harbour, marina) — harbour. runoak-validated. Kept consistent with mfd_envo_crosswalk_l2.tsv.
 Soil	Natural Grassland formations	207	ENVO:01000177	grassland biome	ENVO:01001206	grassland ecosystem	ENVO:00001998	soil	Clean. Caveat: `grassland biome` IS-A `grassland ecosystem` per ENVO `is-a` graph — broad is more specific than local. Common MIxS submitter pattern; reviewers see this as expected.
 Soil	Subterranean Urban	205	ENVO:01000249	urban biome	ENVO:00000067	cave	ENVO:00001998	soil	Subterranean urban likely means tunnels / basements / underground urban features — `cave` is the closest ENVO term under the feature anchor. Flag for curator review on important records.
 Soil	Agriculture Fields	180	ENVO:01000245	cropland biome	ENVO:00000114	agricultural field	ENVO:00002259	agricultural soil	Gold-standard MFDO ⇄ ENVO mapping — every slot has a precise term.
 Sediment	Natural Saltwater	171	ENVO:00000447	marine biome	ENVO:00000485	sea shore	ENVO:03000033	marine sediment	Clean.
-Sediment	Subterranean Saltwater	163	ENVO:00000000		ENVO:00000067	cave	ENVO:00002007	sediment	No "subterranean marine biome" in ENVO; cave is the closest feature.
+Sediment	Subterranean Saltwater	163	ENVO:00000447	marine biome	ENVO:00000016	sea	ENVO:03000033	marine sediment	MFD "Subterranean" mislabels open-sea benthic sediment; every sub-habitat (Open sea/Fjords/Oceanic) is marine. runoak-validated. Kept consistent with mfd_envo_crosswalk_l2.tsv.
 Sediment	Natural Freshwater	160	ENVO:00000873	freshwater biome	ENVO:00000020	lake	ENVO:00002007	sediment	Lake is the modal water body in Denmark — could also be `ENVO:00000022` river or `ENVO:00000033` pond; check per-sample context if available.
 Soil	Natural Coastal	160	ENVO:00000447	marine biome	ENVO:00000303	sea coast	ENVO:00001998	soil	Reasonable; could also use `ENVO:00000485` sea shore for local.
-Sediment	Urban Freshwater	139	ENVO:01000219	anthropogenic terrestrial biome	ENVO:00000000		ENVO:00002007	sediment	Constructed freshwater (stormwater pond, retention basin) — no clean feature term.
+Sediment	Urban Freshwater	139	ENVO:01000219	anthropogenic terrestrial biome	ENVO:00000033	pond	ENVO:00002007	sediment	Constructed freshwater (rainwater / retention basin) — pond. runoak-validated. Kept consistent with mfd_envo_crosswalk_l2.tsv.
 Sediment	Urban Other	122	ENVO:01000219	anthropogenic terrestrial biome	ENVO:00000000		ENVO:00002007	sediment	"Other" is intentionally non-specific.
 Water	Urban Drinking water	111	ENVO:01000219	anthropogenic terrestrial biome	ENVO:00000000		ENVO:00003064	drinking water	No specific feature term for drinking-water infrastructure.
-Water	Subterranean Freshwater	84	ENVO:00000000		ENVO:00000067	cave	ENVO:00002006	liquid water	No "subterranean freshwater biome" in ENVO; cave is the closest feature.
+Water	Subterranean Freshwater	84	ENVO:00000000		ENVO:00000000		ENVO:01001004	groundwater	Every sub-habitat is groundwater; no anchor-valid biome or feature term (groundwater/aquifer fail the env_local anchor). env_medium = groundwater. runoak-validated. Kept consistent with mfd_envo_crosswalk_l2.tsv.
 Soil	Urban Greenspaces	78	ENVO:01000249	urban biome	ENVO:00000562	park	ENVO:00001998	soil	Clean.
 Water	Natural Saltwater	57	ENVO:00000447	marine biome	ENVO:00000485	sea shore	ENVO:00002006	liquid water	Note: `marine pelagic biome` (`ENVO:01000023`) is also a reasonable broad pick if the sample was open-ocean rather than coastal.
-Soil	Natural NA	28	ENVO:00000000		ENVO:00000000		ENVO:00001998	soil	`NA` = submitter did not provide MFDO Level 2+3. Only the material is known.
+Soil	Natural	28	ENVO:00000000		ENVO:00000000		ENVO:00001998	soil	Submitter gave area type only (isolation_source "Soil from Natural"); no MFDO hab1. Only the material is known.
 Soil	Natural Sclerophyllous scrub	17	ENVO:01000176	shrubland biome	ENVO:00000300	scrubland area	ENVO:00001998	soil	Reasonable.
 Water	Urban Sandfilter	12	ENVO:01000219	anthropogenic terrestrial biome	ENVO:00000000		ENVO:00002006	liquid water	Sand filter — no specific ENVO term.
+Soil	Urban Roadside	10	ENVO:01000219	anthropogenic terrestrial biome	ENVO:01000447	roadside	ENVO:00001998	soil	Roadside infrastructure feature. CURIEs runoak-validated. Was previously only in apply_mfd_env_triad.py MAPPING dict, not this TSV.
 Soil	Urban Other	2	ENVO:01000219	anthropogenic terrestrial biome	ENVO:00000000		ENVO:00001998	soil	"Other" is intentionally non-specific — local feature unknown.
 Soil	Natural Rocky habitats and caves	1	ENVO:00000000		ENVO:00000067	cave	ENVO:00001998	soil	No "rocky biome" in ENVO. Only 1 sample; flag for curator review.
