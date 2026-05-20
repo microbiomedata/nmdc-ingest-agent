@@ -1683,6 +1683,7 @@ dev = [
 ]
 ontology = [
     { name = "oaklib" },
+    { name = "openpyxl" },
 ]
 
 [package.metadata]
@@ -1692,6 +1693,7 @@ requires-dist = [
     { name = "nmdc-api-utilities", specifier = ">=0.6.1,<1" },
     { name = "nmdc-schema", specifier = ">=11.18.1,<12" },
     { name = "oaklib", marker = "extra == 'ontology'" },
+    { name = "openpyxl", marker = "extra == 'ontology'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "requests" },
     { name = "ruff", marker = "extra == 'dev'" },

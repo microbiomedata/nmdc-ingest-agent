@@ -34,6 +34,8 @@ dependencies = [
 ontology = [
     # For resolving ENVO, NCBITaxon etc. via the skill workflow.
     "oaklib",
+    # For the MFD env-triad crosswalk scripts under scripts/ (read .xlsx).
+    "openpyxl",
 ]
 dev = [
     "pytest",

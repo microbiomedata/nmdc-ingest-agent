@@ -30,45 +30,72 @@ The submitter mis-slotted MFDO into MIxS:
 
 The crosswalk below maps each `(Sample Type, Area+MFDO1)` tuple to candidate CURIEs for **all three MIxS slots** independently — the candidates account for the swap. Do NOT carry the raw strings forward as `term.name` (per `nmdc-curation-rules.md` Rule 5, the official ENVO label belongs in `term.name`; the submitter string stays in `has_raw_value`).
 
-## Crosswalk
+## Two-tier crosswalk
 
-The full 25-row crosswalk lives at [`data/mfd_envo_crosswalk.tsv`](../../data/mfd_envo_crosswalk.tsv) — that file is the single source of truth and the artifact downstream tooling consumes. The agent **must** load that TSV when curating an MFD biosample; the examples below are just enough to show the shape.
+The MFD habitat → ENVO mapping is **two tiers**. Resolve a biosample primary-first:
 
-`(refuse via §1b)` is encoded as `ENVO:00000000` in any of the three `*_curie` columns, with the matching `*_label` left empty. This means no good ENVO term exists for that slot under the slot's anchor class — the agent leaves the sentinel and proceeds to `nmdc-env-triad.md` §1b inference for that slot only (other slots in the same biosample can still commit if their crosswalk picks validate).
+**Primary — Level 2/3, per-sample habitat.** The biosample's `MFDID` attribute (the MFD
+field-sample barcode, e.g. `MFD00001`) joins to [`data/mfd_habitat_per_sample.tsv`](../../data/mfd_habitat_per_sample.tsv),
+which carries the full MFD habitat classification `(mfd_sampletype, mfd_areatype, hab1,
+hab2, hab3)`. That 5-tuple looks up [`data/mfd_envo_crosswalk_l2.tsv`](../../data/mfd_envo_crosswalk_l2.tsv)
+(one row per MFD habitat-ontology combo), matched at the **deepest available depth**:
+try `(st,at,h1,h2,h3)`, then `(st,at,h1,h2)`, then `(st,at,h1)`.
 
-Every CURIE in the TSV is a *candidate*, not a commit. Per `nmdc-env-triad.md` §2, run `runoak info <CURIE>` and `runoak ancestors -p i <CURIE>` against each pick before flipping the curation-report row off `left_sentinel`.
+**Fallback — Level 1, isolation_source.** When the biosample has no `MFDID` join (barcode
+absent from the habitat table), split `isolation_source` ("Soil from Natural Dunes") on
+`" from "` into `(sample_type, area_mfdo1_label)` and look up [`data/mfd_envo_crosswalk_l1.tsv`](../../data/mfd_envo_crosswalk_l1.tsv).
 
-### Example rows (5 of 25)
+Why two tiers: `isolation_source` is a lossy MFD **Level-1** projection — "Soil from
+Natural Dunes" cannot distinguish Sea vs Inland dunes, and "Subterranean Saltwater"
+actually means open-sea benthic sediment. The per-sample habitat table recovers hab2/hab3
+detail for the ~77% of biosamples that carry a joinable `MFDID`. L1 and the depth-1 rows
+of L2 are kept mutually consistent.
 
-Sample counts come from PRJNA1071982's pre-MIMAG-exclusion dataset; see the TSV for all rows.
+`ENVO:00000000` in any `*_curie` column (with an empty `*_label`) is the **refuse
+sentinel**: no ENVO term passes that slot's anchor class. Leave the sentinel and proceed
+to `nmdc-env-triad.md` §1b inference for that slot only — other slots can still commit.
 
-| Sample Type | Area + MFDO1 | n | `env_broad_scale` | `env_local_scale` | `env_medium` | Pattern |
-|---|---|---:|---|---|---|---|
-| Soil | Agriculture Fields | 180 | `ENVO:01000245` cropland biome | `ENVO:00000114` agricultural field | `ENVO:00002259` agricultural soil | Gold-standard — every slot has a precise term. |
-| Soil | Natural Forests | 648 | `ENVO:01000174` forest biome | `ENVO:01001243` forest ecosystem | `ENVO:00001998` soil | Clean — modal soil case. |
-| Water | Urban Wastewater | 622 | `ENVO:01000219` anthropogenic terrestrial biome | `ENVO:00002043` wastewater treatment plant | `ENVO:00002001` waste water | Built-environment, water sample type. |
-| Sediment | Natural Saltwater | 171 | `ENVO:00000447` marine biome | `ENVO:00000485` sea shore | `ENVO:03000033` marine sediment | Sediment sample type → different env_medium. |
-| Soil | Natural Dunes | 263 | `ENVO:00000000` (refuse) | `ENVO:00000170` dune | `ENVO:00001998` soil | Partial — no "dune biome" in ENVO. Defer broad to §1b. |
+### Example L2 rows
 
-### Loading the full crosswalk
+| sample_type / area_type / hab1 / hab2 | `env_broad_scale` | `env_local_scale` | `env_medium` |
+|---|---|---|---|
+| Soil / Natural / Forests / Temperate forests | `ENVO:01000174` forest biome | `ENVO:01001243` forest ecosystem | `ENVO:00001998` soil |
+| Sediment / Subterranean / Saltwater / Fjords | `ENVO:00000447` marine biome | `ENVO:00000039` fjord | `ENVO:03000033` marine sediment |
+| Sediment / Urban / Freshwater / Standing freshwater | `ENVO:01000219` anthropogenic terrestrial biome | `ENVO:00000033` pond | `ENVO:00002007` sediment |
+| Soil / Natural / Bogs, mires and fens / Calcareous fens | `ENVO:01000190` flooded savanna biome | `ENVO:00000000` (refuse) | `ENVO:00005774` peat soil |
+
+### Loading the crosswalks
 
 ```python
 import csv, pathlib
-with pathlib.Path("data/mfd_envo_crosswalk.tsv").open() as f:
-    rows = list(csv.DictReader(f, delimiter="\t"))
 
-def lookup(sample_type: str, area_mfdo1: str) -> dict | None:
-    for r in rows:
-        if r["sample_type"] == sample_type and r["area_mfdo1_label"] == area_mfdo1:
-            return r
+def load(name):
+    with pathlib.Path(f"data/{name}").open() as f:
+        return list(csv.DictReader(f, delimiter="\t"))
+
+l2 = {(r["sample_type"], r["area_type"], r["hab1"], r["hab2"], r["hab3"]): r
+      for r in load("mfd_envo_crosswalk_l2.tsv")}
+l1 = {(r["sample_type"], r["area_mfdo1_label"]): r
+      for r in load("mfd_envo_crosswalk_l1.tsv")}
+habitat = {r["fieldsample_barcode"]: r
+           for r in load("mfd_habitat_per_sample.tsv")}
+
+def resolve(mfdid, isolation_source):
+    h = habitat.get(mfdid)
+    if h and h["mfd_hab1"]:
+        st, at, h1 = h["mfd_sampletype"], h["mfd_areatype"], h["mfd_hab1"]
+        h2, h3 = h["mfd_hab2"], h["mfd_hab3"]
+        for key in ((st,at,h1,h2,h3), (st,at,h1,h2,""), (st,at,h1,"","")):
+            if key in l2:
+                return l2[key]                       # primary
+    if " from " in isolation_source:
+        st, area = isolation_source.split(" from ", 1)
+        return l1.get((st.strip(), area.strip()))    # fallback
     return None
-
-row = lookup("Soil", "Agriculture Fields")
-# row["env_broad_curie"] == "ENVO:01000245", etc.
 # Skip slots where r[f"env_{slot}_curie"] == "ENVO:00000000" — refuse via §1b.
 ```
 
-For shell pipelines: `awk -F'\t' 'NR==1 || ($1=="<Sample Type>" && $2=="<label>")' data/mfd_envo_crosswalk.tsv`.
+`scripts/apply_mfd_env_triad.py` is the programmatic implementation of exactly this.
 
 ## Validation rules
 
@@ -76,9 +103,9 @@ For shell pipelines: `awk -F'\t' 'NR==1 || ($1=="<Sample Type>" && $2=="<label>"
    - `env_broad_scale` → must descend from `ENVO:00000428` (biome)
    - `env_local_scale` → must descend from `ENVO:01000813` (astronomical body part)
    - `env_medium` → must descend from `ENVO:00010483` (environmental material)
-2. **A crosswalk row is a candidate, not a commit.** All entries above passed runoak validation when the table was last refreshed, but ENVO evolves — if the validator fails today, treat the row as a bug to fix in this skill, not as a reason to bypass validation.
-3. **Refuse rather than guess.** Rows with `(refuse via §1b)` indicate no ENVO term exists under the slot's anchor class. Leave the sentinel for that slot and proceed to the `nmdc-env-triad.md` §1b Inference path for that slot only (the other slots in the same biosample can still commit if their crosswalk picks validate).
-4. **Evidence anchor.** Per `nmdc-curation-rules.md` Rule 1, every commit derived from this crosswalk records the source as `"mfd-project-vocabulary crosswalk: <Sample Type> / <Area+MFDO1 label>"` in the curation report's `evidence` list, plus a quote from the biosample's `env_broad_scale.has_raw_value` and `env_local_scale.has_raw_value`.
+2. **A crosswalk row is a candidate, not a commit.** All entries passed runoak validation when the table was last refreshed, but ENVO evolves — if the validator fails today, treat the row as a bug to fix, not as a reason to bypass validation.
+3. **Refuse rather than guess.** `ENVO:00000000` indicates no ENVO term exists under the slot's anchor class. Leave the sentinel for that slot and proceed to the `nmdc-env-triad.md` §1b Inference path for that slot only (the other slots in the same biosample can still commit if their crosswalk picks validate).
+4. **Evidence anchor.** Per `nmdc-curation-rules.md` Rule 1, every commit records its tier in the curation report's `evidence` list — primary: `biosample.attributes.MFDID` + `data/mfd_envo_crosswalk_l2.tsv` with the habitat key and matched depth; fallback: `biosample.attributes.isolation_source` + `data/mfd_envo_crosswalk_l1.tsv`.
 
 ## Caveat: post-MIMAG-exclusion
 
@@ -89,17 +116,34 @@ This skill remains useful for:
 - Re-import paths that keep MAG records (e.g. a future `MetagenomeAssembly` extension).
 - Manual curation of historical MFD records.
 
-## Maintaining this crosswalk
+## Maintaining the crosswalks
 
-Edits go to [`data/mfd_envo_crosswalk.tsv`](../../data/mfd_envo_crosswalk.tsv) — that file is the single source of truth. When the TSV changes meaningfully (new rows, CURIE corrections), refresh the **Example rows** table above by hand-picking 3–5 representative rows from the new TSV. Do not duplicate the entire table here.
+The build pipeline (run in order — see [`scripts/README.md`](../../scripts/README.md)):
 
-When adding a new (Sample Type, Area+MFDO1) tuple to the TSV:
+1. `scripts/build_mfd_habitat_table.py` → `data/mfd_habitat_per_sample.tsv` — normalizes
+   the per-project MFD metadata (cmc-aau/mfd_metadata, pinned commit) into one
+   barcode-keyed habitat table.
+2. `scripts/build_mfd_envo_crosswalk_l2.py` → `data/mfd_envo_crosswalk_l2.tsv` — enumerates
+   the habitat-ontology combos, carries forward the validated hab1-level ENVO triples from
+   L1, then applies the `CURATION` table (hab2/hab3 refinements).
+3. `scripts/apply_mfd_env_triad.py` — applies the two-tier crosswalk to a curation run.
 
-1. Confirm the tuple appears in real data via `jq` on an MFD ingest output (with MIMAG biosamples preserved). Record the integer count as `count_observed`.
-2. Run `runoak search "<query terms from the label>"` to surface candidate CURIEs.
-3. For each candidate, run `runoak ancestors -p i <CURIE>` and verify the slot's anchor class appears (`ENVO:00000428` for broad, `ENVO:01000813` for local, `ENVO:00010483` for medium).
-4. Run `runoak info <CURIE>` to confirm exists + label correct + not deprecated.
-5. Add the row to the TSV; record any ambiguity in `notes`; default to `ENVO:00000000` (with an empty label column) rather than a low-confidence pick.
-6. Re-sort the TSV by `count_observed` descending.
+**Where edits go:**
 
-See [`data/README.md`](../../data/README.md) for the TSV's schema conventions and `nmdc-curation-rules.md` Rule 6 (no CURIEs from memory).
+- **L2 hab2/hab3 refinements** → the `CURATION` dict in `build_mfd_envo_crosswalk_l2.py`,
+  then regenerate. Every CURIE there is runoak-validated; the dict comments record it.
+- **L1 rows** → `data/mfd_envo_crosswalk_l1.tsv` directly (hand-maintained).
+- **L1 ⇄ L2 consistency:** the depth-1 (hab1-level) rows of L2 must agree with L1. When a
+  curation establishes a better hab1-level term, update *both*.
+
+When adding or refining an ENVO CURIE (either file):
+
+1. Run `runoak -i sqlite:obo:envo search "<head noun>"` to surface candidates.
+2. For each, run `runoak ancestors -p i <CURIE>` and verify the slot anchor appears
+   (`ENVO:00000428` broad, `ENVO:01000813` local, `ENVO:00010483` medium).
+3. Run `runoak info <CURIE>` — exists, label correct, not deprecated.
+4. Commit the finer term only if it is strictly more specific and both checks pass;
+   otherwise leave `ENVO:00000000` (refuse rather than guess).
+
+See [`data/README.md`](../../data/README.md) for the TSV schema conventions and
+`nmdc-curation-rules.md` Rule 6 (no CURIEs from memory).
