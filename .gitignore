@@ -28,5 +28,8 @@ Thumbs.db
 .ruff_cache/
 .mypy_cache/
 
+# MFD metadata download cache (rebuilt by scripts/build_mfd_habitat_table.py)
+data/mfd_metadata_cache/
+
 # Run outputs — don't check in generated JSON from translator runs
 results/
