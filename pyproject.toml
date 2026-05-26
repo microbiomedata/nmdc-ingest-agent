@@ -34,6 +34,8 @@ dependencies = [
 ontology = [
     # For resolving ENVO, NCBITaxon etc. via the skill workflow.
     "oaklib",
+    # For Phase 1 term QC: existence + ID/label concordance on the env triad.
+    "linkml-term-validator>=0.3.0",
 ]
 dev = [
     "pytest",
@@ -42,6 +44,7 @@ dev = [
 
 [project.scripts]
 nmdc-ingest-ncbi = "nmdc_ingest_agent.sources.ncbi.translate:main"
+nmdc-ingest-validate-terms = "nmdc_ingest_agent.validators.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/microbiomedata/nmdc-ingest-agent"

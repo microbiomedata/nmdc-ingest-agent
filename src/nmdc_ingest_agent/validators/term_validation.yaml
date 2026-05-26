@@ -1,0 +1,55 @@
+id: https://w3id.org/nmdc/ingest-agent/term-validation
+name: nmdc-ingest-agent-term-validation
+description: >-
+  Projection schema used by linkml-term-validator to QC ontology-bearing slots
+  on NMDC Biosamples. The empty AnyTermBindingHook enum on ObservedTerm.term
+  triggers the binding plugin without restricting permissible values; --labels
+  then checks the rdfs:label-implementing field against the source ontology.
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  rdfs: http://www.w3.org/2000/01/rdf-schema#
+  ENVO: http://purl.obolibrary.org/obo/ENVO_
+  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_
+
+default_range: string
+
+imports:
+  - linkml:types
+
+classes:
+  TermValidationSet:
+    tree_root: true
+    attributes:
+      observed_terms:
+        multivalued: true
+        inlined_as_list: true
+        range: ObservedTerm
+
+  ObservedTerm:
+    attributes:
+      id:
+        identifier: true
+      sample_id:
+      slot:
+      raw_value:
+      term:
+        range: OntologyTerm
+        bindings:
+          - binds_value_of: id
+            range: AnyTermBindingHook
+
+  OntologyTerm:
+    attributes:
+      id:
+        identifier: true
+      label:
+        implements:
+          - rdfs:label
+
+enums:
+  AnyTermBindingHook:
+    description: >-
+      Sentinel enum with no permissible values. Its sole purpose is to make the
+      term slot have a binding so BindingValidationPlugin engages and runs term-
+      existence + label-concordance checks. Membership validation is a no-op.
