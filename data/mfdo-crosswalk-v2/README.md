@@ -23,7 +23,9 @@ Zero placeholders affect any of the 10,875 biosamples.
 
 ### ELS allow-list
 
-`els_v5.txt`: 1,533 ENVO classes. Subclasses of (astronomical body part + vegetation layer + environmental zone + terrestrial ecosystem + wetland ecosystem) minus (biomes + materials).
+1,533 ENVO classes. Subclasses of (astronomical body part + vegetation layer + environmental zone + terrestrial ecosystem + wetland ecosystem) minus (biomes + materials).
+
+Note: `wetland ecosystem` [ENVO:01001209] is not a subclass of `terrestrial ecosystem` in ENVO, even though its sibling ecosystems (grassland, forest, cropland, woodland, aquatic) are. Adding it as a separate root gives us access to fen, peatland, sphagnum bog, raised mire, and marsh as valid ELS terms. See [envo#1659](https://github.com/EnvironmentOntology/envo/issues/1659) for details.
 
 ### Provenance columns
 
@@ -43,12 +45,7 @@ Not in the crosswalk. All MFD NCBI biosamples have bare "Denmark" as geo_loc_nam
 
 ## Supporting files
 
-| File | Description |
-|---|---|
-| `mfdo_misc_param_mappings.tsv` | misc_param PropertyAssertion mappings (55 rows, stringified JSON) |
-| `mfdo_decomposed.json` | Structural decomposition of 223 MFDO facet values (Ollama qwen2.5:14b) |
-| `mfd_gee_landcover.tsv` | ESA WorldCover + CORINE land cover at all 7,602 unique coordinates |
-| `els_v5.txt` | Expanded ELS allow-list (1,533 ENVO classes) |
+Working artifacts (decomposition, GEE validation data, ELS allow-list, misc_param source mappings) are maintained in the analysis working directory, not committed here. The crosswalk TSV is the deliverable; provenance columns document how each mapping was derived.
 
 ## Methodology
 
