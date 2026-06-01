@@ -1,4 +1,5 @@
-"""Build per-ontology-leaf crosswalk: all 281 MFDO rows -> nmdc-schema slots.
+"""Build the MFDO -> nmdc-schema crosswalk: 279 MFDO ontology leaves plus a small number of
+biosample-reconciliation rows (284 rows total) -> nmdc-schema slots.
 
 Output: mfdo_nmdc_crosswalk.tsv
   - All 5 MFDO levels (original columns)
@@ -645,9 +646,9 @@ EM_HAB3 = {
     'Petrifying springs': ('ENVO:00001998', 'soil'),  # was wrongly 'peat soil'; sampletype=Soil
 }
 def get_em(st, hab1, hab2, hab3='', empo=''):
-    if hab3 and hab3 in EM_HAB3:
+    if hab3 and hab3 in EM_HAB3:                 # keyed on the hab3 label, so provenance is hab3
         r = EM_HAB3[hab3]
-        return r[0], r[1], 'from_natura2000'
+        return r[0], r[1], 'from_mfdo:hab3'
     # EMPO salinity refinement (EMPO is the authoritative salinity signal): saline free water
     # -> sea water, more specific than generic 'liquid water' and consistent with the marine
     # biome these leaves carry. Saline soil/sediment salinity is already reflected in their ELS
@@ -756,6 +757,19 @@ def get_misc_param(leaf):
     return ''
 
 # --- Build crosswalk ---
+# Forest hab3 -> cur_land_use (conifers / hardwoods / mix). Module scope so land_use_provenance
+# can reference it directly. 'Non-native trees (exotic)' intentionally omitted: the label gives
+# no tree type (LLM decomposition had empty taxon_parts, unmappable=true).
+FOREST_HAB3_LAND_USE = {
+    'Coniferous forest': 'conifers', 'Spruce': 'conifers', 'Larch': 'conifers',
+    'Sitka': 'conifers', 'Douglas': 'conifers', 'Pine': 'conifers',
+    'Deciduous trees': 'hardwoods', 'Beech': 'hardwoods', 'Pedunculate oak': 'hardwoods',
+    'Aspen': 'hardwoods', 'Maple': 'hardwoods', 'Alder': 'hardwoods',
+    'Willow': 'hardwoods', 'Birch': 'hardwoods',
+    'Birch-coniferous mix': 'intermixed hardwood and conifers',
+    'Birch swamp': 'hardwoods',
+}
+
 out_cols = (
     ['row_type'] +  # 'ontology_leaf' (279) or 'biosample_reconciliation' (rows added to make the join total)
     list(hdr) +  # all original MFDO columns
@@ -787,18 +801,7 @@ for leaf in ont_rows:
     em_c, em_l, em_m = get_em(st, h1, h2, h3, leaf.get('EMPO', '').strip())
 
     cur_veg = get_cur_vegetation(leaf)
-    # cur_land_use: try hab3, then hab2, then (at, h1) fallback
-    FOREST_HAB3_LAND_USE = {
-        'Coniferous forest': 'conifers', 'Spruce': 'conifers', 'Larch': 'conifers',
-        'Sitka': 'conifers', 'Douglas': 'conifers', 'Pine': 'conifers',
-        'Deciduous trees': 'hardwoods', 'Beech': 'hardwoods', 'Pedunculate oak': 'hardwoods',
-        'Aspen': 'hardwoods', 'Maple': 'hardwoods', 'Alder': 'hardwoods',
-        'Willow': 'hardwoods', 'Birch': 'hardwoods',
-        'Birch-coniferous mix': 'intermixed hardwood and conifers',
-        'Birch swamp': 'hardwoods',
-        # 'Non-native trees (exotic)' intentionally omitted: the label gives no tree type
-        # (LLM decomposition: empty taxon_parts, unmappable=true). No cur_land_use assigned.
-    }
+    # cur_land_use: try hab3 (FOREST_HAB3_LAND_USE, defined at module scope), then hab2, then (at, h1)
     land_use = ''
     if h3 and h3 in FOREST_HAB3_LAND_USE:
         land_use = FOREST_HAB3_LAND_USE[h3]
@@ -818,7 +821,7 @@ for leaf in ont_rows:
 
     def land_use_provenance(land_use, st, at, h1, h2, h3):
         if not land_use: return ''
-        if h3 and h3 in globals().get('FOREST_HAB3_LAND_USE', {}):
+        if h3 and h3 in FOREST_HAB3_LAND_USE:
             return 'from_mfdo:hab3'
         if (st, at, h1, h2) in CUR_LAND_USE_HAB2:
             return 'from_mfdo:hab2'
@@ -902,26 +905,30 @@ out_rows += recon
 print(f'  + {len(recon)} reconciliation rows ({sum(r["n_samples"] for r in recon)} biosamples) -> 5-level join now total')
 
 with open('mfdo_nmdc_crosswalk.tsv', 'w') as f:
-    writer = csv.DictWriter(f, fieldnames=out_cols, delimiter='\t', extrasaction='ignore')
+    writer = csv.DictWriter(f, fieldnames=out_cols, delimiter='\t', extrasaction='ignore', lineterminator='\n')
     writer.writeheader()
     for r in out_rows:
         writer.writerow(r)
 
 print(f'Wrote {len(out_rows)} rows to mfdo_nmdc_crosswalk.tsv')
 
-# Stats
-has_ebs = sum(1 for r in out_rows if r['env_broad_scale'] and 'envo_root_class' not in r['env_broad_scale_provenance'])
-has_els = sum(1 for r in out_rows if r['env_local_scale'] and 'envo_root_class' not in r['env_local_scale_provenance'])
-has_em = sum(1 for r in out_rows if r['env_medium'])
-has_veg = sum(1 for r in out_rows if r['cur_vegetation'])
-has_lu = sum(1 for r in out_rows if r['cur_land_use'])
-has_misc = sum(1 for r in out_rows if r['misc_param_json'])
-has_samples = sum(1 for r in out_rows if r['n_samples'] > 0)
+# Stats -- per-leaf coverage is computed over ontology leaves only (reconciliation rows
+# excluded, so 'specific' counts are not inflated by their floored placeholders).
+leaves = [r for r in out_rows if r['row_type'] == 'ontology_leaf']
+def _specific(col, prov):
+    return sum(1 for r in leaves if r[col] and 'envo_root_class' not in r[prov] and 'reconciliation' not in r[prov])
+has_ebs = _specific('env_broad_scale', 'env_broad_scale_provenance')
+has_els = _specific('env_local_scale', 'env_local_scale_provenance')
+has_em = sum(1 for r in leaves if r['env_medium'])
+has_veg = sum(1 for r in leaves if r['cur_vegetation'])
+has_lu = sum(1 for r in leaves if r['cur_land_use'])
+has_misc = sum(1 for r in leaves if r['misc_param_json'])
+has_samples = sum(1 for r in leaves if r['n_samples'] > 0)
 
-print(f'\nCoverage across {len(out_rows)} ontology leaves:')
+print(f'\nCoverage across {len(leaves)} ontology leaves ({len(out_rows)-len(leaves)} reconciliation rows excluded):')
 print(f'  with samples:       {has_samples}')
-print(f'  env_broad_scale:    {has_ebs} specific + {len(out_rows)-has_ebs} fallback')
-print(f'  env_local_scale:    {has_els} specific + {len(out_rows)-has_els} fallback')
+print(f'  env_broad_scale:    {has_ebs} specific + {len(leaves)-has_ebs} fallback')
+print(f'  env_local_scale:    {has_els} specific + {len(leaves)-has_els} fallback')
 print(f'  env_medium:         {has_em}')
 print(f'  cur_vegetation:     {has_veg}')
 print(f'  cur_land_use:       {has_lu}')

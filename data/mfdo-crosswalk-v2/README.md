@@ -29,7 +29,7 @@ The builder fetches its two source spreadsheets from the public [cmc-aau/mfd_met
 | Slot | Coverage | Validated against |
 |---|---|---|
 | env_broad_scale | 279/279 | ControlledIdentifiedTermValue; ENVO CURIEs verified via OLS |
-| env_local_scale | 278/279 specific (1 root fallback, 0 biosamples) | ControlledIdentifiedTermValue; all CURIEs in the ELS allow-list |
+| env_local_scale | 275/279 specific (4 root fallback, all 0 biosamples) | ControlledIdentifiedTermValue; all CURIEs in the ELS allow-list |
 | env_medium | 279/279 | ControlledIdentifiedTermValue; ENVO CURIEs verified via OLS |
 | cur_vegetation | 164/279 | TextValue; MFDO hab3/hab2 value as-is |
 | cur_land_use | 181/279 | MIxS cur_land_use controlled list; all values valid |
