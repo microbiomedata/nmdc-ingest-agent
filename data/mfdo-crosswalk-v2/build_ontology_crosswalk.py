@@ -757,6 +757,7 @@ def get_misc_param(leaf):
 
 # --- Build crosswalk ---
 out_cols = (
+    ['row_type'] +  # 'ontology_leaf' (279) or 'biosample_reconciliation' (rows added to make the join total)
     list(hdr) +  # all original MFDO columns
     ['n_samples',
      'env_broad_scale', 'env_broad_scale_provenance',
@@ -831,6 +832,7 @@ for leaf in ont_rows:
 
     row = dict(leaf)
     row.update({
+        'row_type': 'ontology_leaf',
         'n_samples': n,
         'env_broad_scale': format_pv(ebs_c, ebs_l),
         'env_broad_scale_provenance': ebs_m,
@@ -846,6 +848,58 @@ for leaf in ont_rows:
         'misc_param_provenance': misc_provenance(misc),
     })
     out_rows.append(row)
+
+# --- Reconciliation rows: make the per-leaf -> biosample join TOTAL ---
+# A handful of db biosample 5-tuples match no ontology leaf: biogas is typed 'Other' in the db
+# but 'Water' in the ontology (sampletype mismatch), and some bare soil/sediment samples carry
+# no habitat. Emit one reconciliation row per such tuple so a plain 5-level join covers ALL
+# biosamples. Flagged via provenance 'biosample_reconciliation:*'.
+ont_keys = {tuple(r.get(l, '') for l in LEVELS) for r in out_rows}
+by_subkey = {tuple(r.get(l, '') for l in LEVELS[1:]): r for r in out_rows}  # (areatype,hab1,hab2,hab3) -> a leaf
+ROOT_ELS = 'astronomical body part [ENVO:01000813]'
+recon = []
+for key, n in sample_counts.items():
+    if key in ont_keys or not any(key):
+        continue
+    st, at, h1, h2, h3 = key
+    saline = (h1 == 'Saltwater')
+    row = {h: '' for h in out_cols}
+    row['row_type'] = 'biosample_reconciliation'
+    row['mfd_sampletype'], row['mfd_areatype'], row['mfd_hab1'], row['mfd_hab2'], row['mfd_hab3'] = key
+    row['n_samples'] = n
+    twin = by_subkey.get((at, h1, h2, h3))  # same habitat, different sampletype
+    if st in ('Soil', 'Sediment', 'Water'):
+        # sampletype IS a real medium: floor by medium (+ saltwater context). Do NOT copy a
+        # different-sampletype twin's medium (e.g. a Water twin's 'sea water' onto a Sediment row).
+        prov = 'biosample_reconciliation:floor'
+        if st == 'Soil':
+            ebs, els, em = 'terrestrial biome [ENVO:00000446]', ROOT_ELS, 'soil [ENVO:00001998]'
+        elif st == 'Sediment':
+            ebs = 'marine biome [ENVO:00000447]' if saline else 'freshwater biome [ENVO:00000873]'
+            els = 'sea floor [ENVO:00000482]' if saline else ROOT_ELS
+            em = 'marine sediment [ENVO:03000033]' if saline else 'sediment permeated by freshwater [ENVO:01001028]'
+        else:  # Water
+            ebs = 'marine biome [ENVO:00000447]' if saline else 'freshwater biome [ENVO:00000873]'
+            els = 'sea [ENVO:00000016]' if saline else 'water body [ENVO:00000063]'
+            em = 'sea water [ENVO:00002149]' if saline else 'liquid water [ENVO:00002006]'
+        cur_v = cur_l = misc = ''
+    elif twin:
+        # non-medium sampletype (e.g. biogas typed 'Other' in db vs 'Water' in ontology): the only
+        # difference is the sampletype label, so copy the matching leaf's full mapping.
+        prov = 'biosample_reconciliation:sampletype'
+        ebs, els, em = twin['env_broad_scale'], twin['env_local_scale'], twin['env_medium']
+        cur_v, cur_l, misc = twin['cur_vegetation'], twin['cur_land_use'], twin['misc_param_json']
+    else:
+        prov = 'biosample_reconciliation:floor'
+        ebs, els, em = 'biome [ENVO:00000428]', ROOT_ELS, 'environmental material [ENVO:00010483]'
+        cur_v = cur_l = misc = ''
+    row['env_broad_scale'], row['env_local_scale'], row['env_medium'] = ebs, els, em
+    row['cur_vegetation'], row['cur_land_use'], row['misc_param_json'] = cur_v, cur_l, misc
+    for c in ('env_broad_scale_provenance', 'env_local_scale_provenance', 'env_medium_provenance'):
+        row[c] = prov
+    recon.append(row)
+out_rows += recon
+print(f'  + {len(recon)} reconciliation rows ({sum(r["n_samples"] for r in recon)} biosamples) -> 5-level join now total')
 
 with open('mfdo_nmdc_crosswalk.tsv', 'w') as f:
     writer = csv.DictWriter(f, fieldnames=out_cols, delimiter='\t', extrasaction='ignore')

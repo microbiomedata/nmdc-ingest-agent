@@ -6,8 +6,14 @@ Addresses [#31](https://github.com/microbiomedata/nmdc-ingest-agent/issues/31) (
 
 ## Files
 
-- **`mfdo_nmdc_crosswalk.tsv`**: primary output, one row per MFDO ontology leaf (279 rows).
+- **`mfdo_nmdc_crosswalk.tsv`**: primary output (284 rows). A `row_type` column marks each row as `ontology_leaf` (279 genuine MFD leaves) or `biosample_reconciliation` (5 rows added so the join below is total).
 - **`build_ontology_crosswalk.py`**: self-contained, reproducible builder (Python 3 standard library only).
+- **`mfd_gee_landcover.tsv`**, **`mfd_nominatim_geocode.tsv`**: per-coordinate enrichment tables (GEE WorldCover/CORINE land cover; Nominatim reverse-geocoding) for the per-biosample joins.
+- **`JOIN_RECIPE.md`**: how to annotate any biosample by joining these tables (no materialized per-biosample file is needed).
+
+## Per-biosample annotation (lookup, not a materialized table)
+
+Annotations are produced by **joining** these small tables to the stock biosample table on demand (see `JOIN_RECIPE.md`): the five MFD levels → this crosswalk (a **total** join — all 10,875 biosamples match exactly one row, including the 116 that match a `biosample_reconciliation` row), and `coord_key` → the GEE/Nominatim tables for `geo_loc_name` and optional ELS refinement (only where `coords_reliable == 'Yes'`).
 
 ## Reproducing the crosswalk
 
