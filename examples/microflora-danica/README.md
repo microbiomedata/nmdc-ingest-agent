@@ -2,7 +2,7 @@
 
 Single-record JSON files extracted from the NMDC ingest output for NCBI BioProject [PRJNA1071982](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA1071982) — *MicroFlora Danica* ([Sereika et al., Nature 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12823411/)). Useful as reference when reading the NMDC LinkML schema, designing downstream tooling, or sanity-checking ingest output.
 
-**Source.** All examples were extracted verbatim from `results/ncbi_PRJNA1071982_nmdc.json` using `jq`. No record was hand-edited.
+**Source.** All examples were extracted verbatim from `results/ncbi_PRJNA1071982_nmdc.json` using `jq`. The only post-extraction update is to `instrument_used` on the two `data_generation_set` records, which now carry the **real** Instrument ids the current pipeline resolves (see ID note) rather than the placeholder ids the older minting path emitted; record content is otherwise unedited.
 
 **Post-curation snapshot.** These records reflect the state of the NMDC JSON **after** an agent curation pass resolved env-triad sentinels. The two-stage architecture is:
 
@@ -20,7 +20,9 @@ The examples below mostly cover the all-resolved case (most common); one example
 
 **Scope.** Database collections only (`study_set`, `biosample_set`, `data_generation_set`, `data_object_set`). The curation sidecars are not represented here.
 
-**ID note.** Every example uses placeholder NMDC IDs (`-99-` shoulder). Real ingest requires re-running with `--mint-real-ids`. Placeholder IDs are randomly minted each run, so re-extracting from a fresh ingest will produce different ids matching the same criteria.
+**ID note.** Every example uses placeholder NMDC IDs (`-99-` shoulder) **except** `instrument_used`. Real ingest requires re-running with `--mint-real-ids`. Placeholder IDs are randomly minted each run, so re-extracting from a fresh ingest will produce different ids matching the same criteria.
+
+`instrument_used` is the exception: instruments are **resolved**, not minted. The pipeline matches each SRA `INSTRUMENT_MODEL` string against the live NMDC `instrument_set` (by instrument `name`, falling back to `InstrumentModelEnum` aliases) and asserts the existing `nmdc:inst-…` id. These ids are stable real identifiers, identical across runs and independent of `--mint-real-ids`. Resolution defaults to the **dev** runtime environment (`--env`/`NMDC_RUNTIME_ENV`); the ids above (`nmdc:inst-14-mr4r2w09`, `nmdc:inst-15-qkz3d028`) come from dev, where this BioProject's three sequencers all have `instrument_set` entries. A model with no `instrument_set` match resolves to nothing and leaves `instrument_used` empty.
 
 **These are reference documents, not test fixtures.** They illustrate the variation that shows up in pipeline output; they are not asserted-against by any automated test.
 
@@ -51,8 +53,8 @@ The pilot is uniform in analyte category (`metagenome`) and library shape — ev
 
 | File | Source id | Instrument id | Demonstrates |
 |---|---|---|---|
-| `01_metagenome_nucleotide_sequencing.json` | `nmdc:dgns-99-f45fec84` | `nmdc:inst-99-9993b29f` (~89%) | Modal `NucleotideSequencing` record: metagenome analyte, single input biosample, single output data object, INSDC SRA experiment identifier. |
-| `02_metagenome_alternate_instrument.json` | `nmdc:dgns-99-a2ff7d7f` | `nmdc:inst-99-a8b6978c` (~7%) | Same shape, different instrument — documents that this BioProject uses three distinct sequencers. |
+| `01_metagenome_nucleotide_sequencing.json` | `nmdc:dgns-99-f45fec84` | `nmdc:inst-14-mr4r2w09` — Illumina NovaSeq 6000 (~89%) | Modal `NucleotideSequencing` record: metagenome analyte, single input biosample, single output data object, INSDC SRA experiment identifier. `instrument_used` is a **real** resolved Instrument id (matched on `name` against the live `instrument_set`), not a minted placeholder. |
+| `02_metagenome_alternate_instrument.json` | `nmdc:dgns-99-a2ff7d7f` | `nmdc:inst-15-qkz3d028` — Sequel IIe (~7%) | Same shape, different instrument — documents that this BioProject uses three distinct sequencers (NovaSeq 6000, Sequel IIe, PromethION). `instrument_used` is likewise a real resolved Instrument id. |
 
 ## data_object_set/
 
