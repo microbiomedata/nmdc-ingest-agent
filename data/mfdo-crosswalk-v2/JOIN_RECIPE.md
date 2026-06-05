@@ -6,9 +6,11 @@ per-biosample value below is derivable by a join, so a precomputed file would on
 
 Inputs:
 - `mfdo_nmdc_crosswalk.tsv` — per-leaf NMDC slot mappings (this directory)
-- `mfd_gee_landcover.tsv`, `mfd_nominatim_geocode.tsv` — per-coordinate enrichments (this directory)
-- the stock biosample table: `analysis/releases/<date>_mfd_db.xlsx` in
-  [cmc-aau/mfd_metadata](https://github.com/cmc-aau/mfd_metadata) (one row per biosample)
+- `mfd_gee_landcover.tsv` — per-coordinate ESA WorldCover + CORINE land cover (this directory)
+- `corine_envo_map.tsv`, `worldcover_envo_map.tsv` — land-cover class → ENVO ELS lookup (this directory)
+- `mfd_nominatim_geocode.tsv` — per-coordinate Nominatim geocoding (this directory; use under discussion, see [#34](https://github.com/microbiomedata/nmdc-ingest-agent/issues/34))
+- the stock biosample table: fetch with `mfd_db_to_tsv.py` (this directory), which reads
+  `analysis/releases/<date>_mfd_db.xlsx` from [cmc-aau/mfd_metadata](https://github.com/cmc-aau/mfd_metadata)
 
 ## 1. Triad + non-triad slots (per biosample)
 
@@ -24,10 +26,11 @@ Yields `env_broad_scale`, `env_local_scale`, `env_medium` (+ each `*_provenance`
 **The join is total** — every one of the 10,875 biosamples matches exactly one crosswalk row.
 The `row_type` column distinguishes them:
 - `ontology_leaf` (279 rows): a genuine MFD ontology leaf.
-- `biosample_reconciliation` (5 rows): biosample 5-tuples that are not ontology leaves, added so
-  the join is total. These are flagged in `row_type` **and** in the `*_provenance` columns
-  (`biosample_reconciliation:sampletype` for biogas, which the db types `Other` vs the ontology's
-  `Water`; `biosample_reconciliation:floor` for under-specified bare soil/sediment).
+- `biosample_reconciliation` (9 rows): biosample 5-tuples not in the ontology, added so the join
+  is total. Examples: biogas biosamples (db types `Other`, ontology types `Water`),
+  under-specified bare soil/sediment, and Superasterids crop types (Beetroot, Sugar beet, etc.)
+  added to the db after the ontology was finalized. All reconciliation rows carry
+  `biosample_reconciliation:*` provenance values.
 
 ## 2. geo_loc_name (per biosample) — under discussion
 
@@ -40,19 +43,23 @@ question is settled.
 
 ## 3. ELS refinement for under-specified samples (optional) — reliable coordinates only
 
-For samples whose crosswalk `env_local_scale` is a root-class placeholder (notably the
-bare-soil reconciliation rows), refine from satellite land cover:
+Crosswalk rows with `env_local_scale = "environmental zone [ENVO:01000408]"` carry the
+fallback placeholder used when no specific ELS is supportable from the habitat signal.
+For these rows, refine from satellite land cover when `coords_reliable == 'Yes'`:
 
 ```
 coord_key -> mfd_gee_landcover.tsv -> corine_label (preferred) / worldcover_label (fallback)
+corine_label  -> corine_envo_map.tsv  -> env_local_scale  (EU coverage, 44 classes)
+worldcover_label -> worldcover_envo_map.tsv -> env_local_scale  (global, 11 classes)
 ```
 
-Prefer `corine_label` when non-empty (EU coverage, 44 classes). Fall back to
-`worldcover_label` (global, 11 classes) for coordinates outside EU coverage.
-Apply a CORINE->EnvO or WorldCover->EnvO lookup table (see
-[#36](https://github.com/microbiomedata/nmdc-ingest-agent/issues/36)) and mark
-provenance `from_corine` or `from_worldcover`. **Do not** override a leaf's already-specific
-ELS with satellite data.
+Only rows with `ols_verified=yes` in the map files are used. Provenance is set to
+`from_corine` or `from_worldcover`. **Do not** override a leaf's already-specific ELS.
+
+Note: the previous fallback was `astronomical body part [ENVO:01000813]`; it was
+replaced by `environmental zone [ENVO:01000408]` per NCBI Import Squad decision 2026-06-04.
+`apply_crosswalk.py` recognises both so it handles any crosswalk rows that still carry the
+old value.
 
 ## coords_reliable
 
@@ -66,7 +73,8 @@ those; fall back to the crosswalk's leaf-level values.
 - `*_provenance` columns document which input drove each value and are stripped before NMDC
   submission.
 - To rebuild the crosswalk: `python3 build_ontology_crosswalk.py` (fetches the two source xlsx
-  from a pinned `cmc-aau/mfd_metadata` commit; `--ref` to override).
-- To apply the crosswalk to a biosample TSV: `python3 apply_crosswalk.py biosamples.tsv`
-  (see that script's `--help` for options). It implements the recipe above.
+  from a pinned `cmc-aau/mfd_metadata` commit; `--ref` to override). Note: the 9 `biosample_reconciliation` rows for Superasterids crops are currently in the TSV only, not yet in the build script ([#43](https://github.com/microbiomedata/nmdc-ingest-agent/issues/43)).
+- To extract biosamples from the MFD db xlsx: `python3 mfd_db_to_tsv.py --out biosamples.tsv`
+- To apply the crosswalk: `python3 apply_crosswalk.py biosamples.tsv --out annotated.tsv`
+  (both scripts accept `--help`).
 </content>
