@@ -26,11 +26,11 @@ Yields `env_broad_scale`, `env_local_scale`, `env_medium` (+ each `*_provenance`
 **The join is total** — every one of the 10,875 biosamples matches exactly one crosswalk row.
 The `row_type` column distinguishes them:
 - `ontology_leaf` (279 rows): a genuine MFD ontology leaf.
-- `biosample_reconciliation` (9 rows): biosample 5-tuples not in the ontology, added so the join
-  is total. Examples: biogas biosamples (db types `Other`, ontology types `Water`),
-  under-specified bare soil/sediment, and Superasterids crop types (Beetroot, Sugar beet, etc.)
-  added to the db after the ontology was finalized. All reconciliation rows carry
-  `biosample_reconciliation:*` provenance values.
+- `biosample_reconciliation` (5 rows): biosample 5-tuples not in the ontology, added so the join
+  is total. Examples: biogas biosamples (db types `Other`, ontology types `Water`) and
+  under-specified bare soil/sediment. All carry `biosample_reconciliation:*` provenance values.
+  Note: Superasterids crop types (Beetroot, Sugar beet, etc.) appear as `ontology_leaf` rows --
+  they are in the MFDO xlsx even though they read as taxonomic rather than habitat classifications.
 
 ## 2. geo_loc_name (per biosample) — under discussion
 
