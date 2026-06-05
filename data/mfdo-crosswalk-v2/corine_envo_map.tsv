@@ -1,0 +1,28 @@
+corine_code	corine_label	env_local_scale	env_local_scale_provenance	ols_verified	notes
+111	Continuous urban fabric	built environment [ENVO:01000247]	from_corine	needs_verification
+112	Discontinuous urban fabric	built environment [ENVO:01000247]	from_corine	needs_verification
+121	Industrial or commercial units			no anchor-valid ELS
+122	Road and rail networks			no anchor-valid ELS
+123	Port areas			no anchor-valid ELS
+131	Mineral extraction sites			no anchor-valid ELS
+132	Dump sites			no anchor-valid ELS
+141	Green urban areas	area of developed open space [ENVO:01000379]	from_corine	needs_verification
+142	Sport and leisure facilities			no anchor-valid ELS
+211	Non-irrigated arable land	agricultural field [ENVO:00000114]	from_corine	yes	used in crosswalk
+231	Pastures	grassland area [ENVO:00000106]	from_corine	needs_verification	pasture is more specific but ENVO:00000446 needs anchor check
+242	Complex cultivation patterns	agricultural field [ENVO:00000114]	from_corine	yes	used in crosswalk
+243	Agriculture with significant natural vegetation	agricultural field [ENVO:00000114]	from_corine	yes	used in crosswalk; coarser than ideal
+311	Broad-leaved forest	woodland area [ENVO:01000175]	from_corine	yes	used in crosswalk; more specific term (deciduous) needs verification
+312	Coniferous forest	temperate evergreen needleleaf forest [ENVO:01000383]	from_corine	yes	used in crosswalk row 81
+313	Mixed forest	woodland area [ENVO:01000175]	from_corine	yes	used in crosswalk
+321	Natural grasslands	grassland area [ENVO:00000106]	from_corine	yes	used in crosswalk
+322	Moors and heathland	heath [ENVO:00000107]	from_corine	yes	used in crosswalk
+324	Transitional woodland-shrub	woodland area [ENVO:01000175]	from_corine	needs_verification	shrubland-specific term may exist
+331	Beaches, dunes, sands	coastal dune [ENVO:00000416]	from_corine	yes	used in crosswalk; sandy beach [ENVO:00000086] if non-dune
+411	Inland marshes	freshwater marsh [ENVO:00000566]	from_corine	needs_verification	ENVO:00000566 needs anchor check
+412	Peat bogs	peat bog [ENVO:00000044]	from_corine	needs_verification	peat bog in ELS allow-list per README
+421	Salt marshes	saline marsh [ENVO:00000054]	from_corine	yes	used in crosswalk
+423	Intertidal flats	intertidal zone [ENVO:00000316]	from_corine	yes	used in crosswalk
+512	Water bodies	water body [ENVO:00000063]	from_corine	needs_verification
+521	Coastal lagoons	coastal lagoon [ENVO:00000399]	from_corine	needs_verification
+523	Sea and ocean			env_medium territory; no ELS

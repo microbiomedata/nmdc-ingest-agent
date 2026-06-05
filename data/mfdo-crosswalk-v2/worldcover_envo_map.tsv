@@ -1,0 +1,12 @@
+worldcover_code	worldcover_label	env_local_scale	env_local_scale_provenance	ols_verified	notes
+10	Tree cover	woodland area [ENVO:01000175]	from_worldcover	yes	used in crosswalk; too broad to distinguish forest types -- prefer CORINE when available
+20	Shrubland		from_worldcover	needs_verification	shrubland biome ENVO:01000176 may be EBS not ELS; needs anchor check
+30	Grassland	grassland area [ENVO:00000106]	from_worldcover	yes	used in crosswalk
+40	Cropland	agricultural field [ENVO:00000114]	from_worldcover	yes	used in crosswalk
+50	Built-up	built environment [ENVO:01000247]	from_worldcover	needs_verification
+60	Bare / sparse vegetation	barren land [ENVO:01001116]	from_worldcover	needs_verification
+70	Snow and ice			no anchor-valid ELS without site-specific context
+80	Permanent water bodies	water body [ENVO:00000063]	from_worldcover	needs_verification
+90	Herbaceous wetland	wetland ecosystem [ENVO:01001209]	from_worldcover	needs_verification	too broad; prefer CORINE 411/412/421 when available
+95	Mangroves		from_worldcover	needs_verification	mangrove biome ENVO:01000181 may be EBS not ELS; needs anchor check
+100	Moss and lichen			no anchor-valid ELS without site-specific context

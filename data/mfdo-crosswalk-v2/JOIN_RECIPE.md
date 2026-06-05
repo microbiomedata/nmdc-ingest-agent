@@ -29,31 +29,30 @@ The `row_type` column distinguishes them:
   (`biosample_reconciliation:sampletype` for biogas, which the db types `Other` vs the ontology's
   `Water`; `biosample_reconciliation:floor` for under-specified bare soil/sediment).
 
-## 2. geo_loc_name (per biosample) — reliable coordinates only
+## 2. geo_loc_name (per biosample) — under discussion
 
-Only when `coords_reliable == 'Yes'`:
-
-```
-coord_key = f"{round(latitude,4)},{round(longitude,4)}"     # e.g. "55.6771,9.2778"
-join coord_key -> mfd_nominatim_geocode.tsv
-```
-
-Gives `country / state / municipality / town / display_name`; compose an INSDC-style
-`geo_loc_name` (e.g. `Denmark: Region Sjælland, Gedser`). All MFD biosamples carry bare
-"Denmark" from NCBI; this refines it.
+`mfd_nominatim_geocode.tsv` provides reverse-geocoded locality strings derived from
+coordinates. Enriching the submitter-provided `geo_loc_name` from this table is under
+discussion (see [#34](https://github.com/microbiomedata/nmdc-ingest-agent/issues/34))
+pending an NMDC policy decision on whether coordinate-derived locality strings may
+supplement submitter-provided text fields. Do not apply this enrichment until that
+question is settled.
 
 ## 3. ELS refinement for under-specified samples (optional) — reliable coordinates only
 
-For samples whose crosswalk `env_local_scale` is coarse/placeholder (notably the bare-soil
-reconciliation rows, where `env_local_scale = astronomical body part`), refine from satellite
-land cover:
+For samples whose crosswalk `env_local_scale` is a root-class placeholder (notably the
+bare-soil reconciliation rows), refine from satellite land cover:
 
 ```
-coord_key -> mfd_gee_landcover.tsv -> worldcover_label / corine_label
+coord_key -> mfd_gee_landcover.tsv -> corine_label (preferred) / worldcover_label (fallback)
 ```
 
-Apply where it adds specificity and mark provenance `from_gee`. **Do not** override a leaf's
-already-specific ELS with satellite data.
+Prefer `corine_label` when non-empty (EU coverage, 44 classes). Fall back to
+`worldcover_label` (global, 11 classes) for coordinates outside EU coverage.
+Apply a CORINE->EnvO or WorldCover->EnvO lookup table (see
+[#36](https://github.com/microbiomedata/nmdc-ingest-agent/issues/36)) and mark
+provenance `from_corine` or `from_worldcover`. **Do not** override a leaf's already-specific
+ELS with satellite data.
 
 ## coords_reliable
 
@@ -68,4 +67,6 @@ those; fall back to the crosswalk's leaf-level values.
   submission.
 - To rebuild the crosswalk: `python3 build_ontology_crosswalk.py` (fetches the two source xlsx
   from a pinned `cmc-aau/mfd_metadata` commit; `--ref` to override).
+- To apply the crosswalk to a biosample TSV: `python3 apply_crosswalk.py biosamples.tsv`
+  (see that script's `--help` for options). It implements the recipe above.
 </content>

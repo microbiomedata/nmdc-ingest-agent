@@ -32,6 +32,10 @@ import csv
 import sys
 from pathlib import Path
 
+# Default file names within the data directory; override with --crosswalk / --gee
+DEFAULT_CROSSWALK = "mfdo_nmdc_crosswalk.tsv"
+DEFAULT_GEE = "mfd_gee_landcover.tsv"
+
 # Columns stripped before output (internal bookkeeping, not NMDC slots)
 _PROVENANCE_SUFFIXES = ("_provenance",)
 _INTERNAL_COLS = frozenset(("row_type", "n_samples", "Natura2000", "EUNIS", "EMPO",
@@ -91,12 +95,18 @@ def _strip_internal(d: dict) -> dict:
     }
 
 
-def load_tables(data_dir: Path) -> tuple[dict, dict]:
-    crosswalk_rows = _load_tsv(data_dir / "mfdo_nmdc_crosswalk.tsv")
+def load_tables(data_dir: Path, crosswalk_name: str = DEFAULT_CROSSWALK,
+                gee_name: str = DEFAULT_GEE) -> tuple[dict, dict]:
+    crosswalk_rows = _load_tsv(data_dir / crosswalk_name)
     crosswalk = {_crosswalk_key(r): r for r in crosswalk_rows}
 
-    gee_rows = _load_tsv(data_dir / "mfd_gee_landcover.tsv")
-    gee = {r["coord_key"]: r for r in gee_rows}
+    gee_path = data_dir / gee_name
+    if gee_path.exists():
+        gee_rows = _load_tsv(gee_path)
+        gee = {r["coord_key"]: r for r in gee_rows}
+    else:
+        print(f"Warning: {gee_path} not found; GEE-based ELS refinement disabled", file=sys.stderr)
+        gee = {}
 
     return crosswalk, gee
 
@@ -147,12 +157,16 @@ def main() -> None:
                     help="TSV of MFD biosamples (from cmc-aau/mfd_metadata db xlsx)")
     ap.add_argument("--out", default="-", help="Output TSV path (default: stdout)")
     ap.add_argument("--data-dir", default=None,
-                    help="Directory containing crosswalk + GEE TSVs "
+                    help="Directory containing input TSVs "
                          "(default: same directory as this script)")
+    ap.add_argument("--crosswalk", default=DEFAULT_CROSSWALK,
+                    help=f"Crosswalk TSV filename within --data-dir (default: {DEFAULT_CROSSWALK})")
+    ap.add_argument("--gee", default=DEFAULT_GEE,
+                    help=f"GEE land-cover TSV filename within --data-dir (default: {DEFAULT_GEE})")
     args = ap.parse_args()
 
     data_dir = Path(args.data_dir) if args.data_dir else Path(__file__).parent
-    crosswalk, gee = load_tables(data_dir)
+    crosswalk, gee = load_tables(data_dir, args.crosswalk, args.gee)
 
     biosamples = _load_tsv(Path(args.biosamples))
     if not biosamples:
