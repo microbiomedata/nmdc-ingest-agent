@@ -3,12 +3,14 @@ of biosample-reconciliation rows (added so the per-biosample join is total) -> n
 Exact row and coverage counts are printed at the end of a run, not asserted here.
 
 Output: mfdo_nmdc_crosswalk.tsv
-  - All 5 MFDO levels (original columns)
-  - env_broad_scale, env_local_scale, env_medium (ENVO PV format)
-  - *_method, *_confidence for each triad slot
-  - cur_vegetation, cur_land_use, season, geo_loc_name
-  - misc_param_json (stringified JSON list of PropertyAssertions)
+  - row_type (ontology_leaf | biosample_reconciliation)
+  - all original MFDO columns (the 5 levels plus Natura2000/EUNIS/EMPO etc.)
   - n_samples (0 for unused ontology leaves)
+  - env_broad_scale, env_local_scale, env_medium (each "label [ENVO:CURIE]") with a
+    matching *_provenance column recording which signal drove the value
+  - cur_vegetation, cur_land_use (each with *_provenance)
+  - misc_param_json (stringified JSON list of PropertyAssertions) with *_provenance
+  - underspecified_slots (triad slots left at a coarse root value)
 """
 import argparse, csv, io, json, os, urllib.request, urllib.error, zipfile, xml.etree.ElementTree as ET
 from collections import Counter

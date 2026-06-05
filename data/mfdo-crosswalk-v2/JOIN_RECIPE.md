@@ -49,8 +49,11 @@ corine_label  -> corine_envo_map.tsv  -> env_local_scale  (EU coverage, 44 class
 worldcover_label -> worldcover_envo_map.tsv -> env_local_scale  (global, 11 classes)
 ```
 
-Only rows with `ols_verified=yes` in the map files are used. Provenance is set to
-`from_corine` or `from_worldcover`. **Do not** override a leaf's already-specific ELS.
+Only rows with `ols_verified=yes` in the map files are used. **Do not** override a leaf's
+already-specific ELS. `apply_crosswalk.py` notes the refinement source internally for its
+run summary; the committed `mfd_biosamples_annotated.tsv` carries the refined
+`env_local_scale` value itself, without a separate provenance column (all `*_provenance`
+columns are stripped before output).
 
 Note: the previous fallback was `astronomical body part [ENVO:01000813]`; it was
 replaced by `environmental zone [ENVO:01000408]` per NCBI Import Squad decision 2026-06-04.

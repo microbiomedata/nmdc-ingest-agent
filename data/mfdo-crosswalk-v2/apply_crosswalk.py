@@ -165,12 +165,19 @@ def annotate_biosample(bs: dict, crosswalk: dict, gee: dict,
         corine_label = gee_row.get("corine_label", "").strip()
         wc_label = gee_row.get("worldcover_label", "").strip()
 
-        # Prefer CORINE (EU coverage, 44 classes) over WorldCover (global, 11 classes)
-        refined = corine_map.get(corine_label) or worldcover_map.get(wc_label)
-        source = "corine" if corine_map.get(corine_label) else "worldcover"
+        # Prefer CORINE (EU coverage, 44 classes) over WorldCover (global, 11 classes).
+        # Record the label that actually drove the refinement, tied to its source -- not
+        # `corine_label or wc_label`, which would mislabel a WorldCover fallback with the
+        # (present but unmapped) CORINE label.
+        if corine_map.get(corine_label):
+            refined, source, src_label = corine_map[corine_label], "corine", corine_label
+        elif worldcover_map.get(wc_label):
+            refined, source, src_label = worldcover_map[wc_label], "worldcover", wc_label
+        else:
+            refined = None
         if refined:
             out["env_local_scale"] = refined
-            out["_els_refined_from_gee"] = f"{source}:{corine_label or wc_label}"
+            out["_els_refined_from_gee"] = f"{source}:{src_label}"
 
     # Recompute on final values so a GEE-refined env_local_scale drops out of the flag.
     out["underspecified_slots"] = _underspecified_slots(out)

@@ -97,7 +97,9 @@ def verify_mapping_file(path: Path, allowlist: dict, exclude: set,
         # term happens to sit under a valid anchor (e.g. 'coastal lagoon [ENVO:00000399]'
         # where ENVO:00000399 is actually 'ash cone').
         if curie not in allowlist:
-            verdict = "fails_anchor:excluded" if curie in exclude else "fails_anchor:not_in_envo"
+            # 'excluded' = under biome/material (in ENVO, wrong branch for ELS);
+            # 'not_in_els_allowlist' = not under any ELS anchor (may or may not be in ENVO).
+            verdict = "fails_anchor:excluded" if curie in exclude else "fails_anchor:not_in_els_allowlist"
         else:
             official = (allowlist[curie]["label"] or "").strip()
             if stated_label.casefold() != official.casefold():
