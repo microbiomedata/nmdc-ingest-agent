@@ -28,7 +28,6 @@ import time
 import urllib.parse
 import urllib.request
 import json
-from pathlib import Path
 
 import click
 

@@ -10,7 +10,7 @@ Output: mfdo_nmdc_crosswalk.tsv
   - n_samples (0 for unused ontology leaves)
 """
 import argparse, csv, io, json, os, urllib.request, urllib.error, zipfile, xml.etree.ElementTree as ET
-from collections import Counter, defaultdict
+from collections import Counter
 
 NS = {'a': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
 
