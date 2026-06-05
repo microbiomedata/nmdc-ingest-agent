@@ -8,7 +8,6 @@ Inputs:
 - `mfdo_nmdc_crosswalk.tsv` — per-leaf NMDC slot mappings (this directory)
 - `mfd_gee_landcover.tsv` — per-coordinate ESA WorldCover + CORINE land cover (this directory)
 - `corine_envo_map.tsv`, `worldcover_envo_map.tsv` — land-cover class → ENVO ELS lookup (this directory)
-- `mfd_nominatim_geocode.tsv` — per-coordinate Nominatim geocoding (this directory; use under discussion, see [#34](https://github.com/microbiomedata/nmdc-ingest-agent/issues/34))
 - the stock biosample table: fetch with `mfd_db_to_tsv.py` (this directory), which reads
   `analysis/releases/<date>_mfd_db.xlsx` from [cmc-aau/mfd_metadata](https://github.com/cmc-aau/mfd_metadata)
 
@@ -32,14 +31,11 @@ The `row_type` column distinguishes them:
   Note: Superasterids crop types (Beetroot, Sugar beet, etc.) appear as `ontology_leaf` rows --
   they are in the MFDO xlsx even though they read as taxonomic rather than habitat classifications.
 
-## 2. geo_loc_name (per biosample) — under discussion
+## 2. geo_loc_name (per biosample) — out of scope
 
-`mfd_nominatim_geocode.tsv` provides reverse-geocoded locality strings derived from
-coordinates. Enriching the submitter-provided `geo_loc_name` from this table is under
-discussion (see [#34](https://github.com/microbiomedata/nmdc-ingest-agent/issues/34))
-pending an NMDC policy decision on whether coordinate-derived locality strings may
-supplement submitter-provided text fields. Do not apply this enrichment until that
-question is settled.
+`geo_loc_name` is not enriched here. All MFD biosamples carry bare "Denmark" from NCBI.
+Deriving a finer locality from coordinates would change a submitter-provided field, so it
+is parked pending an NMDC policy decision. No coordinate-to-locality table is included.
 
 ## 3. ELS refinement for under-specified samples (optional) — reliable coordinates only
 
@@ -64,7 +60,7 @@ old value.
 ## coords_reliable
 
 Projects **P04_3, P04_5, P06_3** plus 32 individually flagged samples have unreliable
-coordinates (`coords_reliable == 'No'`). Do **not** derive `geo_loc_name` or GEE-based ELS for
+coordinates (`coords_reliable == 'No'`). Do **not** apply GEE-based ELS refinement for
 those; fall back to the crosswalk's leaf-level values.
 
 ## Notes
