@@ -1,5 +1,6 @@
-"""Build the MFDO -> nmdc-schema crosswalk: 279 MFDO ontology leaves plus a small number of
-biosample-reconciliation rows (~288 rows total) -> nmdc-schema slots.
+"""Build the MFDO -> nmdc-schema crosswalk: one row per MFDO ontology leaf plus a small number
+of biosample-reconciliation rows (added so the per-biosample join is total) -> nmdc-schema slots.
+Exact row and coverage counts are printed at the end of a run, not asserted here.
 
 Output: mfdo_nmdc_crosswalk.tsv
   - All 5 MFDO levels (original columns)
@@ -561,7 +562,9 @@ N2K_ELS = {
     '6410': ('ENVO:01000449', 'wet meadow ecosystem'),  # Molinia meadows (moist)
     # Refinements surfaced by mapping the full Annex I habitat names (richer than MFD labels)
     # against the label+definition+synonym ENVO backend; each OLS-verified + allow-listed.
-    '1150': ('ENVO:00000038', 'lagoon'),            # Coastal lagoons (was: lake)
+    # 1150 "Coastal lagoons" intentionally has NO override: lagoon [ENVO:00000038] sits under
+    # 'aquatic layer', not under any env_local_scale anchor, so it fails the ELS allow-list and
+    # ENVO has no anchor-valid 'coastal lagoon' term. Falls back to the leaf default (lake).
     '2330': ('ENVO:01001811', 'temperate grassland'), # Inland dunes with open grasslands (was: coastal dune)
     '3130': ('ENVO:01000775', 'mesotrophic lake'),  # Oligotrophic-mesotrophic standing waters (was: lake)
     '3140': ('ENVO:01000775', 'mesotrophic lake'),  # Hard oligo-mesotrophic waters with Chara (was: lake)

@@ -1,0 +1,3 @@
+# Derived ELS allow-list: regenerated on demand by generate_els_allowlist.py.
+# Not committed (goes stale with each ENVO release; the script is the source of truth).
+els_allowlist.tsv

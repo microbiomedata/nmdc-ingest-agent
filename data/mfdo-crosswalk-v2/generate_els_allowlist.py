@@ -83,33 +83,35 @@ def verify_mapping_file(path: Path, allowlist: dict, exclude: set,
         els = (row.get("env_local_scale") or "").strip()
         if not els:
             continue
-        curie = None
+        curie, stated_label = None, ""
         if "[" in els and "]" in els:
             curie = els[els.rfind("[") + 1:els.rfind("]")].strip()
+            stated_label = els[:els.rfind("[")].strip()
         if not curie:
             continue
-        # Check all rows with a CURIE -- already-'yes' rows may have wrong CURIEs.
-        if status == "yes":
-            if curie not in allowlist:
-                reason = "fails_anchor:excluded" if curie in exclude else "fails_anchor:not_in_envo"
-                row["ols_verified"] = reason
-                updated += 1
-                click.echo(f"    {row[code_col]} {row[label_col][:40]:40} WAS yes -> {reason} ({curie})", err=True)
-            continue
-        if status != "needs_verification":
-            continue
-        if curie in allowlist:
-            row["ols_verified"] = "yes"
-            updated += 1
-            click.echo(f"    {row[code_col]} {row[label_col][:40]:40} -> verified ({curie})", err=True)
-        elif curie in exclude:
-            row["ols_verified"] = "fails_anchor:excluded"
-            updated += 1
-            click.echo(f"    {row[code_col]} {row[label_col][:40]:40} -> EXCLUDED ({curie})", err=True)
+
+        # Determine the verdict from scratch for every row that carries a CURIE, so an
+        # already-'yes' row with a wrong CURIE or a mislabeled CURIE is downgraded.
+        # ols_verified=yes requires BOTH: anchor-valid AND the stated label matches the
+        # ENVO official label. Label concordance is what catches a fabricated CURIE whose
+        # term happens to sit under a valid anchor (e.g. 'coastal lagoon [ENVO:00000399]'
+        # where ENVO:00000399 is actually 'ash cone').
+        if curie not in allowlist:
+            verdict = "fails_anchor:excluded" if curie in exclude else "fails_anchor:not_in_envo"
         else:
-            row["ols_verified"] = "fails_anchor:not_in_envo"
+            official = (allowlist[curie]["label"] or "").strip()
+            if stated_label.casefold() != official.casefold():
+                verdict = f"fails_label:is_{official!r}"
+            else:
+                verdict = "yes"
+
+        if status in ("needs_verification", "yes") and row.get("ols_verified") != verdict:
+            row["ols_verified"] = verdict
             updated += 1
-            click.echo(f"    {row[code_col]} {row[label_col][:40]:40} -> NOT IN ENVO ({curie})", err=True)
+            click.echo(f"    {row[code_col]} {row[label_col][:40]:40} -> {verdict} ({curie})", err=True)
+        elif status == "needs_verification":
+            row["ols_verified"] = verdict
+            updated += 1
     with path.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t", extrasaction="ignore")
         w.writeheader()
