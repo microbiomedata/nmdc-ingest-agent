@@ -40,7 +40,16 @@ _PROVENANCE_SUFFIXES = ("_provenance",)
 _INTERNAL_COLS = frozenset(("row_type", "n_samples", "Natura2000", "EUNIS", "EMPO",
                              "mfd_hab1_code", "mfd_hab2_code", "mfd_hab3_code"))
 
-_VAGUE_ELS = frozenset({"astronomical body part [ENVO:01000813]", ""})
+# ELS values vague enough that a GEE satellite signal is allowed to refine them.
+# "astronomical body part" was the original root-class placeholder; the crosswalk
+# now uses "environmental zone" as the preferred fallback per NCBI Import Squad
+# decision (2026-06-04). Both are included so the refinement fires correctly
+# regardless of which placeholder a crosswalk row carries.
+_VAGUE_ELS = frozenset({
+    "astronomical body part [ENVO:01000813]",
+    "environmental zone [ENVO:01000408]",
+    "",
+})
 
 
 def _coord_key(lat: str, lon: str, decimals: int = 4) -> str:
