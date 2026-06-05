@@ -1,0 +1,1511 @@
+envo_curie	envo_label	anchor_roots
+ENVO:00000000	geographic feature	astronomical body part
+ENVO:00000001	bedding-plane cave	astronomical body part
+ENVO:00000002	anthropogenic geographic feature	astronomical body part
+ENVO:00000010	transport feature	astronomical body part
+ENVO:00000011	garden	astronomical body part
+ENVO:00000012	hydrographic feature	astronomical body part
+ENVO:00000013	cave system	astronomical body part
+ENVO:00000014	canal	astronomical body part
+ENVO:00000015	ocean	astronomical body part
+ENVO:00000016	sea	astronomical body part
+ENVO:00000017	saline hydrographic feature	astronomical body part
+ENVO:00000019	saline lake	astronomical body part
+ENVO:00000020	lake	astronomical body part
+ENVO:00000021	freshwater lake	astronomical body part
+ENVO:00000022	river	astronomical body part
+ENVO:00000023	stream	astronomical body part
+ENVO:00000025	reservoir	astronomical body part
+ENVO:00000026	well	astronomical body part
+ENVO:00000027	spring	astronomical body part
+ENVO:00000028	sand pit quarry	astronomical body part
+ENVO:00000029	watercourse	astronomical body part
+ENVO:00000030	dead cave	astronomical body part
+ENVO:00000031	wadi	astronomical body part
+ENVO:00000032	bay	astronomical body part
+ENVO:00000033	pond	astronomical body part
+ENVO:00000034	rapids	astronomical body part
+ENVO:00000035	marsh	wetland ecosystem
+ENVO:00000036	irrigation canal	astronomical body part
+ENVO:00000037	ditch	astronomical body part
+ENVO:00000039	fjord	astronomical body part
+ENVO:00000040	waterfall	astronomical body part
+ENVO:00000041	tidal creek	astronomical body part
+ENVO:00000042	drainage canal	astronomical body part
+ENVO:00000043	wetland area	astronomical body part|environmental zone
+ENVO:00000044	peatland	wetland ecosystem
+ENVO:00000045	estuary	astronomical body part
+ENVO:00000046	hedge	astronomical body part
+ENVO:00000048	navigation canal	astronomical body part
+ENVO:00000050	geyser	astronomical body part
+ENVO:00000051	hot spring	astronomical body part
+ENVO:00000052	volcanic crater lake	astronomical body part
+ENVO:00000053	freshwater marsh	wetland ecosystem
+ENVO:00000054	saline marsh	wetland ecosystem
+ENVO:00000055	saline evaporation pond	astronomical body part
+ENVO:00000056	fishpond	astronomical body part
+ENVO:00000057	mangrove swamp	wetland ecosystem
+ENVO:00000058	underground lake	astronomical body part
+ENVO:00000059	underground river	astronomical body part
+ENVO:00000060	underground stream	astronomical body part
+ENVO:00000061	underground water body	astronomical body part
+ENVO:00000062	populated place	environmental zone
+ENVO:00000063	water body	astronomical body part
+ENVO:00000064	road	astronomical body part
+ENVO:00000065	railway	astronomical body part
+ENVO:00000066	man-made tunnel	astronomical body part
+ENVO:00000067	cave	astronomical body part
+ENVO:00000068	tunnel	astronomical body part
+ENVO:00000069	distributary	astronomical body part
+ENVO:00000070	human construction	astronomical body part
+ENVO:00000071	fault cave	astronomical body part
+ENVO:00000072	aquaduct	astronomical body part
+ENVO:00000073	building	astronomical body part
+ENVO:00000074	dam	astronomical body part
+ENVO:00000075	bridge	astronomical body part
+ENVO:00000076	mine	astronomical body part
+ENVO:00000079	flume	astronomical body part
+ENVO:00000080	mountain range	astronomical body part
+ENVO:00000081	mountain	astronomical body part
+ENVO:00000082	hill range	astronomical body part
+ENVO:00000083	hill	astronomical body part
+ENVO:00000084	mountain pass	astronomical body part
+ENVO:00000086	plain	astronomical body part
+ENVO:00000087	cliff	astronomical body part
+ENVO:00000088	sea cliff	astronomical body part
+ENVO:00000089	inland cliff	astronomical body part
+ENVO:00000090	coastal plain	astronomical body part
+ENVO:00000091	beach	astronomical body part
+ENVO:00000092	sea beach	astronomical body part
+ENVO:00000093	lacustrine beach	astronomical body part
+ENVO:00000094	volcanic feature	astronomical body part
+ENVO:00000096	caldera	astronomical body part
+ENVO:00000097	desert area	astronomical body part|environmental zone
+ENVO:00000098	island	astronomical body part
+ENVO:00000099	artificial island	astronomical body part
+ENVO:00000100	valley	astronomical body part
+ENVO:00000101	delta	astronomical body part
+ENVO:00000103	mangrove island	astronomical body part
+ENVO:00000104	undersea feature	astronomical body part
+ENVO:00000105	lake surface	astronomical body part
+ENVO:00000106	grassland area	astronomical body part|environmental zone
+ENVO:00000107	heath	astronomical body part|environmental zone
+ENVO:00000108	meadow ecosystem	astronomical body part|terrestrial ecosystem
+ENVO:00000109	woodland area	astronomical body part|environmental zone
+ENVO:00000110	lava tunnel	astronomical body part
+ENVO:00000111	forested area	astronomical body part|environmental zone
+ENVO:00000112	area of tundra	astronomical body part|environmental zone
+ENVO:00000114	agricultural field	astronomical body part
+ENVO:00000115	orchard	astronomical body part
+ENVO:00000116	vineyard	astronomical body part
+ENVO:00000117	plantation	astronomical body part
+ENVO:00000118	coconut plantation	astronomical body part
+ENVO:00000119	planted forest	astronomical body part|terrestrial ecosystem
+ENVO:00000120	oil palm plantation	astronomical body part
+ENVO:00000121	artificial channel	astronomical body part
+ENVO:00000122	track	astronomical body part
+ENVO:00000125	mineral spring	astronomical body part
+ENVO:00000126	sulfur spring	astronomical body part
+ENVO:00000127	badland	astronomical body part
+ENVO:00000128	dry valley	astronomical body part
+ENVO:00000129	stream valley	astronomical body part
+ENVO:00000130	rocky reef	astronomical body part
+ENVO:00000137	coastal inlet	astronomical body part
+ENVO:00000138	cove	astronomical body part
+ENVO:00000139	irrigation ditch	astronomical body part
+ENVO:00000140	drainage ditch	astronomical body part
+ENVO:00000141	bank	astronomical body part
+ENVO:00000142	stream bank	astronomical body part
+ENVO:00000143	river bank	astronomical body part
+ENVO:00000145	ice cap	astronomical body part
+ENVO:00000146	snow field	astronomical body part
+ENVO:00000147	ocean current	astronomical body part
+ENVO:00000148	riffle	astronomical body part
+ENVO:00000149	artificial reef	astronomical body part
+ENVO:00000150	coral reef	astronomical body part
+ENVO:00000151	sabkha	astronomical body part
+ENVO:00000152	anabranch	astronomical body part
+ENVO:00000153	headwater	astronomical body part
+ENVO:00000154	flood meadow ecosystem	astronomical body part|terrestrial ecosystem
+ENVO:00000155	cirque	astronomical body part
+ENVO:00000156	desert oasis	astronomical body part|environmental zone
+ENVO:00000157	peat cut	astronomical body part
+ENVO:00000158	causeway	astronomical body part
+ENVO:00000159	sugar plantation	astronomical body part
+ENVO:00000160	sisal plantation	astronomical body part
+ENVO:00000161	banana plantation	astronomical body part
+ENVO:00000162	tea plantation	astronomical body part
+ENVO:00000163	coffee plantation	astronomical body part
+ENVO:00000164	rubber plantation	astronomical body part
+ENVO:00000165	asphalt lake	astronomical body part
+ENVO:00000166	atoll	astronomical body part
+ENVO:00000167	bar	astronomical body part
+ENVO:00000168	blowhole	astronomical body part
+ENVO:00000169	canyon	astronomical body part
+ENVO:00000170	dune	astronomical body part
+ENVO:00000171	river valley	astronomical body part
+ENVO:00000172	sandy desert	astronomical body part|environmental zone
+ENVO:00000173	rocky desert	astronomical body part|environmental zone
+ENVO:00000174	isthmus	astronomical body part
+ENVO:00000175	karst	astronomical body part
+ENVO:00000176	elevated landform	astronomical body part
+ENVO:00000177	moraine	astronomical body part
+ENVO:00000178	levee	astronomical body part
+ENVO:00000179	mesa	astronomical body part
+ENVO:00000180	mound	astronomical body part
+ENVO:00000181	nunatak	astronomical body part
+ENVO:00000182	plateau	astronomical body part
+ENVO:00000183	stony desert	astronomical body part|environmental zone
+ENVO:00000184	hanging valley	astronomical body part
+ENVO:00000185	raised mire	wetland ecosystem
+ENVO:00000186	string mire	wetland ecosystem
+ENVO:00000187	tundra mire	wetland ecosystem
+ENVO:00000188	palsa mire	wetland ecosystem
+ENVO:00000189	peat swamp	wetland ecosystem
+ENVO:00000190	abyssal feature	astronomical body part
+ENVO:00000191	solid astronomical body part	astronomical body part
+ENVO:00000192	mudflat	wetland ecosystem
+ENVO:00000193	olive grove	astronomical body part
+ENVO:00000195	sinkhole	astronomical body part
+ENVO:00000196	alkaline flat	astronomical body part
+ENVO:00000197	endorheic lake	astronomical body part
+ENVO:00000198	ice-covered lake	astronomical body part
+ENVO:00000199	meromictic lake	astronomical body part
+ENVO:00000200	periglacial lake	astronomical body part
+ENVO:00000201	fjord lake	astronomical body part
+ENVO:00000202	oxbow lake	astronomical body part
+ENVO:00000203	rift lake	astronomical body part
+ENVO:00000204	ephemeral spring	astronomical body part
+ENVO:00000205	permanent spring	astronomical body part
+ENVO:00000206	marine neritic zone	astronomical body part
+ENVO:00000207	oceanic zone	astronomical body part
+ENVO:00000208	marine pelagic zone	astronomical body part
+ENVO:00000209	marine photic zone	astronomical body part
+ENVO:00000210	marine aphotic zone	astronomical body part
+ENVO:00000211	marine bathypelagic zone	astronomical body part
+ENVO:00000212	marine abyssalpelagic zone	astronomical body part
+ENVO:00000213	marine mesopelagic zone	astronomical body part
+ENVO:00000214	hadalpelagic zone	astronomical body part
+ENVO:00000215	hydrothermal vent	astronomical body part
+ENVO:00000216	fumarole	astronomical body part
+ENVO:00000217	solfatara	astronomical body part
+ENVO:00000218	black smoker	astronomical body part
+ENVO:00000219	landlocked sea	astronomical body part
+ENVO:00000220	archipelago	astronomical body part
+ENVO:00000221	continental island	astronomical body part
+ENVO:00000222	oceanic island	astronomical body part
+ENVO:00000223	continental shelf	astronomical body part
+ENVO:00000224	slightly stratified estuary	astronomical body part
+ENVO:00000225	highly stratified estuary	astronomical body part
+ENVO:00000226	saline wedge estuary	astronomical body part
+ENVO:00000228	inverse estuary	astronomical body part
+ENVO:00000229	intermittent estuary	astronomical body part
+ENVO:00000230	coastal wetland ecosystem	wetland ecosystem
+ENVO:00000231	moor	wetland ecosystem
+ENVO:00000232	fen	wetland ecosystem
+ENVO:00000233	swamp ecosystem	wetland ecosystem
+ENVO:00000234	bayou	astronomical body part
+ENVO:00000235	carr	wetland ecosystem
+ENVO:00000236	dambo	wetland ecosystem
+ENVO:00000237	hydromorphic/phreatic dambo	wetland ecosystem
+ENVO:00000238	fluvial dambo	wetland ecosystem
+ENVO:00000239	pocasin	wetland ecosystem
+ENVO:00000240	saline wetland	wetland ecosystem
+ENVO:00000241	tidal mudflat	wetland ecosystem
+ENVO:00000242	lacustrine mudflat	wetland ecosystem
+ENVO:00000243	freshwater wetland ecosystem	wetland ecosystem
+ENVO:00000244	abyssal plain	astronomical body part
+ENVO:00000245	maar	astronomical body part
+ENVO:00000246	volcanic crater	astronomical body part
+ENVO:00000247	volcano	astronomical body part
+ENVO:00000248	glacial valley	astronomical body part
+ENVO:00000249	lateral moraine	astronomical body part
+ENVO:00000250	medial moraine	astronomical body part
+ENVO:00000251	ground moraine	astronomical body part
+ENVO:00000252	terminal moraine	astronomical body part
+ENVO:00000253	scroll plane	astronomical body part
+ENVO:00000254	till plain	astronomical body part
+ENVO:00000255	flood plain	astronomical body part
+ENVO:00000256	floodway	astronomical body part
+ENVO:00000257	flood fringe	astronomical body part
+ENVO:00000258	alluvial plain	astronomical body part
+ENVO:00000259	lacustrine plain	astronomical body part
+ENVO:00000260	prairie	astronomical body part|environmental zone
+ENVO:00000261	savanna	astronomical body part|environmental zone
+ENVO:00000262	steppe	astronomical body part|environmental zone
+ENVO:00000263	fissure cave	astronomical body part
+ENVO:00000264	seamount	astronomical body part
+ENVO:00000265	guyot	astronomical body part
+ENVO:00000266	pasture	astronomical body part|terrestrial ecosystem
+ENVO:00000267	submarine canyon	astronomical body part
+ENVO:00000268	lake bed	astronomical body part
+ENVO:00000269	land-tied island	astronomical body part
+ENVO:00000270	beaver pond	astronomical body part
+ENVO:00000271	chott	astronomical body part
+ENVO:00000272	confluence	astronomical body part
+ENVO:00000273	continental slope	astronomical body part
+ENVO:00000274	continental rise	astronomical body part
+ENVO:00000275	ocean trench	astronomical body part
+ENVO:00000276	drumlin	astronomical body part
+ENVO:00000277	dry lake	astronomical body part
+ENVO:00000278	dry stream	astronomical body part
+ENVO:00000279	saline pan	astronomical body part
+ENVO:00000280	escarpment	astronomical body part
+ENVO:00000281	fault escarpment	astronomical body part
+ENVO:00000282	esker	astronomical body part
+ENVO:00000283	ridge	astronomical body part
+ENVO:00000284	quarry	astronomical body part
+ENVO:00000286	polder	astronomical body part
+ENVO:00000287	butte	astronomical body part
+ENVO:00000288	cotton plantation	astronomical body part
+ENVO:00000289	horst	astronomical body part
+ENVO:00000290	graben	astronomical body part
+ENVO:00000291	drainage basin	astronomical body part
+ENVO:00000292	watershed	astronomical body part
+ENVO:00000293	continental divide	astronomical body part
+ENVO:00000295	fish hatchery	astronomical body part
+ENVO:00000296	rice field	astronomical body part
+ENVO:00000297	paddy field	astronomical body part
+ENVO:00000298	marine iceberg	astronomical body part
+ENVO:00000299	ice field	astronomical body part
+ENVO:00000300	scrubland area	astronomical body part|environmental zone
+ENVO:00000301	chaparral area	astronomical body part|environmental zone
+ENVO:00000302	rift valley	astronomical body part
+ENVO:00000303	sea coast	astronomical body part
+ENVO:00000304	shore	astronomical body part
+ENVO:00000305	peninsula	astronomical body part
+ENVO:00000306	spit	astronomical body part
+ENVO:00000307	icefall	astronomical body part
+ENVO:00000308	dune slack	astronomical body part
+ENVO:00000309	depressed landform	astronomical body part
+ENVO:00000310	meteor impact crater	astronomical body part
+ENVO:00000311	kettle	astronomical body part
+ENVO:00000312	sandur	astronomical body part
+ENVO:00000313	blowout	astronomical body part
+ENVO:00000314	alluvial fan	astronomical body part
+ENVO:00000315	bajada	astronomical body part
+ENVO:00000316	intertidal zone	astronomical body part
+ENVO:00000317	tidal pool	astronomical body part
+ENVO:00000318	high tide zone	astronomical body part
+ENVO:00000319	low tide zone	astronomical body part
+ENVO:00000320	crevasse	astronomical body part
+ENVO:00000321	joint-plane cave	astronomical body part
+ENVO:00000322	volcanic cave	astronomical body part
+ENVO:00000323	live cave	astronomical body part
+ENVO:00000324	outflow cave	astronomical body part
+ENVO:00000325	polje	astronomical body part
+ENVO:00000326	sea cave	astronomical body part
+ENVO:00000327	speleothem	astronomical body part
+ENVO:00000329	phreatic zone	astronomical body part
+ENVO:00000330	stalagmite	astronomical body part
+ENVO:00000331	stalactite	astronomical body part
+ENVO:00000332	doline	astronomical body part
+ENVO:00000333	subjacent karst	astronomical body part
+ENVO:00000334	syngenetic karst	astronomical body part
+ENVO:00000335	polygonal karst	astronomical body part
+ENVO:00000336	doline karst	astronomical body part
+ENVO:00000342	ice cap dome	astronomical body part
+ENVO:00000344	grain of desert sand	astronomical body part
+ENVO:00000345	grain of beach sand	astronomical body part
+ENVO:00000346	grain of acid dune sand	astronomical body part
+ENVO:00000350	somma volcano	astronomical body part
+ENVO:00000351	volcanic arc	astronomical body part
+ENVO:00000352	continental arc	astronomical body part
+ENVO:00000353	island arc	astronomical body part
+ENVO:00000354	volcanic field	astronomical body part
+ENVO:00000355	monogenetic volcanic field	astronomical body part
+ENVO:00000356	pyroclastic cone	astronomical body part
+ENVO:00000357	lock	astronomical body part
+ENVO:00000368	ephemeral island	astronomical body part
+ENVO:00000369	brine pool	astronomical body part
+ENVO:00000370	tuya	astronomical body part
+ENVO:00000371	complex volcano	astronomical body part
+ENVO:00000372	pyroclastic shield volcano	astronomical body part
+ENVO:00000377	artificial lake	astronomical body part
+ENVO:00000378	canal head reservoir	astronomical body part
+ENVO:00000380	ice shelf	astronomical body part
+ENVO:00000381	massif	astronomical body part
+ENVO:00000382	lake shore	astronomical body part
+ENVO:00000383	stream bed	astronomical body part
+ENVO:00000384	river bed	astronomical body part
+ENVO:00000385	stream mouth	astronomical body part
+ENVO:00000386	river mouth	astronomical body part
+ENVO:00000387	container of an intermittent lake	astronomical body part
+ENVO:00000389	intermittent wetland	wetland ecosystem
+ENVO:00000390	mountain spur	astronomical body part
+ENVO:00000391	land bridge	astronomical body part
+ENVO:00000392	ice tongue	astronomical body part
+ENVO:00000393	sound	astronomical body part
+ENVO:00000394	strait	astronomical body part
+ENVO:00000395	channel of a watercourse	astronomical body part
+ENVO:00000396	marine channel	astronomical body part
+ENVO:00000397	lake channel	astronomical body part
+ENVO:00000398	volcanic cone	astronomical body part
+ENVO:00000399	ash cone	astronomical body part
+ENVO:00000400	cinder cone	astronomical body part
+ENVO:00000401	spatter cone	astronomical body part
+ENVO:00000402	mud volcano	astronomical body part
+ENVO:00000403	shield volcano	astronomical body part
+ENVO:00000404	stratovolcano	astronomical body part
+ENVO:00000406	mid-ocean ridge	astronomical body part
+ENVO:00000407	subglacial volcano	astronomical body part
+ENVO:00000408	volcanic fissure	astronomical body part
+ENVO:00000409	whirlpool	astronomical body part
+ENVO:00000410	kipuka	astronomical body part
+ENVO:00000411	ford	astronomical body part
+ENVO:00000412	tidal watercourse	astronomical body part
+ENVO:00000413	pingo	astronomical body part
+ENVO:00000414	natural arch	astronomical body part
+ENVO:00000415	raised beach	astronomical body part
+ENVO:00000416	coastal dune	astronomical body part
+ENVO:00000417	machair	astronomical body part
+ENVO:00000418	ria	astronomical body part
+ENVO:00000419	stack	astronomical body part
+ENVO:00000420	tombolo	astronomical body part
+ENVO:00000421	wave-cut platform	astronomical body part
+ENVO:00000422	limestone pavement	astronomical body part
+ENVO:00000423	river island	astronomical body part
+ENVO:00000424	lake island	astronomical body part
+ENVO:00000426	ocean floor	astronomical body part
+ENVO:00000427	meander	astronomical body part
+ENVO:00000429	arete	astronomical body part
+ENVO:00000430	dirt cone	astronomical body part
+ENVO:00000431	drumlin field	astronomical body part
+ENVO:00000432	monadnock	astronomical body part
+ENVO:00000433	kame terrace	astronomical body part
+ENVO:00000434	outwash fan	astronomical body part
+ENVO:00000435	proglacial lake	astronomical body part
+ENVO:00000436	tunnel valley	astronomical body part
+ENVO:00000437	Nye channel	astronomical body part
+ENVO:00000438	alas	astronomical body part
+ENVO:00000439	dell	astronomical body part
+ENVO:00000440	rock shelter	astronomical body part
+ENVO:00000441	terracette	astronomical body part
+ENVO:00000442	maelstrom	astronomical body part
+ENVO:00000443	flood control reservoir	astronomical body part
+ENVO:00000444	woodland clearing	astronomical body part
+ENVO:00000445	transvasement	astronomical body part
+ENVO:00000448	hydroelectric reservoir	astronomical body part
+ENVO:00000449	drinking water reservoir	astronomical body part
+ENVO:00000450	irrigation reservoir	astronomical body part
+ENVO:00000451	amenity lake	astronomical body part
+ENVO:00000452	ribbon lake	astronomical body part
+ENVO:00000453	liman	astronomical body part
+ENVO:00000454	turlough	astronomical body part
+ENVO:00000455	tarn	astronomical body part
+ENVO:00000460	penplain	astronomical body part
+ENVO:00000461	pseudocrater	astronomical body part
+ENVO:00000462	polygenetic volcanic field	astronomical body part
+ENVO:00000463	harbour	astronomical body part
+ENVO:00000464	artificial harbor	astronomical body part
+ENVO:00000465	natural harbor	astronomical body part
+ENVO:00000467	university campus	astronomical body part
+ENVO:00000468	hydroelectric dam	astronomical body part
+ENVO:00000469	research facility	astronomical body part
+ENVO:00000470	irrigation dam	astronomical body part
+ENVO:00000471	flood control dam	astronomical body part
+ENVO:00000472	backwater	astronomical body part
+ENVO:00000473	gravel pit	astronomical body part
+ENVO:00000474	cut	astronomical body part
+ENVO:00000475	inlet	astronomical body part
+ENVO:00000476	lake inlet	astronomical body part
+ENVO:00000477	mount	astronomical body part
+ENVO:00000478	range of mounts	astronomical body part
+ENVO:00000479	mouth	astronomical body part
+ENVO:00000480	peak	astronomical body part
+ENVO:00000481	pinnacle	astronomical body part
+ENVO:00000482	sea floor	astronomical body part
+ENVO:00000483	plunge pool	astronomical body part
+ENVO:00000484	polynya	astronomical body part
+ENVO:00000485	sea shore	astronomical body part
+ENVO:00000487	paternoster lake	astronomical body part
+ENVO:00000488	glacial lake	astronomical body part
+ENVO:00000489	palsa	astronomical body part
+ENVO:00000490	consequent stream	astronomical body part
+ENVO:00000491	subsequent stream	astronomical body part
+ENVO:00000492	resequent stream	astronomical body part
+ENVO:00000493	obsequent stream	astronomical body part
+ENVO:00000494	insequent stream	astronomical body part
+ENVO:00000495	tributary	astronomical body part
+ENVO:00000496	rill	astronomical body part
+ENVO:00000497	rincon	astronomical body part
+ENVO:00000498	volcanic dike	astronomical body part
+ENVO:00000499	trough	astronomical body part
+ENVO:00000501	submerged bed	astronomical body part
+ENVO:00000502	container of an intermittent saline lake	astronomical body part
+ENVO:00000503	container of an intermittent oxbow lake	astronomical body part
+ENVO:00000504	container of an intermittent pond	astronomical body part
+ENVO:00000505	underground irrigation canal	astronomical body part
+ENVO:00000506	intermittently filled reservoir	astronomical body part
+ENVO:00000507	wadi mouth	astronomical body part
+ENVO:00000508	terrace	astronomical body part
+ENVO:00000509	marine terrace	astronomical body part
+ENVO:00000510	meander neck	astronomical body part
+ENVO:00000511	blanket bog	wetland ecosystem
+ENVO:00000512	pond bed	astronomical body part
+ENVO:00000513	reservoir bed	astronomical body part
+ENVO:00000514	crater	astronomical body part
+ENVO:00000515	road cut	astronomical body part
+ENVO:00000516	hummock	astronomical body part
+ENVO:00000517	lost stream	astronomical body part
+ENVO:00000518	ditch mouth	astronomical body part
+ENVO:00000519	agricultural terrace	astronomical body part
+ENVO:00000520	landslide	astronomical body part
+ENVO:00000521	rockfall	astronomical body part
+ENVO:00000522	canal tunnel	astronomical body part
+ENVO:00000523	cutoff	astronomical body part
+ENVO:00000524	abandoned watercourse	astronomical body part
+ENVO:00000525	canalized stream	astronomical body part
+ENVO:00000526	cliff cleft	astronomical body part
+ENVO:00000527	interfluve	astronomical body part
+ENVO:00000528	ice cap ridge	astronomical body part
+ENVO:00000529	beach ridge	astronomical body part
+ENVO:00000530	apron	astronomical body part
+ENVO:00000531	ice cap depression	astronomical body part
+ENVO:00000532	intermittent saline evaporation pond	astronomical body part
+ENVO:00000533	landfill	astronomical body part
+ENVO:00000534	riverine pothole	astronomical body part
+ENVO:00000535	weir	astronomical body part
+ENVO:00000536	moatan	astronomical body part
+ENVO:00000537	boulder field	astronomical body part
+ENVO:00000538	arrugado	astronomical body part
+ENVO:00000539	geographic sill	astronomical body part
+ENVO:00000540	brackish lake	astronomical body part
+ENVO:00000541	brackish pond	astronomical body part
+ENVO:00000542	kame	astronomical body part
+ENVO:00000543	swale	astronomical body part
+ENVO:00000544	leat	astronomical body part
+ENVO:00000545	shingle beach	astronomical body part
+ENVO:00000547	waterhole	astronomical body part
+ENVO:00000548	gravel field	astronomical body part
+ENVO:00000549	container of an intermittent water body	astronomical body part
+ENVO:00000550	range of seamounts	astronomical body part
+ENVO:00000551	endorheic basin	astronomical body part
+ENVO:00000552	talik	astronomical body part
+ENVO:00000553	multipurpose dam	astronomical body part
+ENVO:00000554	saddle dam	astronomical body part
+ENVO:00000555	check dam	astronomical body part
+ENVO:00000556	wing dam	astronomical body part
+ENVO:00000557	dry dam	astronomical body part
+ENVO:00000558	diversionary dam	astronomical body part
+ENVO:00000559	weapons test site	astronomical body part
+ENVO:00000560	nuclear weapons test site	astronomical body part
+ENVO:00000561	military training area	astronomical body part
+ENVO:00000562	park	astronomical body part
+ENVO:00000563	pier	astronomical body part
+ENVO:00000565	sports facility	astronomical body part
+ENVO:00000566	winter sports facility	astronomical body part
+ENVO:00000567	calanque	astronomical body part
+ENVO:00000856	city	astronomical body part
+ENVO:00001996	mine drainage	astronomical body part
+ENVO:00001997	acid mine drainage	astronomical body part
+ENVO:00001999	marine water body	astronomical body part
+ENVO:00002000	slope	astronomical body part
+ENVO:00002043	wastewater treatment plant	astronomical body part
+ENVO:00002061	oil spill	astronomical body part
+ENVO:00002063	oil seep	astronomical body part
+ENVO:00002112	gold mine drainage	astronomical body part
+ENVO:00002119	alkaline hot spring	astronomical body part
+ENVO:00002120	acidic hot spring	astronomical body part
+ENVO:00002121	alkaline salt lake	astronomical body part
+ENVO:00002128	mesophilic sulfur spring	astronomical body part
+ENVO:00002130	hypolimnion	astronomical body part
+ENVO:00002131	epilimnion	astronomical body part
+ENVO:00002132	metalimnion	astronomical body part
+ENVO:00002137	brackish estuary	astronomical body part
+ENVO:00002143	calcite hot spring	astronomical body part
+ENVO:00002144	cave wall	astronomical body part
+ENVO:00002167	platinum mine	astronomical body part
+ENVO:00002168	gold mine	astronomical body part
+ENVO:00002169	coal mine	astronomical body part
+ENVO:00002173	hospital	astronomical body part
+ENVO:00002178	iron-reducing zone of petroleum contaminated sediment	environmental zone
+ENVO:00002181	neutral hot spring	astronomical body part
+ENVO:00002184	subsurface landform	astronomical body part
+ENVO:00002185	oil reservoir	astronomical body part
+ENVO:00002195	pyritic acid mine drainage	astronomical body part
+ENVO:00002199	sandy beach	astronomical body part
+ENVO:00002204	anthropogenic contamination feature	astronomical body part
+ENVO:00002205	unexploded-ordnance dump	astronomical body part
+ENVO:00002214	power plant	astronomical body part
+ENVO:00002215	geothermal power plant	astronomical body part
+ENVO:00002221	shop	astronomical body part
+ENVO:00002222	food shop	astronomical body part
+ENVO:00002226	borehole	astronomical body part
+ENVO:00002268	sphagnum bog	wetland ecosystem
+ENVO:00002271	nuclear power plant	astronomical body part
+ENVO:00002272	waste treatment plant	astronomical body part
+ENVO:00002277	back-arc basin	astronomical body part
+ENVO:00002450	ocean basin	astronomical body part
+ENVO:00002926	warm seep	astronomical body part
+ENVO:00003040	animal house	astronomical body part
+ENVO:00003041	cow shed	astronomical body part
+ENVO:00003042	piggery	astronomical body part
+ENVO:00003043	sewage plant	astronomical body part
+ENVO:00003323	tannery	astronomical body part
+ENVO:00003861	industrial building	astronomical body part
+ENVO:00003862	dairy	astronomical body part
+ENVO:00003863	food processing building	astronomical body part
+ENVO:00003864	bakery	astronomical body part
+ENVO:00003885	brewery	astronomical body part
+ENVO:00003911	sake brewery	astronomical body part
+ENVO:00003919	research station	astronomical body part
+ENVO:00003963	warehouse	astronomical body part
+ENVO:00003964	tobacco warehouse	astronomical body part
+ENVO:00003967	creamery	astronomical body part
+ENVO:00004638	sawmill	astronomical body part
+ENVO:00004683	karst field	astronomical body part
+ENVO:00005745	allotment garden	astronomical body part
+ENVO:00005801	rhizosphere	astronomical body part
+ENVO:00009686	ice rise	astronomical body part
+ENVO:00009726	strand crack	astronomical body part
+ENVO:00010442	midden	astronomical body part
+ENVO:00010624	botanical garden	astronomical body part
+ENVO:00010625	zoological garden	astronomical body part
+ENVO:00011764	ocean time series station	astronomical body part
+ENVO:00012411	karst cave	astronomical body part
+ENVO:0010162	dry stream valley	astronomical body part
+ENVO:0010163	dry river valley	astronomical body part
+ENVO:01000002	water well	astronomical body part
+ENVO:01000003	oil well	astronomical body part
+ENVO:01000005	upwelling	astronomical body part
+ENVO:01000006	coastal upwelling	astronomical body part
+ENVO:01000019	cave floor	astronomical body part
+ENVO:01000057	marine algal bloom	astronomical body part
+ENVO:01000058	kelp forest	astronomical body part
+ENVO:01000059	sea grass bed	astronomical body part
+ENVO:01000061	marine wind mixed layer	astronomical body part
+ENVO:01000062	marine benthic storm	astronomical body part
+ENVO:01000064	marine downwelling	astronomical body part
+ENVO:01000065	marine oxygen minimum zone	astronomical body part
+ENVO:01000066	marine anoxic zone	astronomical body part
+ENVO:01000067	marine current	astronomical body part
+ENVO:01000068	marine streamer	astronomical body part
+ENVO:01000069	mesoscale marine eddy	astronomical body part
+ENVO:01000072	marine Taylor column	astronomical body part
+ENVO:01000073	marine oligotrophic desert	astronomical body part
+ENVO:01000074	oceanic gyre	astronomical body part
+ENVO:01000075	marine thermocline	astronomical body part
+ENVO:01000076	marine chemocline	astronomical body part
+ENVO:01000077	marine pycnocline	astronomical body part
+ENVO:01000078	marine nutricline	astronomical body part
+ENVO:01000080	pelagic isothermal surface	astronomical body part
+ENVO:01000081	pelagic isohaline surface	astronomical body part
+ENVO:01000083	pelagic isopycnal surface	astronomical body part
+ENVO:01000098	deep ocean current	astronomical body part
+ENVO:01000099	marine surface current	astronomical body part
+ENVO:01000100	along-front current	astronomical body part
+ENVO:01000101	warm surface current	astronomical body part
+ENVO:01000102	cold surface current	astronomical body part
+ENVO:01000103	western boundary current	astronomical body part
+ENVO:01000104	eastern boundary current	astronomical body part
+ENVO:01000106	permanent marine thermocline	astronomical body part
+ENVO:01000107	seasonal marine thermocline	astronomical body part
+ENVO:01000108	marine cold-water sphere	astronomical body part
+ENVO:01000109	marine warm-water sphere	astronomical body part
+ENVO:01000122	marine hydrothermal vent	astronomical body part
+ENVO:01000124	marine supra-littoral zone	astronomical body part
+ENVO:01000125	marine littoral zone	astronomical body part
+ENVO:01000126	marine sub-littoral zone	astronomical body part
+ENVO:01000129	marine hydrothermal vent chimney	astronomical body part
+ENVO:01000130	marine hydrothermal plume	astronomical body part
+ENVO:01000136	drop stone	astronomical body part
+ENVO:01000143	marine reef	astronomical body part
+ENVO:01000144	marine coral reef flat zone	astronomical body part
+ENVO:01000145	marine coral reef back reef	astronomical body part
+ENVO:01000146	marine coral reef crest	astronomical body part
+ENVO:01000147	marine coral reef fore reef	astronomical body part
+ENVO:01000148	marine coral reef buttress zone	astronomical body part
+ENVO:01000149	marine coral reef deep fore reef	astronomical body part
+ENVO:01000150	marine subtidal rocky reef	astronomical body part
+ENVO:01000160	marine pockmark	astronomical body part
+ENVO:01000161	marine sponge reef	astronomical body part
+ENVO:01000237	coastal scrubland	astronomical body part|environmental zone
+ENVO:01000239	oak woodland	astronomical body part|terrestrial ecosystem
+ENVO:01000240	conifer woodland	astronomical body part|terrestrial ecosystem
+ENVO:01000241	juniper woodland	astronomical body part|terrestrial ecosystem
+ENVO:01000242	desert scrubland	astronomical body part|environmental zone
+ENVO:01000244	pinyon juniper woodland	astronomical body part|terrestrial ecosystem
+ENVO:01000255	mineral deposit	astronomical body part
+ENVO:01000257	white smoker	astronomical body part
+ENVO:01000260	nutricline within a water body	astronomical body part
+ENVO:01000262	seep	astronomical body part
+ENVO:01000263	cold seep	astronomical body part
+ENVO:01000265	hydrothermal seep	astronomical body part
+ENVO:01000275	structural basin	astronomical body part
+ENVO:01000276	ecoregion	astronomical body part
+ENVO:01000278	pingo scar	astronomical body part
+ENVO:01000279	ice lens	astronomical body part
+ENVO:01000280	ecozone	astronomical body part
+ENVO:01000283	lake layer	astronomical body part
+ENVO:01000284	amictic lake	astronomical body part
+ENVO:01000285	holomictic lake	astronomical body part
+ENVO:01000286	dimictic lake	astronomical body part
+ENVO:01000287	polymictic lake	astronomical body part
+ENVO:01000288	monomictic lake	astronomical body part
+ENVO:01000289	cold monomictic lake	astronomical body part
+ENVO:01000290	warm monomictic lake	astronomical body part
+ENVO:01000291	cold polymictic lake	astronomical body part
+ENVO:01000292	warm polymictic lake	astronomical body part
+ENVO:01000293	ice mass	astronomical body part
+ENVO:01000294	crevice	astronomical body part
+ENVO:01000295	marine layer	astronomical body part
+ENVO:01000296	dry lake bed	astronomical body part
+ENVO:01000297	freshwater river	astronomical body part
+ENVO:01000298	continental margin	astronomical body part
+ENVO:01000299	Taylor column	astronomical body part
+ENVO:01000300	atmospheric Taylor column	astronomical body part
+ENVO:01000302	outcrop	astronomical body part
+ENVO:01000319	rocky slope	astronomical body part
+ENVO:01000320	marine environment	astronomical body part
+ENVO:01000324	planetary surface	astronomical body part
+ENVO:01000327	strand swamp	wetland ecosystem
+ENVO:01000328	dome swamp	wetland ecosystem
+ENVO:01000329	cypress dome	wetland ecosystem
+ENVO:01000330	cypress strand swamp	wetland ecosystem
+ENVO:01000331	cypress swamp	wetland ecosystem
+ENVO:01000332	gravelly slope	astronomical body part
+ENVO:01000333	hillside	astronomical body part
+ENVO:01000334	talus slope	astronomical body part
+ENVO:01000335	understory	vegetation layer
+ENVO:01000336	shrub layer	vegetation layer
+ENVO:01000337	herb and fern layer	vegetation layer
+ENVO:01000338	litter layer	vegetation layer
+ENVO:01000347	montane conifer woodland	astronomical body part|terrestrial ecosystem
+ENVO:01000348	maize field	astronomical body part
+ENVO:01000352	field	astronomical body part
+ENVO:01000353	marine mesoscale eddy field	astronomical body part
+ENVO:01000355	vegetation layer	vegetation layer
+ENVO:01000359	limestone cave	astronomical body part
+ENVO:01000360	solutional cave	astronomical body part
+ENVO:01000361	primary cave	astronomical body part
+ENVO:01000362	inflationary cave	astronomical body part
+ENVO:01000363	erosional cave	astronomical body part
+ENVO:01000364	glacier cave	astronomical body part
+ENVO:01000365	ice cave	astronomical body part
+ENVO:01000366	talus cave	astronomical body part
+ENVO:01000367	anchialine cave	astronomical body part
+ENVO:01000368	anchialine pool	astronomical body part
+ENVO:01000369	vadose cave	astronomical body part
+ENVO:01000374	dry woodland	astronomical body part|terrestrial ecosystem
+ENVO:01000376	tropical marine semi-evergreen forest	astronomical body part|terrestrial ecosystem
+ENVO:01000382	cold desert	astronomical body part|environmental zone
+ENVO:01000383	temperate evergreen needleleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000384	tropical lowland evergreen broadleaf rain forest	astronomical body part|terrestrial ecosystem
+ENVO:01000385	temperate deciduous broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000386	temperate deciduous needleleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000387	tropical deciduous broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000388	tropical semi-deciduous broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000389	temperate mixed broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000390	temperate mixed needleleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000391	tropical semi-evergreen moist broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000392	tropical upper montane forest	astronomical body part|terrestrial ecosystem
+ENVO:01000393	tropical lower montane forest	astronomical body part|terrestrial ecosystem
+ENVO:01000394	tropical freshwater swamp forest	astronomical body part|terrestrial ecosystem
+ENVO:01000395	temperate sclerophyllous dry forest	astronomical body part|terrestrial ecosystem
+ENVO:01000396	tropical sclerophyllous dry forest	astronomical body part|terrestrial ecosystem
+ENVO:01000397	temperate broadleaf evergreen forest	astronomical body part|terrestrial ecosystem
+ENVO:01000398	temperate freshwater swamp forest	astronomical body part|terrestrial ecosystem
+ENVO:01000399	tropical needleleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000400	tropical thorn forest	astronomical body part|terrestrial ecosystem
+ENVO:01000401	tropical mixed needleleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000402	tropical mixed broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000403	tropical mangrove	astronomical body part|terrestrial ecosystem
+ENVO:01000407	littoral zone	astronomical body part
+ENVO:01000408	environmental zone	environmental zone
+ENVO:01000409	freshwater littoral zone	astronomical body part
+ENVO:01000410	marine eulittoral zone	astronomical body part
+ENVO:01000411	infralittoral zone	astronomical body part
+ENVO:01000412	circalittoral zone	astronomical body part
+ENVO:01000417	house	astronomical body part
+ENVO:01000418	human house	astronomical body part
+ENVO:01000419	domestic garden	astronomical body part
+ENVO:01000420	building part	astronomical body part
+ENVO:01000421	indoor kitchen	astronomical body part
+ENVO:01000422	bathroom	astronomical body part
+ENVO:01000423	living room	astronomical body part
+ENVO:01000424	patio	astronomical body part
+ENVO:01000425	indoor toilet	astronomical body part
+ENVO:01000426	room	astronomical body part
+ENVO:01000428	area of rocky shore	astronomical body part
+ENVO:01000429	burrow	astronomical body part
+ENVO:01000430	broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000431	mixed forest	astronomical body part|terrestrial ecosystem
+ENVO:01000432	swamp forest	astronomical body part|terrestrial ecosystem
+ENVO:01000433	needleleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01000434	sclerophyllous forest	astronomical body part|terrestrial ecosystem
+ENVO:01000435	montane forest	astronomical body part|terrestrial ecosystem
+ENVO:01000437	lava field	astronomical body part
+ENVO:01000438	lava flow	astronomical body part
+ENVO:01000439	andesitic volcano	astronomical body part
+ENVO:01000440	dacitic volcano	astronomical body part
+ENVO:01000443	salt mass	astronomical body part
+ENVO:01000446	ravine	astronomical body part
+ENVO:01000447	roadside	astronomical body part
+ENVO:01000448	mixed grassland	astronomical body part|terrestrial ecosystem
+ENVO:01000449	wet meadow ecosystem	astronomical body part|terrestrial ecosystem
+ENVO:01000450	salt glacier	astronomical body part
+ENVO:01000465	building wall	astronomical body part
+ENVO:01000466	boundary wall	astronomical body part
+ENVO:01000467	constructed barrier	astronomical body part
+ENVO:01000468	fence	astronomical body part
+ENVO:01000469	exterior wall	astronomical body part
+ENVO:01000470	building envelope	astronomical body part
+ENVO:01000471	ceiling	astronomical body part
+ENVO:01000472	building roof	astronomical body part
+ENVO:01000486	building floor	astronomical body part
+ENVO:01000487	brick building floor	astronomical body part
+ENVO:01000488	wooden building floor	astronomical body part
+ENVO:01000489	concrete building floor	astronomical body part
+ENVO:01000490	sandy building floor	astronomical body part
+ENVO:01000491	glass building floor	astronomical body part
+ENVO:01000492	dung building floor	astronomical body part
+ENVO:01000493	stone building floor	astronomical body part
+ENVO:01000494	thatched exterior wall	astronomical body part
+ENVO:01000495	stone exterior wall	astronomical body part
+ENVO:01000496	straw exterior wall	astronomical body part
+ENVO:01000497	mud exterior wall	astronomical body part
+ENVO:01000499	pole-reinforced mud exterior wall	astronomical body part
+ENVO:01000500	brick exterior wall	astronomical body part
+ENVO:01000503	burnt-brick exterior wall	astronomical body part
+ENVO:01000504	unburnt-brick exterior wall	astronomical body part
+ENVO:01000505	salt dome	astronomical body part
+ENVO:01000506	concrete exterior wall	astronomical body part
+ENVO:01000509	sheet-iron exterior wall	astronomical body part
+ENVO:01000510	sheet-iron building roof	astronomical body part
+ENVO:01000511	thatched building roof	astronomical body part
+ENVO:01000512	wooden building roof	astronomical body part
+ENVO:01000513	asbestos building roof	astronomical body part
+ENVO:01000515	tiled building roof	astronomical body part
+ENVO:01000518	diapir	astronomical body part
+ENVO:01000521	batholith	astronomical body part
+ENVO:01000522	latrine pit	astronomical body part
+ENVO:01000524	outhouse	astronomical body part
+ENVO:01000525	rock intrusion	astronomical body part
+ENVO:01000526	sedimentary intrusion	astronomical body part
+ENVO:01000531	covered latrine	astronomical body part
+ENVO:01000532	covered pit latrine	astronomical body part
+ENVO:01000533	covered pit latrine with slab floor	astronomical body part
+ENVO:01000536	factory	astronomical body part
+ENVO:01000547	glaze ice layer	astronomical body part
+ENVO:01000548	eutrophic lake	astronomical body part
+ENVO:01000598	freshwater spring	astronomical body part
+ENVO:01000617	lentic water body	astronomical body part
+ENVO:01000618	lotic water body	astronomical body part
+ENVO:01000632	chonolith	astronomical body part
+ENVO:01000635	planetary landmass	astronomical body part
+ENVO:01000636	liquid planetary surface	astronomical body part
+ENVO:01000638	planetary crust	astronomical body part
+ENVO:01000639	planetary structural layer	astronomical body part
+ENVO:01000640	planetary mantle	astronomical body part
+ENVO:01000641	planetary core	astronomical body part
+ENVO:01000642	outer planetary core	astronomical body part
+ENVO:01000643	inner planetary core	astronomical body part
+ENVO:01000644	liquid planetary core	astronomical body part
+ENVO:01000645	solid planetary core	astronomical body part
+ENVO:01000646	lithosphere	astronomical body part
+ENVO:01000647	asthenosphere	astronomical body part
+ENVO:01000649	trench	astronomical body part
+ENVO:01000650	stream channel	astronomical body part
+ENVO:01000651	ocean strait	astronomical body part
+ENVO:01000652	river channel	astronomical body part
+ENVO:01000653	slum	astronomical body part
+ENVO:01000654	undersea trough	astronomical body part
+ENVO:01000658	dense settlement	astronomical body part
+ENVO:01000659	igneous intrusion	astronomical body part
+ENVO:01000664	tuff cone	astronomical body part
+ENVO:01000666	area of open water	astronomical body part
+ENVO:01000667	geological fracture	astronomical body part
+ENVO:01000668	geological fault	astronomical body part
+ENVO:01000669	active geological fault	astronomical body part
+ENVO:01000670	vein	astronomical body part
+ENVO:01000671	dike	astronomical body part
+ENVO:01000672	geological joint	astronomical body part
+ENVO:01000673	shear fracture	astronomical body part
+ENVO:01000674	microfracture	astronomical body part
+ENVO:01000680	polluted lake	astronomical body part
+ENVO:01000685	water mass	astronomical body part
+ENVO:01000686	marine water mass	astronomical body part
+ENVO:01000687	coast	astronomical body part
+ENVO:01000688	lake coast	astronomical body part
+ENVO:01000710	flood	astronomical body part
+ENVO:01000711	coastal flood	astronomical body part
+ENVO:01000712	riverine flood	astronomical body part
+ENVO:01000713	flash flood	astronomical body part
+ENVO:01000714	storm surge	astronomical body part
+ENVO:01000731	igneous extrusion	astronomical body part
+ENVO:01000732	clastic dike	astronomical body part
+ENVO:01000733	stock	astronomical body part
+ENVO:01000734	laccolith	astronomical body part
+ENVO:01000735	lopolith	astronomical body part
+ENVO:01000736	phacolith	astronomical body part
+ENVO:01000737	sill	astronomical body part
+ENVO:01000739	habitat	astronomical body part
+ENVO:01000740	area of perennial water ice	astronomical body part
+ENVO:01000744	human dwelling	astronomical body part
+ENVO:01000745	area of perennial snow	astronomical body part
+ENVO:01000746	area of perennial ice or snow	astronomical body part
+ENVO:01000748	continental crust	astronomical body part
+ENVO:01000749	oceanic crust	astronomical body part
+ENVO:01000750	Mohorovicic discontinuity	astronomical body part
+ENVO:01000752	area of barren land	astronomical body part|environmental zone
+ENVO:01000754	fumarole-derived ice tower	astronomical body part
+ENVO:01000755	aeroform	astronomical body part
+ENVO:01000762	sparsely populated settlement	astronomical body part
+ENVO:01000763	rural settlement	astronomical body part
+ENVO:01000764	formal settlement	astronomical body part
+ENVO:01000765	informal settlement	astronomical body part
+ENVO:01000766	legal settlement	astronomical body part
+ENVO:01000767	illegal settlement	astronomical body part
+ENVO:01000768	primary forest	astronomical body part|terrestrial ecosystem
+ENVO:01000771	all season road	astronomical body part
+ENVO:01000772	rural area	astronomical body part|environmental zone
+ENVO:01000773	village	astronomical body part
+ENVO:01000774	oligotrophic lake	astronomical body part
+ENVO:01000775	mesotrophic lake	astronomical body part
+ENVO:01000779	public infrastructure	astronomical body part
+ENVO:01000780	public road	astronomical body part
+ENVO:01000781	public building	astronomical body part
+ENVO:01000782	utility line	astronomical body part
+ENVO:01000783	public utility line	astronomical body part
+ENVO:01000784	illegal informal settlement	astronomical body part
+ENVO:01000812	desert pavement	astronomical body part
+ENVO:01000813	astronomical body part	astronomical body part
+ENVO:01000816	area of deciduous forest	astronomical body part|environmental zone
+ENVO:01000817	biosphere	astronomical body part
+ENVO:01000819	hydrosphere	astronomical body part
+ENVO:01000820	pedosphere	astronomical body part
+ENVO:01000821	photosphere	astronomical body part
+ENVO:01000822	planetary photic zone	astronomical body part
+ENVO:01000823	illuminated biosphere part	astronomical body part
+ENVO:01000824	exorheic lake	astronomical body part
+ENVO:01000825	eaves	astronomical body part
+ENVO:01000826	open eaves	astronomical body part
+ENVO:01000827	closed eaves	astronomical body part
+ENVO:01000843	area of evergreen forest	astronomical body part|environmental zone
+ENVO:01000848	flower strip	astronomical body part|environmental zone
+ENVO:01000849	flower-rich field margin strip	astronomical body part|environmental zone
+ENVO:01000855	area of mixed forest	astronomical body part|environmental zone
+ENVO:01000861	area of dwarf scrub	astronomical body part|environmental zone
+ENVO:01000862	turbulent aquatic surface layer	astronomical body part
+ENVO:01000863	overflow structure	astronomical body part
+ENVO:01000864	mouth of liquid discharge conduit	astronomical body part
+ENVO:01000868	domestic solar panel array	astronomical body part
+ENVO:01000869	area of scrub	astronomical body part|environmental zone
+ENVO:01000871	puddle of water	astronomical body part
+ENVO:01000883	area of developed open space	astronomical body part|environmental zone
+ENVO:01000884	area of developed space with low usage intensity	astronomical body part|environmental zone
+ENVO:01000885	area of developed space with medium usage intensity	astronomical body part|environmental zone
+ENVO:01000886	area of developed space with high usage intensity	astronomical body part|environmental zone
+ENVO:01000887	area of sedge- and forb-dominated herbaceous vegetation	astronomical body part|environmental zone
+ENVO:01000888	area of gramanoid or herbaceous vegetation	astronomical body part|environmental zone
+ENVO:01000889	area of lichen-dominated vegetation	astronomical body part|environmental zone
+ENVO:01000890	area of moss-dominated vegetation	astronomical body part|environmental zone
+ENVO:01000891	area of pastureland or hayfields	astronomical body part|environmental zone
+ENVO:01000892	area of cropland	astronomical body part|environmental zone
+ENVO:01000893	area of woody wetland	astronomical body part|environmental zone
+ENVO:01000894	area of emergent herbaceous wetland	astronomical body part|environmental zone
+ENVO:01000905	shrimp pond	astronomical body part
+ENVO:01000908	geothermally heated river	astronomical body part
+ENVO:01000910	soil biocrust	astronomical body part
+ENVO:01000914	ice ablation zone	environmental zone
+ENVO:01000918	open animal house	astronomical body part
+ENVO:01000921	closed animal house	astronomical body part
+ENVO:01000923	petting zoo	astronomical body part
+ENVO:01000924	plumbing drain	astronomical body part
+ENVO:01000925	abattoir	astronomical body part
+ENVO:01000926	knackery	astronomical body part
+ENVO:01000927	day care building	astronomical body part
+ENVO:01000928	fish processing building	astronomical body part
+ENVO:01000932	nursing home	astronomical body part
+ENVO:01000933	residential building	astronomical body part
+ENVO:01000934	restaurant	astronomical body part
+ENVO:01000935	campground	astronomical body part
+ENVO:01000936	dedicated campground	astronomical body part
+ENVO:01000937	impromptu campground	astronomical body part
+ENVO:01000941	planetary subsurface zone	astronomical body part|environmental zone
+ENVO:01000942	continental subsurface zone	astronomical body part|environmental zone
+ENVO:01000943	vegetated hill	astronomical body part
+ENVO:01000949	lichen woodland	astronomical body part|terrestrial ecosystem
+ENVO:01000954	alpine tree line ecotone	astronomical body part
+ENVO:01000965	constructed swimming pool	astronomical body part
+ENVO:01000966	private swimming pool	astronomical body part
+ENVO:01000967	public swimming pool	astronomical body part
+ENVO:01000968	water intake	astronomical body part
+ENVO:01000969	cafeteria	astronomical body part
+ENVO:01000970	delicatessen	astronomical body part
+ENVO:01000972	take-out restaurant	astronomical body part
+ENVO:01000973	kiosk	astronomical body part
+ENVO:01000974	food kiosk	astronomical body part
+ENVO:01000979	channel of an intermittent river	astronomical body part
+ENVO:01000980	channel of an intermittent stream	astronomical body part
+ENVO:01000983	technosphere	astronomical body part
+ENVO:01000984	grocery store	astronomical body part
+ENVO:01000985	fairground	astronomical body part
+ENVO:01000986	agricultural fairground	astronomical body part
+ENVO:01000987	market	astronomical body part
+ENVO:01000988	ethnic food shop	astronomical body part
+ENVO:01000995	dry river	astronomical body part
+ENVO:01001019	hypereutrophic lake	astronomical body part
+ENVO:01001020	hypersaline lake	astronomical body part
+ENVO:01001021	humic lake	astronomical body part
+ENVO:01001022	natural lake	astronomical body part
+ENVO:01001044	soil environment	astronomical body part
+ENVO:01001045	oceanic subsurface zone	astronomical body part|environmental zone
+ENVO:01001061	caldera lake	astronomical body part
+ENVO:01001062	crater lake	astronomical body part
+ENVO:01001065	meteorite lake	astronomical body part
+ENVO:01001070	impact crater lake	astronomical body part
+ENVO:01001071	impact crater	astronomical body part
+ENVO:01001072	anoxic lake	astronomical body part
+ENVO:01001073	lake with an anoxic hypolimnion	astronomical body part
+ENVO:01001074	lake with a hypoxic hypolimnion	astronomical body part
+ENVO:01001075	hypoxic lake	astronomical body part
+ENVO:01001076	oxic lake	astronomical body part
+ENVO:01001077	lake with an oxic hypolimnion	astronomical body part
+ENVO:01001092	tectonic lake	astronomical body part
+ENVO:01001097	tectonic plate	astronomical body part
+ENVO:01001098	tectonic plate boundary	environmental zone
+ENVO:01001099	divergent plate boundary	environmental zone
+ENVO:01001100	convergent plate boundary	environmental zone
+ENVO:01001101	transform plate boundary	environmental zone
+ENVO:01001104	rift zone	astronomical body part
+ENVO:01001105	aeolian lake	astronomical body part
+ENVO:01001106	landslide lake	astronomical body part
+ENVO:01001107	rockslide lake	astronomical body part
+ENVO:01001109	Karman vortex street	astronomical body part
+ENVO:01001111	fossil worm burrow	astronomical body part
+ENVO:01001159	cirrus homogenitus cloud	astronomical body part
+ENVO:01001160	cirrus cloud	astronomical body part
+ENVO:01001177	arable land	astronomical body part
+ENVO:01001178	pasturable land	astronomical body part
+ENVO:01001182	tended pasturable land	astronomical body part
+ENVO:01001183	arable or pasturable land	astronomical body part
+ENVO:01001193	water-based planetary surface	astronomical body part
+ENVO:01001199	terrestrial environmental zone	astronomical body part|environmental zone
+ENVO:01001200	anthropised terrestrial environmental zone	astronomical body part|environmental zone
+ENVO:01001201	marine environmental zone	astronomical body part
+ENVO:01001206	grassland ecosystem	astronomical body part|terrestrial ecosystem
+ENVO:01001207	ranch	astronomical body part
+ENVO:01001208	swamp area	astronomical body part|environmental zone
+ENVO:01001209	wetland ecosystem	wetland ecosystem
+ENVO:01001221	office building	astronomical body part
+ENVO:01001222	commercial building	astronomical body part
+ENVO:01001224	office	astronomical body part
+ENVO:01001226	terrestrial natural environment	astronomical body part
+ENVO:01001227	aquatic natural environment	astronomical body part
+ENVO:01001239	forest canopy	astronomical body part|vegetation layer
+ENVO:01001240	woodland canopy	astronomical body part|vegetation layer
+ENVO:01001241	crop canopy	astronomical body part|vegetation layer
+ENVO:01001242	canopy	vegetation layer
+ENVO:01001243	forest ecosystem	astronomical body part|terrestrial ecosystem
+ENVO:01001244	cropland ecosystem	astronomical body part|terrestrial ecosystem
+ENVO:01001245	woodland ecosystem	astronomical body part|terrestrial ecosystem
+ENVO:01001256	coastal shrimp pond	astronomical body part
+ENVO:01001269	area of developed space	astronomical body part|environmental zone
+ENVO:01001272	constructed pavement	astronomical body part
+ENVO:01001276	water ice layer	astronomical body part
+ENVO:01001277	asphalt road	astronomical body part
+ENVO:01001278	concrete road	astronomical body part
+ENVO:01001279	sidewalk	astronomical body part
+ENVO:01001280	driveway	astronomical body part
+ENVO:01001281	paved parking lot	astronomical body part
+ENVO:01001293	bush area	astronomical body part|environmental zone
+ENVO:01001299	atmospheric zone	environmental zone
+ENVO:01001300	area of low atmospheric pressure	astronomical body part
+ENVO:01001301	aquatic estuarine layer	astronomical body part
+ENVO:01001302	estuarine coastal surface layer	astronomical body part
+ENVO:01001304	oasis	astronomical body part|environmental zone
+ENVO:01001305	vegetated area	astronomical body part|environmental zone
+ENVO:01001308	hydroform	astronomical body part
+ENVO:01001312	estuarine coastal upper water column	astronomical body part
+ENVO:01001313	estuarine coastal pycnocline	astronomical body part
+ENVO:01001314	estuarine coastal lower water column	astronomical body part
+ENVO:01001315	estuarine open water surface layer	astronomical body part
+ENVO:01001316	estuarine open water upper water column	astronomical body part
+ENVO:01001317	estuarine tidal riverine coastal surface layer	astronomical body part
+ENVO:01001318	estuarine tidal riverine coastal upper water column	astronomical body part
+ENVO:01001319	saline water body	astronomical body part
+ENVO:01001320	fresh water body	astronomical body part
+ENVO:01001321	brackish water body	astronomical body part
+ENVO:01001322	estuarine open water lower water column	astronomical body part
+ENVO:01001323	estuarine open water pycnocline	astronomical body part
+ENVO:01001324	estuarine tidal riverine coastal pycnocline	astronomical body part
+ENVO:01001325	estuarine tidal riverine coastal lower water column	astronomical body part
+ENVO:01001326	estuarine tidal riverine open water surface layer	astronomical body part
+ENVO:01001327	estuarine tidal riverine open water upper water column	astronomical body part
+ENVO:01001328	estuarine tidal riverine open water pycnocline	astronomical body part
+ENVO:01001329	estuarine tidal riverine open water lower water column	astronomical body part
+ENVO:01001335	anchor ice	astronomical body part
+ENVO:01001336	marine tidal flow	astronomical body part
+ENVO:01001337	riverine anchor ice	astronomical body part
+ENVO:01001338	diurnal marine tidal flow zone	astronomical body part
+ENVO:01001340	semi-diurnal marine tidal flow zone	astronomical body part
+ENVO:01001341	marine tidal flow zone	astronomical body part
+ENVO:01001344	freshwater seep riverine anchor ice	astronomical body part
+ENVO:01001345	floating ice mass	astronomical body part
+ENVO:01001347	glacial equlibrium line	environmental zone
+ENVO:01001348	material accumulation zone	environmental zone
+ENVO:01001349	material decumulation zone	environmental zone
+ENVO:01001350	ice accumulation zone	environmental zone
+ENVO:01001351	ice decumulation zone	environmental zone
+ENVO:01001352	glacial ice accumulation zone	environmental zone
+ENVO:01001353	environmental zone of processual equilibrium	environmental zone
+ENVO:01001355	crater zone	environmental zone
+ENVO:01001356	volcanic crater zone	environmental zone
+ENVO:01001357	desert	astronomical body part
+ENVO:01001360	Paramo	astronomical body part|terrestrial ecosystem
+ENVO:01001370	tundra ecosystem	astronomical body part|terrestrial ecosystem
+ENVO:01001371	alpine tundra ecosystem	astronomical body part|terrestrial ecosystem
+ENVO:01001376	marine faunal bed	astronomical body part
+ENVO:01001378	marine bed	astronomical body part
+ENVO:01001379	mussel bed	astronomical body part
+ENVO:01001380	neritic mussel reef	astronomical body part
+ENVO:01001381	oceanic mussel reef	astronomical body part
+ENVO:01001382	area of attached mussel assemblages	astronomical body part
+ENVO:01001383	area of attached Modiolus assemblages	astronomical body part
+ENVO:01001385	Bathymodiolus-dominated oceanic mussel reef	astronomical body part
+ENVO:01001386	mussel reef	astronomical body part
+ENVO:01001388	oceanic mussel bed	astronomical body part
+ENVO:01001389	neritic mussel bed	astronomical body part
+ENVO:01001390	Bathymodiolus-dominated oceanic mussel bed	astronomical body part
+ENVO:01001406	laboratory facility	astronomical body part
+ENVO:01001407	cirrocumulus cloud	astronomical body part
+ENVO:01001408	cirrostratus cloud	astronomical body part
+ENVO:01001418	cirrus fibratus cloud	astronomical body part
+ENVO:01001421	cirrus uncinus cloud	astronomical body part
+ENVO:01001422	cirrus spissatus cloud	astronomical body part
+ENVO:01001423	cirrostratus fibratus cloud	astronomical body part
+ENVO:01001425	cirrus castellanus cloud	astronomical body part
+ENVO:01001426	cirrocumulus castellanus cloud	astronomical body part
+ENVO:01001452	Calyptra habitat	astronomical body part
+ENVO:01001453	terrestrial mountain	astronomical body part
+ENVO:01001454	polar mountain	astronomical body part
+ENVO:01001455	temperate mountain	astronomical body part
+ENVO:01001456	tropical mountain	astronomical body part
+ENVO:01001457	cloud forest	astronomical body part|terrestrial ecosystem
+ENVO:01001459	high-elevation mountain	astronomical body part
+ENVO:01001460	mid-elevation mountain	astronomical body part
+ENVO:01001461	UNEP-WCMC class 1 mountain	astronomical body part
+ENVO:01001462	UNEP-WCMC class 2 mountain	astronomical body part
+ENVO:01001463	UNEP-WCMC class 3 mountain	astronomical body part
+ENVO:01001464	UNEP-WCMC class 4 mountain	astronomical body part
+ENVO:01001465	UNEP-WCMC class 5 mountain	astronomical body part
+ENVO:01001466	UNEP-WCMC class 6 mountain	astronomical body part
+ENVO:01001467	UNEP-WCMC class 7 mountain	astronomical body part
+ENVO:01001468	intertidal ecosystem	astronomical body part|wetland ecosystem
+ENVO:01001476	body of liquid	astronomical body part
+ENVO:01001477	liquid astronomical body part	astronomical body part
+ENVO:01001478	gaseous astronomical body part	astronomical body part
+ENVO:01001479	fluid astronomical body part	astronomical body part
+ENVO:01001480	domestic building	astronomical body part
+ENVO:01001481	public prison	astronomical body part
+ENVO:01001482	tornado	astronomical body part
+ENVO:01001483	surface of an astronomical body	astronomical body part
+ENVO:01001484	fire whirl	astronomical body part
+ENVO:01001485	multiple vortex tornado	astronomical body part
+ENVO:01001486	landspout	astronomical body part
+ENVO:01001487	waterspout	astronomical body part
+ENVO:01001489	spur	astronomical body part
+ENVO:01001490	intrusion	astronomical body part
+ENVO:01001491	flattened elevation	astronomical body part
+ENVO:01001506	ice calf	astronomical body part
+ENVO:01001507	floating ice calf	astronomical body part
+ENVO:01001508	anchored ice calf	astronomical body part
+ENVO:01001509	terrestrial ice calf	astronomical body part
+ENVO:01001517	drift ice mass	astronomical body part
+ENVO:01001518	drifting sea ice mass	astronomical body part
+ENVO:01001519	area of pack ice	astronomical body part
+ENVO:01001520	area of sea ice	astronomical body part
+ENVO:01001521	area of drift ice	astronomical body part
+ENVO:01001522	fast ice	astronomical body part
+ENVO:01001524	frozen land	astronomical body part
+ENVO:01001529	glacier snout	astronomical body part
+ENVO:01001530	water ice core	astronomical body part
+ENVO:01001531	sea ice field	astronomical body part
+ENVO:01001532	glacier ice field	astronomical body part
+ENVO:01001534	tabular iceberg	astronomical body part
+ENVO:01001535	floeberg	astronomical body part
+ENVO:01001536	sea ice mass	astronomical body part
+ENVO:01001537	sea ice hummock	astronomical body part
+ENVO:01001538	frost-formed hummock	astronomical body part
+ENVO:01001543	water ice surface layer	astronomical body part
+ENVO:01001546	iceberg	astronomical body part
+ENVO:01001547	land ice mass	astronomical body part
+ENVO:01001550	sea-ice lead	astronomical body part
+ENVO:01001551	ice lead	astronomical body part
+ENVO:01001552	flaw lead	astronomical body part
+ENVO:01001553	shore lead	astronomical body part
+ENVO:01001554	surface layer of a water body	astronomical body part
+ENVO:01001555	frozen lead	astronomical body part
+ENVO:01001556	pack ice mass	astronomical body part
+ENVO:01001559	cryopeg	astronomical body part
+ENVO:01001568	frost heave	astronomical body part
+ENVO:01001570	terrestrial ecoregion	astronomical body part
+ENVO:01001581	sea surface layer	astronomical body part
+ENVO:01001582	forest floor	astronomical body part
+ENVO:01001607	water current	astronomical body part
+ENVO:01001609	cryospheric layer	astronomical body part
+ENVO:01001610	active layer in a cryosphere	astronomical body part
+ENVO:01001620	mass of ice and snow	astronomical body part
+ENVO:01001625	polar tundra ecosystem	astronomical body part|terrestrial ecosystem
+ENVO:01001629	polymetallic nodule ecosystem	astronomical body part
+ENVO:01001645	gaseous part of an atmosphere	astronomical body part
+ENVO:01001653	well-mixed estuary	astronomical body part
+ENVO:01001665	soil cryoturbate	astronomical body part
+ENVO:01001668	atmospheric frontal zone	astronomical body part
+ENVO:01001671	open cage mariculture facility	astronomical body part
+ENVO:01001676	marine cline	astronomical body part
+ENVO:01001743	plume	astronomical body part
+ENVO:01001773	thrust fault	astronomical body part
+ENVO:01001775	blind thrust fault	astronomical body part
+ENVO:01001776	subsurface zone of an astronomical body	astronomical body part|environmental zone
+ENVO:01001780	desert ecosystem	astronomical body part
+ENVO:01001781	part of a landmass	astronomical body part
+ENVO:01001782	landmass	astronomical body part
+ENVO:01001783	liquid surface of an astronomical body	astronomical body part
+ENVO:01001784	compound astronomical body part	astronomical body part
+ENVO:01001785	land	astronomical body part
+ENVO:01001786	inland sea	astronomical body part
+ENVO:01001787	aquatic ecosystem	astronomical body part
+ENVO:01001788	marine ecosystem	astronomical body part
+ENVO:01001789	freshwater ecosystem	astronomical body part
+ENVO:01001790	terrestrial ecosystem	astronomical body part|terrestrial ecosystem
+ENVO:01001791	mediterranean forest	astronomical body part|terrestrial ecosystem
+ENVO:01001792	tropical broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01001793	subtropical broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01001794	temperate broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01001796	temperate mixed forest	astronomical body part|terrestrial ecosystem
+ENVO:01001797	tropical mixed forest	astronomical body part|terrestrial ecosystem
+ENVO:01001799	tropical dry broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01001800	tropical moist broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01001801	subtropical dry broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01001802	subtropical moist broadleaf forest	astronomical body part|terrestrial ecosystem
+ENVO:01001803	tropical forest	astronomical body part|terrestrial ecosystem
+ENVO:01001804	subtropical forest	astronomical body part|terrestrial ecosystem
+ENVO:01001805	temperate forest	astronomical body part|terrestrial ecosystem
+ENVO:01001806	tropical grassland	astronomical body part|terrestrial ecosystem
+ENVO:01001807	flooded grassland	astronomical body part|terrestrial ecosystem
+ENVO:01001808	montane grassland	astronomical body part|terrestrial ecosystem
+ENVO:01001809	subtropical grassland	astronomical body part|terrestrial ecosystem
+ENVO:01001810	mediterranean grassland	astronomical body part|terrestrial ecosystem
+ENVO:01001811	temperate grassland	astronomical body part|terrestrial ecosystem
+ENVO:01001812	subpolar grassland	astronomical body part|terrestrial ecosystem
+ENVO:01001823	bubble plume	astronomical body part
+ENVO:01001829	human settlement	astronomical body part
+ENVO:01001851	geothermally active field	astronomical body part
+ENVO:01001854	hydrothermal field	astronomical body part
+ENVO:01001870	gas well	astronomical body part
+ENVO:01001871	pit	astronomical body part
+ENVO:01001872	manure pit	astronomical body part
+ENVO:01001873	hatchery	astronomical body part
+ENVO:01001874	poultry hatchery	astronomical body part
+ENVO:01001884	surface landform	astronomical body part
+ENVO:01001885	submerged landform	astronomical body part
+ENVO:01001886	landform	astronomical body part
+ENVO:01001888	calcic spring	astronomical body part
+ENVO:01001889	lithia spring	astronomical body part
+ENVO:01001890	chalybeate spring	astronomical body part
+ENVO:01001891	alum spring	astronomical body part
+ENVO:01001893	salt spring	astronomical body part
+ENVO:01001894	alkaline spring	astronomical body part
+ENVO:01001895	soda spring	astronomical body part
+ENVO:01001896	radioactive spring	astronomical body part
+ENVO:01001897	neutral spring	astronomical body part
+ENVO:01001898	acidic spring	astronomical body part
+ENVO:01001899	reef	astronomical body part
+ENVO:01003021	area of high atmospheric pressure	astronomical body part
+ENVO:02000003	pockmark field	astronomical body part
+ENVO:02000049	coastal water body	astronomical body part
+ENVO:02000092	iron mine	astronomical body part
+ENVO:02000093	uranium mine	astronomical body part
+ENVO:02000110	open-pit mine	astronomical body part
+ENVO:02000132	constructed monument	astronomical body part
+ENVO:02000133	nuclear reactor	astronomical body part
+ENVO:02000134	thermal nuclear reactor	astronomical body part
+ENVO:02000135	fast neutron reactor	astronomical body part
+ENVO:02000136	research nuclear reactor	astronomical body part
+ENVO:02000137	nuclear power reactor	astronomical body part
+ENVO:02000141	refinery	astronomical body part
+ENVO:02000142	petroleum oil refinery	astronomical body part
+ENVO:02000143	sugar refinery	astronomical body part
+ENVO:02000144	natural gas processing plant	astronomical body part
+ENVO:02000150	uranium deposit	astronomical body part
+ENVO:02000151	natural nuclear fission reactor	astronomical body part
+ENVO:03000015	geographic basin	astronomical body part
+ENVO:03000018	englacial stream	astronomical body part
+ENVO:03000035	supraglacial lake	astronomical body part
+ENVO:03000037	glacial ice ablation zone	environmental zone
+ENVO:03000039	cryoconite hole	astronomical body part
+ENVO:03000040	melt pond	astronomical body part
+ENVO:03000041	brine channel	astronomical body part
+ENVO:03000048	thaw hole	astronomical body part
+ENVO:03000050	atmosphere-exposed melt pond	astronomical body part
+ENVO:03000051	ice-encased melt pond	astronomical body part
+ENVO:03000053	intraglacial lake	astronomical body part
+ENVO:03000065	ice floe	astronomical body part
+ENVO:03000066	sea ice floe	astronomical body part
+ENVO:03000067	pancake ice	astronomical body part
+ENVO:03000068	nilas	astronomical body part
+ENVO:03000069	young ice	astronomical body part
+ENVO:03000074	grease ice layer	astronomical body part
+ENVO:03000077	slush ice layer	astronomical body part
+ENVO:03000082	thermokarst lake	astronomical body part
+ENVO:03000083	methane-releasing thermokarst lake	astronomical body part
+ENVO:03000084	thermokarst depression	astronomical body part
+ENVO:03000085	thermokarst	astronomical body part
+ENVO:03000089	permafrost crater derived from a methane explosion	astronomical body part
+ENVO:03000110	cryoform	astronomical body part
+ENVO:03000117	channel	astronomical body part
+ENVO:03000118	atmosphere and water column exposed melt pond	astronomical body part
+ENVO:03000119	water column exposed melt pond	astronomical body part
+ENVO:03000120	subglacial lake	astronomical body part
+ENVO:03000132	firebreak	astronomical body part
+ENVO:03000138	particle of snow	astronomical body part
+ENVO:03000141	snow layer	astronomical body part
+ENVO:03000143	cryosphere	astronomical body part
+ENVO:03000144	planetary cryosphere	astronomical body part
+ENVO:03000145	snow-covered land	astronomical body part
+ENVO:03400001	area of alpine tundra	astronomical body part|environmental zone
+ENVO:03400002	area of polar tundra	astronomical body part|environmental zone
+ENVO:03400005	ice pellet	astronomical body part
+ENVO:03400012	hail stone	astronomical body part
+ENVO:03400015	sleet pellet	astronomical body part
+ENVO:03500001	playground	astronomical body part
+ENVO:03500002	public park	astronomical body part
+ENVO:03500003	public sports field	astronomical body part
+ENVO:03500004	bike path	astronomical body part
+ENVO:03501102	polytunnel	astronomical body part
+ENVO:03501109	subway train	astronomical body part
+ENVO:03501111	public transit system	astronomical body part
+ENVO:03501115	public subway train	astronomical body part
+ENVO:03501116	rapid transit system	astronomical body part
+ENVO:03501117	transport hub	astronomical body part
+ENVO:03501118	public transport hub	astronomical body part
+ENVO:03501119	agricultural experimental station	astronomical body part
+ENVO:03501121	building corridor	astronomical body part
+ENVO:03501122	airport	astronomical body part
+ENVO:03501123	airport terminal	astronomical body part
+ENVO:03501124	airport concourse	astronomical body part
+ENVO:03501125	airport transit lounge	astronomical body part
+ENVO:03501126	church building	astronomical body part
+ENVO:03501127	conference venue	astronomical body part
+ENVO:03501128	conference room	astronomical body part
+ENVO:03501129	educational facility	astronomical body part
+ENVO:03501130	school building	astronomical body part
+ENVO:03501131	university building	astronomical body part
+ENVO:03501132	fire station	astronomical body part
+ENVO:03501133	homeless shelter	astronomical body part
+ENVO:03501134	healthcare facility	astronomical body part
+ENVO:03501135	acute care facility	astronomical body part
+ENVO:03501136	clinical patient assessment facility	astronomical body part
+ENVO:03501137	hospital unit facility	astronomical body part
+ENVO:03501138	anaesthetics unit facility	astronomical body part
+ENVO:03501139	breast screening unit facility	astronomical body part
+ENVO:03501140	chaplaincy unit facility	astronomical body part
+ENVO:03501141	coronary care unit facility	astronomical body part
+ENVO:03501142	diagnostic imaging unit facility	astronomical body part
+ENVO:03501143	discharge unit facility	astronomical body part
+ENVO:03501144	emergency unit facility	astronomical body part
+ENVO:03501145	emergency unit room	astronomical body part
+ENVO:03501146	gastroenterology unit facility	astronomical body part
+ENVO:03501147	general surgery unit facility	astronomical body part
+ENVO:03501148	geriatric care unit facility	astronomical body part
+ENVO:03501149	geriatric intensive care unit facility	astronomical body part
+ENVO:03501150	gynaecology unit facility	astronomical body part
+ENVO:03501151	haematology unit facility	astronomical body part
+ENVO:03501152	intensive care unit facility	astronomical body part
+ENVO:03501153	surgical intensive care unit facility	astronomical body part
+ENVO:03501154	traumatic intensive care unit facility	astronomical body part
+ENVO:03501155	intensive care unit room	astronomical body part
+ENVO:03501156	maternity unit facility	astronomical body part
+ENVO:03501158	micobiology unit facility	astronomical body part
+ENVO:03501159	neonatal unit facility	astronomical body part
+ENVO:03501160	neonatal intensive care unit facility	astronomical body part
+ENVO:03501161	nephrology unit facility	astronomical body part
+ENVO:03501162	neurology unit facility	astronomical body part
+ENVO:03501163	nutrition and dietetics unit facility	astronomical body part
+ENVO:03501164	occupational therapy unit facility	astronomical body part
+ENVO:03501165	oncology unit facility	astronomical body part
+ENVO:03501166	ophthalmology unit facility	astronomical body part
+ENVO:03501167	orthopaedics unit facility	astronomical body part
+ENVO:03501168	pain management unit facility	astronomical body part
+ENVO:03501169	pediatric unit facility	astronomical body part
+ENVO:03501170	pediatric intensive care unit facility	astronomical body part
+ENVO:03501171	pharmacy unit facility	astronomical body part
+ENVO:03501172	physiotherapy unit facility	astronomical body part
+ENVO:03501173	post-anesthesia care unit facility	astronomical body part
+ENVO:03501174	high dependency unit facility	astronomical body part
+ENVO:03501175	psychiatric unit facility	astronomical body part
+ENVO:03501176	psychiatric intensive care unit facility	astronomical body part
+ENVO:03501177	radiotherapy unit facility	astronomical body part
+ENVO:03501178	rheumatology unit facility	astronomical body part
+ENVO:03501179	urology unit facility	astronomical body part
+ENVO:03501180	patient room	astronomical body part
+ENVO:03501181	tertiary referral hospital	astronomical body part
+ENVO:03501182	clinic	astronomical body part
+ENVO:03501183	medical clinic	astronomical body part
+ENVO:03501184	chiropractic clinic	astronomical body part
+ENVO:03501185	dental clinic	astronomical body part
+ENVO:03501186	family practice clinic	astronomical body part
+ENVO:03501187	massage therapy clinic	astronomical body part
+ENVO:03501188	ophthalmology clinic	astronomical body part
+ENVO:03501189	optometry clinic	astronomical body part
+ENVO:03501190	pain clinic	astronomical body part
+ENVO:03501191	physiotherapy clinic	astronomical body part
+ENVO:03501192	walk-in clinic	astronomical body part
+ENVO:03501193	pharmacy	astronomical body part
+ENVO:03501194	long-term care facility	astronomical body part
+ENVO:03501195	assisted living facility	astronomical body part
+ENVO:03501196	group home facility	astronomical body part
+ENVO:03501197	institutional building	astronomical body part
+ENVO:03501198	wet market	astronomical body part
+ENVO:03501199	dry market	astronomical body part
+ENVO:03501200	police station	astronomical body part
+ENVO:03501201	polling place	astronomical body part
+ENVO:03501202	polling station	astronomical body part
+ENVO:03501203	polling booth	astronomical body part
+ENVO:03501204	prison facility	astronomical body part
+ENVO:03501205	private prison	astronomical body part
+ENVO:03501206	shopping center	astronomical body part
+ENVO:03501207	shopping mall	astronomical body part
+ENVO:03501221	bistro	astronomical body part
+ENVO:03501222	brasserie	astronomical body part
+ENVO:03501224	carvery	astronomical body part
+ENVO:03501225	coffeehouse	astronomical body part
+ENVO:03501226	greasy spoon	astronomical body part
+ENVO:03501227	steakhouse	astronomical body part
+ENVO:03501228	trattoria	astronomical body part
+ENVO:03501230	field hospital	astronomical body part
+ENVO:03501231	hospice	astronomical body part
+ENVO:03501232	movie theater	astronomical body part
+ENVO:03501233	warehouse	astronomical body part
+ENVO:03501234	town hall	astronomical body part
+ENVO:03501235	leisure centre	astronomical body part
+ENVO:03501236	business park	astronomical body part|environmental zone
+ENVO:03501237	game reserve	astronomical body part|environmental zone
+ENVO:03501238	hillock	astronomical body part
+ENVO:03501239	riverfront	astronomical body part
+ENVO:03501240	skerry	astronomical body part
+ENVO:03501241	wind farm	astronomical body part
+ENVO:03501242	desert island	astronomical body part
+ENVO:03501243	big-box store	astronomical body part
+ENVO:03501244	Bailey bridge	astronomical body part
+ENVO:03501245	drawbridge	astronomical body part
+ENVO:03501246	footbridge	astronomical body part
+ENVO:03501247	humpback bridge	astronomical body part
+ENVO:03501248	overpass	astronomical body part
+ENVO:03501249	suspension bridge	astronomical body part
+ENVO:03501250	swing bridge	astronomical body part
+ENVO:03501255	water trough	astronomical body part
+ENVO:03501257	barn	astronomical body part
+ENVO:03501258	chicken house	astronomical body part
+ENVO:03501265	public toilet	astronomical body part
+ENVO:03501270	chapter house	astronomical body part
+ENVO:03501271	Kaaba	astronomical body part
+ENVO:03501272	mosque	astronomical body part
+ENVO:03501273	listed building	astronomical body part
+ENVO:03501274	bunkhouse	astronomical body part
+ENVO:03501275	corn exchange	astronomical body part
+ENVO:03501276	oast house	astronomical body part
+ENVO:03501277	orangery	astronomical body part
+ENVO:03501278	skyscraper	astronomical body part
+ENVO:03501279	tenement	astronomical body part
+ENVO:03501280	mausoleum	astronomical body part
+ENVO:03501281	bowling alley	astronomical body part
+ENVO:03501282	hangar	astronomical body part
+ENVO:03501286	calf shed	astronomical body part
+ENVO:03501287	livestock house	astronomical body part
+ENVO:03501288	facility	astronomical body part
+ENVO:03501290	supermarket	astronomical body part
+ENVO:03501294	preprocessing plant	astronomical body part
+ENVO:03501295	processing plant	astronomical body part
+ENVO:03501296	cheese processing plant	astronomical body part
+ENVO:03501297	meat processing plant	astronomical body part
+ENVO:03501299	charcuterie shop	astronomical body part
+ENVO:03501301	baseboard	astronomical body part
+ENVO:03501309	booth	astronomical body part
+ENVO:03501334	child care facility	astronomical body part
+ENVO:03501335	day care facility	astronomical body part
+ENVO:03501336	place of worship	astronomical body part
+ENVO:03501337	temple	astronomical body part
+ENVO:03501338	human nursery	astronomical body part
+ENVO:03501340	community service centre	astronomical body part
+ENVO:03501341	community health centre	astronomical body part
+ENVO:03501342	dormitory	astronomical body part
+ENVO:03501344	insecure housing	astronomical body part
+ENVO:03501345	temporary residence	astronomical body part
+ENVO:03501347	hotel	astronomical body part
+ENVO:03501348	veterinary facility	astronomical body part
+ENVO:03501350	physician office	astronomical body part
+ENVO:03501352	animal rescue shelter	astronomical body part
+ENVO:03501355	public-private prison	astronomical body part
+ENVO:03520003	cloud part	astronomical body part
+ENVO:03520004	cloud base	astronomical body part
+ENVO:03520005	cloud top	astronomical body part
+ENVO:03600000	cleanroom	astronomical body part
+ENVO:03600003	drinking water pipeline network	astronomical body part
+ENVO:03600004	drinking water treatment plant	astronomical body part
+ENVO:03600008	intensive care unit	astronomical body part
+ENVO:03600012	oil pipeline network	astronomical body part
+ENVO:03600014	pipeline network	astronomical body part
+ENVO:03600015	polluted river	astronomical body part
+ENVO:03600020	tailings dam	astronomical body part
+ENVO:03600021	tailings pond	astronomical body part
+ENVO:03600031	earth-filled dam	astronomical body part
+ENVO:03600032	embankment dam	astronomical body part
+ENVO:03600033	residential backyard	astronomical body part
+ENVO:03600034	cay	astronomical body part
+ENVO:03600035	cold room	astronomical body part
+ENVO:03600037	eutrophic pond	astronomical body part
+ENVO:03600038	experimental forest ecosystem	astronomical body part|terrestrial ecosystem
+ENVO:03600039	fermentation pit	astronomical body part
+ENVO:03600041	marine lake	astronomical body part
+ENVO:03600043	meromictic pond	astronomical body part
+ENVO:03600047	raceway pond	astronomical body part
+ENVO:03600053	yard	astronomical body part
+ENVO:03600062	fountain	astronomical body part
+ENVO:03600063	tube well	astronomical body part
+ENVO:03600066	halite	astronomical body part
+ENVO:03600067	neonatal intensive care unit	astronomical body part
+ENVO:03600068	ice wedge	astronomical body part
+ENVO:03600071	cyanobacterial bloom	astronomical body part
+ENVO:03600072	ophiolites	astronomical body part
+ENVO:03600073	contaminated land	astronomical body part
+ENVO:03600075	oil mill	astronomical body part
+ENVO:03600076	waste stabilization pond	astronomical body part
+ENVO:03600078	oil refinery	astronomical body part
+ENVO:03600080	industrial park	astronomical body part
+ENVO:03600083	mofetta	astronomical body part
+ENVO:03600087	greenhouse	astronomical body part
+ENVO:03600090	alcohol fermentation pit	astronomical body part
+ENVO:03600091	clay fermentation pit	astronomical body part
+ENVO:03600092	artificial pond	astronomical body part
+ENVO:03600093	artificial satellite	astronomical body part
+ENVO:03600094	stream pool	astronomical body part
+ENVO:03600095	stream run	astronomical body part
+ENVO:03600096	step pool	astronomical body part
+ENVO:03605007	freshwater stream	astronomical body part
+ENVO:03605009	freshwater stream ecosystem	astronomical body part
+ENVO:04000009	active permafrost layer	astronomical body part
+ENVO:04000010	soil surface layer	astronomical body part
+ENVO:04000011	bare soil surface layer	astronomical body part
+ENVO:06105011	water column	astronomical body part
+ENVO:06105106	plastisphere	astronomical body part
+ENVO:06105107	marine anthropogenic litter	astronomical body part
+ENVO:06105110	manufactured plastisphere	astronomical body part
+ENVO:06105201	water table	astronomical body part
+ENVO:1000749	microcontinental island	astronomical body part
+ENVO:1000750	depositional island	astronomical body part
+ENVO:1000751	barrier island	astronomical body part
+ENVO:2000002	industrial wastewate treatment plant	astronomical body part
+ENVO:2000003	agricultural wastewater treatment plant	astronomical body part
+ENVO:2000004	algal bloom	astronomical body part
+ENVO:2000005	freshwater algal bloom	astronomical body part
+ENVO:2000037	fossil fuel power plant	astronomical body part
+ENVO:2000038	coal power plant	astronomical body part
+ENVO:2000039	gas power station	astronomical body part
+ENVO:2000040	lignite power plant	astronomical body part
+ENVO:2000041	solar power station	astronomical body part
+ENVO:2000042	ocean thermal power station	astronomical body part
+ENVO:2000043	tidal power plant	astronomical body part
