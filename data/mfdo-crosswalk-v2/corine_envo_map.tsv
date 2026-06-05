@@ -2,27 +2,44 @@ corine_code	corine_label	env_local_scale	env_local_scale_provenance	ols_verified
 111	Continuous urban fabric	built environment [ENVO:01000247]	from_corine	needs_verification
 112	Discontinuous urban fabric	built environment [ENVO:01000247]	from_corine	needs_verification
 121	Industrial or commercial units			no anchor-valid ELS
-122	Road and rail networks			no anchor-valid ELS
+122	Road and rail networks and associated land			no anchor-valid ELS
 123	Port areas			no anchor-valid ELS
+124	Airports			no anchor-valid ELS
 131	Mineral extraction sites			no anchor-valid ELS
 132	Dump sites			no anchor-valid ELS
+133	Construction sites			no anchor-valid ELS
 141	Green urban areas	area of developed open space [ENVO:01000379]	from_corine	needs_verification
 142	Sport and leisure facilities			no anchor-valid ELS
 211	Non-irrigated arable land	agricultural field [ENVO:00000114]	from_corine	yes	used in crosswalk
-231	Pastures	grassland area [ENVO:00000106]	from_corine	needs_verification	pasture is more specific but ENVO:00000446 needs anchor check
+212	Permanently irrigated land	agricultural field [ENVO:00000114]	from_corine	needs_verification	may warrant more specific irrigated-field term
+213	Rice fields	rice paddy field [ENVO:00000023]	from_corine	needs_verification
+221	Vineyards	vineyard [ENVO:00000262]	from_corine	needs_verification
+222	Fruit trees and berry plantations	orchard [ENVO:00000173]	from_corine	needs_verification
+223	Olive groves	agricultural field [ENVO:00000114]	from_corine	needs_verification	olive-grove-specific term may not exist in ENVO ELS
+231	Pastures	grassland area [ENVO:00000106]	from_corine	needs_verification	pasture ENVO:00000446 if anchor-valid; else grassland area
+241	Annual crops associated with permanent crops	agricultural field [ENVO:00000114]	from_corine	needs_verification
 242	Complex cultivation patterns	agricultural field [ENVO:00000114]	from_corine	yes	used in crosswalk
-243	Agriculture with significant natural vegetation	agricultural field [ENVO:00000114]	from_corine	yes	used in crosswalk; coarser than ideal
-311	Broad-leaved forest	woodland area [ENVO:01000175]	from_corine	yes	used in crosswalk; more specific term (deciduous) needs verification
+243	Land principally occupied by agriculture with significant areas of natural vegetation	agricultural field [ENVO:00000114]	from_corine	yes	used in crosswalk; coarser than ideal
+244	Agro-forestry areas	woodland area [ENVO:01000175]	from_corine	needs_verification	agroforestry-specific term may exist
+311	Broad-leaved forest	woodland area [ENVO:01000175]	from_corine	yes	used in crosswalk; more specific deciduous term needs verification
 312	Coniferous forest	temperate evergreen needleleaf forest [ENVO:01000383]	from_corine	yes	used in crosswalk row 81
 313	Mixed forest	woodland area [ENVO:01000175]	from_corine	yes	used in crosswalk
 321	Natural grasslands	grassland area [ENVO:00000106]	from_corine	yes	used in crosswalk
 322	Moors and heathland	heath [ENVO:00000107]	from_corine	yes	used in crosswalk
-324	Transitional woodland-shrub	woodland area [ENVO:01000175]	from_corine	needs_verification	shrubland-specific term may exist
-331	Beaches, dunes, sands	coastal dune [ENVO:00000416]	from_corine	yes	used in crosswalk; sandy beach [ENVO:00000086] if non-dune
-411	Inland marshes	freshwater marsh [ENVO:00000566]	from_corine	needs_verification	ENVO:00000566 needs anchor check
-412	Peat bogs	peat bog [ENVO:00000044]	from_corine	needs_verification	peat bog in ELS allow-list per README
+323	Sclerophyllous vegetation		from_corine	needs_verification	Mediterranean shrubland; maquis/garrigue may have ENVO terms
+324	Transitional woodland-shrub	woodland area [ENVO:01000175]	from_corine	needs_verification	shrubland-specific term may be more appropriate
+331	Beaches, dunes, sands	coastal dune [ENVO:00000416]	from_corine	yes	used in crosswalk; sandy beach ENVO:00000086 if non-dune
+332	Bare rocks		from_corine	needs_verification	rocky outcrop or cliff may have ELS terms
+333	Sparsely vegetated areas	barren land [ENVO:01001116]	from_corine	needs_verification
+334	Burnt areas		from_corine	needs_verification	post-fire habitat; may lack anchor-valid ELS
+335	Glaciers and perpetual snow		from_corine	needs_verification	glacier ENVO:00000133 needs anchor check
+411	Inland marshes	freshwater marsh [ENVO:00000566]	from_corine	needs_verification	ENVO:00000566 needs anchor-class check
+412	Peat bogs	peat bog [ENVO:00000044]	from_corine	needs_verification	in ELS allow-list per README
 421	Salt marshes	saline marsh [ENVO:00000054]	from_corine	yes	used in crosswalk
+422	Salines		from_corine	needs_verification	salt pan or salina; ENVO term needs lookup
 423	Intertidal flats	intertidal zone [ENVO:00000316]	from_corine	yes	used in crosswalk
+511	Water courses	river [ENVO:00000022]	from_corine	needs_verification	stream vs river distinction may matter
 512	Water bodies	water body [ENVO:00000063]	from_corine	needs_verification
 521	Coastal lagoons	coastal lagoon [ENVO:00000399]	from_corine	needs_verification
+522	Estuaries	estuary [ENVO:00000045]	from_corine	needs_verification
 523	Sea and ocean			env_medium territory; no ELS
