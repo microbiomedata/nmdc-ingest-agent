@@ -68,9 +68,15 @@ those; fall back to the crosswalk's leaf-level values.
 - `coord_key` rounding is **4 decimal places** (the precision of the coordinate tables).
 - `*_provenance` columns document which input drove each value and are stripped before NMDC
   submission.
+- `underspecified_slots` flags any triad slot left at a coarse root value (bare `biome`,
+  `environmental zone`, or `environmental material`). In the crosswalk it reflects the leaf-level
+  value; in the joined output (`mfd_biosamples_annotated.tsv`) it is recomputed on the final
+  post-GEE values, so a refined `env_local_scale` correctly drops out of the flag.
+- The crosswalk is sorted by `n_samples` descending (highest-impact mappings first).
 - To rebuild the crosswalk: `python3 build_ontology_crosswalk.py` (fetches the two source xlsx
-  from a pinned `cmc-aau/mfd_metadata` commit; `--ref` to override). Note: the 9 `biosample_reconciliation` rows for Superasterids crops are currently in the TSV only, not yet in the build script ([#43](https://github.com/microbiomedata/nmdc-ingest-agent/issues/43)).
-- To extract biosamples from the MFD db xlsx: `python3 mfd_db_to_tsv.py --out biosamples.tsv`
-- To apply the crosswalk: `python3 apply_crosswalk.py biosamples.tsv --out annotated.tsv`
+  from a pinned `cmc-aau/mfd_metadata` commit; `--ref` to override).
+- To regenerate the joined per-biosample output:
+  `python3 mfd_db_to_tsv.py --out biosamples.tsv` then
+  `python3 apply_crosswalk.py biosamples.tsv --out mfd_biosamples_annotated.tsv`
   (both scripts accept `--help`).
 </content>

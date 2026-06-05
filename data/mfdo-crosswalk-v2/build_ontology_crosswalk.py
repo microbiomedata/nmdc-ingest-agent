@@ -779,8 +779,28 @@ out_cols = (
      'env_medium', 'env_medium_provenance',
      'cur_vegetation', 'cur_vegetation_provenance',
      'cur_land_use', 'cur_land_use_provenance',
-     'misc_param_json', 'misc_param_provenance']
+     'misc_param_json', 'misc_param_provenance',
+     'underspecified_slots']  # triad slots left at a coarse root value (review aid)
 )
+
+# Coarse root CURIEs per triad slot: a value at one of these is the fallback, not a
+# habitat-specific term. Specific biomes (cropland biome, forest biome) are NOT coarse --
+# env_broad_scale is supposed to be a biome. Used to populate underspecified_slots.
+COARSE_CURIES = {
+    'env_broad_scale': {'ENVO:00000428'},                           # bare 'biome' only; 'terrestrial biome' is fine
+    'env_local_scale': {'ENVO:01000408', 'ENVO:01000813'},          # environmental zone, astronomical body part
+    'env_medium':      {'ENVO:00010483'},                           # environmental material
+}
+
+def underspecified_slots(row):
+    """Pipe-joined list of triad slots whose value is a coarse root term; '' if all specific."""
+    flagged = []
+    for slot, coarse in COARSE_CURIES.items():
+        val = row.get(slot, '')
+        curie = val[val.rfind('[') + 1:val.rfind(']')].strip() if '[' in val and ']' in val else ''
+        if curie in coarse:
+            flagged.append(slot)
+    return '|'.join(flagged)
 
 out_rows = []
 for leaf in ont_rows:
@@ -911,6 +931,15 @@ for key, n in sample_counts.items():
     recon.append(row)
 out_rows += recon
 print(f'  + {len(recon)} reconciliation rows ({sum(r["n_samples"] for r in recon)} biosamples) -> 5-level join now total')
+
+# Tag rows whose triad still carries a coarse root value (review aid).
+for r in out_rows:
+    r['underspecified_slots'] = underspecified_slots(r)
+
+# Sort by sample impact (descending), then by the habitat 5-tuple for a deterministic,
+# drift-guard-friendly order. High-impact mappings sort to the top for review.
+out_rows.sort(key=lambda r: (-int(r.get('n_samples') or 0),
+                             tuple(r.get(lv, '') for lv in LEVELS)))
 
 with open('mfdo_nmdc_crosswalk.tsv', 'w') as f:
     writer = csv.DictWriter(f, fieldnames=out_cols, delimiter='\t', extrasaction='ignore', lineterminator='\n')

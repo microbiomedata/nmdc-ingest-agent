@@ -40,6 +40,26 @@ _PROVENANCE_SUFFIXES = ("_provenance",)
 _INTERNAL_COLS = frozenset(("row_type", "n_samples", "Natura2000", "EUNIS", "EMPO",
                              "mfd_hab1_code", "mfd_hab2_code", "mfd_hab3_code"))
 
+# Coarse root CURIEs per triad slot (mirrors build_ontology_crosswalk.py). A value at one of
+# these is the fallback, not a habitat-specific term. underspecified_slots is recomputed here
+# rather than passed through from the crosswalk, so a GEE-refined env_local_scale correctly
+# drops out of the flag.
+_COARSE_CURIES = {
+    "env_broad_scale": {"ENVO:00000428"},                 # bare 'biome' only; 'terrestrial biome' is fine
+    "env_local_scale": {"ENVO:01000408", "ENVO:01000813"},
+    "env_medium":      {"ENVO:00010483"},
+}
+
+
+def _underspecified_slots(row: dict) -> str:
+    flagged = []
+    for slot, coarse in _COARSE_CURIES.items():
+        val = row.get(slot, "")
+        curie = val[val.rfind("[") + 1:val.rfind("]")].strip() if "[" in val and "]" in val else ""
+        if curie in coarse:
+            flagged.append(slot)
+    return "|".join(flagged)
+
 # ELS values vague enough that a GEE satellite signal is allowed to refine them.
 # "astronomical body part" was the original root-class placeholder; the crosswalk
 # now uses "environmental zone" as the preferred fallback per NCBI Import Squad
@@ -152,6 +172,8 @@ def annotate_biosample(bs: dict, crosswalk: dict, gee: dict,
             out["env_local_scale"] = refined
             out["_els_refined_from_gee"] = f"{source}:{corine_label or wc_label}"
 
+    # Recompute on final values so a GEE-refined env_local_scale drops out of the flag.
+    out["underspecified_slots"] = _underspecified_slots(out)
     return out
 
 
