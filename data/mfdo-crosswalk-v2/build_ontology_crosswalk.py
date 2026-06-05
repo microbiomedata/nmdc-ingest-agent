@@ -1,5 +1,5 @@
 """Build the MFDO -> nmdc-schema crosswalk: 279 MFDO ontology leaves plus a small number of
-biosample-reconciliation rows (284 rows total) -> nmdc-schema slots.
+biosample-reconciliation rows (~288 rows total) -> nmdc-schema slots.
 
 Output: mfdo_nmdc_crosswalk.tsv
   - All 5 MFDO levels (original columns)
@@ -335,17 +335,17 @@ ELS_RULES = {
     ('Water', 'Urban', 'Drinking water'): ('ENVO:03600004', 'drinking water treatment plant'),
     ('Other', 'Urban', 'Drinking water'): ('ENVO:03600004', 'drinking water treatment plant'),
     ('Water', 'Subterranean', 'Freshwater'): ('ENVO:00000063', 'water body'),
-    ('Other', 'Urban', 'Biogas'): ('ENVO:01000813', 'astronomical body part'),
-    ('Water', 'Urban', 'Biogas'): ('ENVO:01000813', 'astronomical body part'),
+    ('Other', 'Urban', 'Biogas'): ('ENVO:01000408', 'environmental zone'),
+    ('Water', 'Urban', 'Biogas'): ('ENVO:01000408', 'environmental zone'),
     ('Other', 'Urban', 'Landfill'): ('ENVO:00000533', 'landfill'),
     ('Other', 'Urban', 'Saltwater'): ('ENVO:00000016', 'sea'),  # harbour only via label (hab3 'Harbour, marina'), not this coarse rule
     ('Water', 'Natural', 'Saltwater'): ('ENVO:00000016', 'sea'),
     ('Water', 'Natural', 'Freshwater'): ('ENVO:00000020', 'lake'),
-    ('Other', 'Urban', 'Other'): ('ENVO:01000813', 'astronomical body part'),
-    ('Other', 'Urban', 'Industrial'): ('ENVO:01000813', 'astronomical body part'),
+    ('Other', 'Urban', 'Other'): ('ENVO:01000408', 'environmental zone'),
+    ('Other', 'Urban', 'Industrial'): ('ENVO:01000408', 'environmental zone'),
     ('Water', 'Urban', 'Sandfilter'): ('ENVO:03600004', 'drinking water treatment plant'),
     ('Water', 'Urban', 'Landfill'): ('ENVO:00000533', 'landfill'),
-    ('Water', 'Urban', 'Other'): ('ENVO:01000813', 'astronomical body part'),
+    ('Water', 'Urban', 'Other'): ('ENVO:01000408', 'environmental zone'),
     ('Soil', 'Natural', 'Temperate heath and scrub'): ('ENVO:00000107', 'heath'),
     ('Soil', 'Natural', 'Sclerophyllous scrub'): ('ENVO:00000300', 'scrubland area'),
     ('Soil', 'Natural', 'Rocky habitats and caves'): ('ENVO:01000319', 'rocky slope'),
@@ -637,7 +637,7 @@ def get_els(st, at, hab1, hab2='', hab3='', natura2000=''):
     if r: return r[0], r[1], 'from_mfdo:hab1'
     r = ELS_RULES.get((st, at, ''))
     if r: return r[0], r[1], 'from_mfdo:sampletype+areatype'
-    return 'ENVO:01000813', 'astronomical body part', 'envo_root_class'
+    return 'ENVO:01000408', 'environmental zone', 'envo_root_class'
 
 # hab3-specific env_medium overrides (material contradicts the hab1-level default).
 EM_HAB3 = {
@@ -859,7 +859,7 @@ for leaf in ont_rows:
 # biosamples. Flagged via provenance 'biosample_reconciliation:*'.
 ont_keys = {tuple(r.get(l, '') for l in LEVELS) for r in out_rows}
 by_subkey = {tuple(r.get(l, '') for l in LEVELS[1:]): r for r in out_rows}  # (areatype,hab1,hab2,hab3) -> a leaf
-ROOT_ELS = 'astronomical body part [ENVO:01000813]'
+ROOT_ELS = 'environmental zone [ENVO:01000408]'
 recon = []
 for key, n in sample_counts.items():
     if key in ont_keys or not any(key):
@@ -872,19 +872,27 @@ for key, n in sample_counts.items():
     row['n_samples'] = n
     twin = by_subkey.get((at, h1, h2, h3))  # same habitat, different sampletype
     if st in ('Soil', 'Sediment', 'Water'):
-        # sampletype IS a real medium: floor by medium (+ saltwater context). Do NOT copy a
-        # different-sampletype twin's medium (e.g. a Water twin's 'sea water' onto a Sediment row).
+        # Run the standard rule functions with the available context. This covers
+        # biosamples whose habitat classification (hab1/hab2) has rules in the
+        # existing dicts (e.g. Soil+Agriculture+Fields -> cropland biome /
+        # agricultural field / agricultural soil) without needing hard-coded
+        # per-case entries here. Fall back to saline/medium-specific floors only
+        # when the rules don't resolve to something more specific.
         prov = 'biosample_reconciliation:floor'
-        if st == 'Soil':
-            ebs, els, em = 'terrestrial biome [ENVO:00000446]', ROOT_ELS, 'soil [ENVO:00001998]'
-        elif st == 'Sediment':
-            ebs = 'marine biome [ENVO:00000447]' if saline else 'freshwater biome [ENVO:00000873]'
-            els = 'sea floor [ENVO:00000482]' if saline else ROOT_ELS
-            em = 'marine sediment [ENVO:03000033]' if saline else 'sediment permeated by freshwater [ENVO:01001028]'
-        else:  # Water
-            ebs = 'marine biome [ENVO:00000447]' if saline else 'freshwater biome [ENVO:00000873]'
-            els = 'sea [ENVO:00000016]' if saline else 'water body [ENVO:00000063]'
-            em = 'sea water [ENVO:00002149]' if saline else 'liquid water [ENVO:00002006]'
+        ebs_c, ebs_l, _ = get_ebs(st, at, h1, h2)
+        els_c, els_l, _ = get_els(st, at, h1, h2, h3)
+        em_c, em_l, _  = get_em(st, h1, h2, h3)
+        ebs = format_pv(ebs_c, ebs_l)
+        els = format_pv(els_c, els_l)
+        em  = format_pv(em_c, em_l)
+        # Saline-context overrides for Sediment/Water when rules resolve to a
+        # non-saline default: prefer sea floor / sea / sea water for saltwater.
+        if saline and st == 'Sediment' and els_c not in ('ENVO:00000482',):
+            els = 'sea floor [ENVO:00000482]'
+        if saline and st in ('Sediment', 'Water') and ebs_c not in ('ENVO:00000447',):
+            ebs = 'marine biome [ENVO:00000447]'
+        if saline and st == 'Water' and em_c not in ('ENVO:00002149',):
+            em = 'sea water [ENVO:00002149]'
         cur_v = cur_l = misc = ''
     elif twin:
         # non-medium sampletype (e.g. biogas typed 'Other' in db vs 'Water' in ontology): the only

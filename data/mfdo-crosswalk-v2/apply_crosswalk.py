@@ -65,13 +65,10 @@ def _load_tsv(path: Path) -> list[dict]:
 
 
 def _crosswalk_key(row: dict) -> tuple:
-    return (
-        row.get("mfd_sampletype", ""),
-        row.get("mfd_areatype", ""),
-        row.get("mfd_hab1", ""),
-        row.get("mfd_hab2", ""),
-        row.get("mfd_hab3", ""),
-    )
+    # strip() removes ASCII whitespace AND Unicode non-breaking space (\xa0), which
+    # appears as a trailing character on some MFD db hab3 values (e.g. Beetroot).
+    return tuple((row.get(c) or "").strip() for c in
+                 ("mfd_sampletype", "mfd_areatype", "mfd_hab1", "mfd_hab2", "mfd_hab3"))
 
 
 def _strip_internal(d: dict) -> dict:
@@ -129,13 +126,7 @@ def load_tables(data_dir: Path,
 def annotate_biosample(bs: dict, crosswalk: dict, gee: dict,
                        corine_map: dict, worldcover_map: dict) -> dict:
     out = dict(bs)
-    key = (
-        bs.get("mfd_sampletype", ""),
-        bs.get("mfd_areatype", ""),
-        bs.get("mfd_hab1", ""),
-        bs.get("mfd_hab2", ""),
-        bs.get("mfd_hab3", ""),
-    )
+    key = _crosswalk_key(bs)
 
     cw_row = crosswalk.get(key)
     if cw_row is None:
