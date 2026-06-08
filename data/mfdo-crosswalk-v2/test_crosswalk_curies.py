@@ -19,6 +19,7 @@ cleanly if oaklib is not installed.
 """
 
 import csv
+import re
 from pathlib import Path
 
 import pytest
@@ -147,6 +148,22 @@ def test_landcover_map_verified_els_in_allowlist(allowed, map_file, label_col):
             if not c or c not in allowed["els"]:
                 bad.append(f"{row.get(label_col)}: env_local_scale={row.get('env_local_scale')!r}")
     assert not bad, f"{map_file} ols_verified=yes ELS not in allow-list:\n" + "\n".join(bad)
+
+
+@pytest.mark.parametrize("map_file", ["corine_envo_map.tsv", "worldcover_envo_map.tsv"])
+def test_no_curies_in_notes(map_file):
+    """`notes` is prose only -- CURIEs belong in the gated env_local_scale column.
+
+    Two fabricated CURIEs (pasture/terrestrial biome, sandy beach/plain) were found
+    hiding in free-text notes, where the concordance gate doesn't reach. Keep notes
+    CURIE-free so a wrong CURIE can't sit there unverified.
+    """
+    bad = []
+    with (HERE / map_file).open(newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f, delimiter="\t"):
+            if re.search(r"ENVO:\d+", row.get("notes") or ""):
+                bad.append(f"{row.get('notes')!r}")
+    assert not bad, f"{map_file} has CURIEs in notes (move them to env_local_scale):\n" + "\n".join(bad)
 
 
 def test_label_curie_concordance(adapter):
