@@ -46,7 +46,7 @@ _INTERNAL_COLS = frozenset(("row_type", "n_samples", "Natura2000", "EUNIS", "EMP
 # drops out of the flag.
 _COARSE_CURIES = {
     "env_broad_scale": {"ENVO:00000428"},                 # bare 'biome' only; 'terrestrial biome' is fine
-    "env_local_scale": {"ENVO:01000408", "ENVO:01000813"},
+    "env_local_scale": {"ENVO:01000408"},                 # environmental zone fallback
     "env_medium":      {"ENVO:00010483"},
 }
 
@@ -61,12 +61,9 @@ def _underspecified_slots(row: dict) -> str:
     return "|".join(flagged)
 
 # ELS values vague enough that a GEE satellite signal is allowed to refine them.
-# "astronomical body part" was the original root-class placeholder; the crosswalk
-# now uses "environmental zone" as the preferred fallback per NCBI Import Squad
-# decision (2026-06-04). Both are included so the refinement fires correctly
-# regardless of which placeholder a crosswalk row carries.
+# The crosswalk uses "environmental zone" as the fallback when no specific ELS is
+# supportable from the habitat signal (NCBI Import Squad decision 2026-06-04).
 _VAGUE_ELS = frozenset({
-    "astronomical body part [ENVO:01000813]",
     "environmental zone [ENVO:01000408]",
     "",
 })

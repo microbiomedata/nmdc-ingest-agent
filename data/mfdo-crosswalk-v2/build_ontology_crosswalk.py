@@ -793,7 +793,7 @@ out_cols = (
 # env_broad_scale is supposed to be a biome. Used to populate underspecified_slots.
 COARSE_CURIES = {
     'env_broad_scale': {'ENVO:00000428'},                           # bare 'biome' only; 'terrestrial biome' is fine
-    'env_local_scale': {'ENVO:01000408', 'ENVO:01000813'},          # environmental zone, astronomical body part
+    'env_local_scale': {'ENVO:01000408'},                           # environmental zone fallback
     'env_medium':      {'ENVO:00010483'},                           # environmental material
 }
 

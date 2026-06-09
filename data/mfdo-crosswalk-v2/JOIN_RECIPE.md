@@ -55,11 +55,6 @@ run summary; the committed `mfd_biosamples_annotated.tsv` carries the refined
 `env_local_scale` value itself, without a separate provenance column (all `*_provenance`
 columns are stripped before output).
 
-Note: the previous fallback was `astronomical body part [ENVO:01000813]`; it was
-replaced by `environmental zone [ENVO:01000408]` per NCBI Import Squad decision 2026-06-04.
-`apply_crosswalk.py` recognises both so it handles any crosswalk rows that still carry the
-old value.
-
 ## coords_reliable
 
 Projects **P04_3, P04_5, P06_3** plus 32 individually flagged samples have unreliable

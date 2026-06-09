@@ -88,7 +88,7 @@ Subclasses of (astronomical body part + vegetation layer + environmental zone + 
 
 ### ELS fallback
 
-When no specific ELS is supportable from the habitat signal, crosswalk rows use `environmental zone [ENVO:01000408]` as a fallback. This is the root of one of the five ELS anchor classes and is valid per the allow-list. The previous fallback was `astronomical body part [ENVO:01000813]`; it was replaced per NCBI Import Squad decision 2026-06-04.
+When no specific ELS is supportable from the habitat signal, crosswalk rows use `environmental zone [ENVO:01000408]` as a fallback. It is the root of one of the five ELS anchor classes and is valid per the allow-list.
 
 ### geo_loc_name
 
