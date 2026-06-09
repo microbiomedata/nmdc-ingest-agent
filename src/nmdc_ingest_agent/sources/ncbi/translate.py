@@ -892,21 +892,9 @@ def build_nmdc_database(
             continue
         kept_experiments.append(exp)
 
-    ns_ids = (
-        minter.mint("nmdc:NucleotideSequencing", len(kept_experiments))
-        if kept_experiments
-        else []
-    )
-
-    total_runs = sum(len(exp.get("runs", [])) for exp in kept_experiments)
-    do_pool = iter(
-        minter.mint("nmdc:DataObject", total_runs) if total_runs else []
-    )
-
     # Resolve each distinct SRA instrument-model string to an *existing* NMDC
     # Instrument id (instrument_set name match, else InstrumentModelEnum alias).
-    # Unresolved models are reported and leave instrument_used empty rather than
-    # minting a fresh Instrument record per source string.
+    # This runs *before* minting so we never mint ids for records we won't emit.
     model_counts: dict[str, int] = {}
     for exp in kept_experiments:
         model = (exp.get("instrument_model") or "").strip()
@@ -922,6 +910,20 @@ def build_nmdc_database(
         else:
             unresolved_models[model] = count
 
+    # The forthcoming `instrument_used` minimum_cardinality=1 schema constraint
+    # makes a DataGeneration record with an empty `instrument_used` invalid, so
+    # we exclude experiments without a resolvable instrument rather than emitting
+    # such records. Biosamples are kept regardless (valid standalone records).
+    eligible_experiments: list[dict] = []
+    missing_model_count = 0
+    for exp in kept_experiments:
+        model = (exp.get("instrument_model") or "").strip()
+        if model and model in model_to_instrument_id:
+            eligible_experiments.append(exp)
+        elif not model:
+            missing_model_count += 1
+        # else: model present but unresolved (counted in unresolved_models)
+
     if model_to_instrument_id:
         print(
             f"  Resolved {len(model_to_instrument_id)} instrument model(s) to "
@@ -929,23 +931,46 @@ def build_nmdc_database(
         )
         for model, instrument_id in sorted(model_to_instrument_id.items()):
             print(f"    {model!r} -> {instrument_id} ({model_counts[model]} experiment(s))")
+
+    total_unresolved = sum(unresolved_models.values())
+    total_excluded = total_unresolved + missing_model_count
     if unresolved_models:
-        total_unresolved = sum(unresolved_models.values())
         print(
-            f"  WARNING: {len(unresolved_models)} instrument model(s) "
-            f"({total_unresolved} experiment(s)) had no matching NMDC Instrument; "
-            f"instrument_used left empty:"
+            f"  WARNING: excluded {total_unresolved} DataGeneration record(s) from "
+            f"{len(unresolved_models)} instrument model(s) that did not match any "
+            f"NMDC Instrument:"
         )
         for model, count in sorted(unresolved_models.items()):
             print(f"    {model!r} ({count} experiment(s))")
+    if missing_model_count:
+        print(
+            f"  WARNING: excluded {missing_model_count} DataGeneration record(s) from "
+            f"experiment(s) with no instrument model."
+        )
+    if total_excluded:
+        print(
+            f"  Excluded {total_excluded} DataGeneration record(s) total for missing "
+            f"or unresolvable instrument information (instrument_used is required)."
+        )
+
+    ns_ids = (
+        minter.mint("nmdc:NucleotideSequencing", len(eligible_experiments))
+        if eligible_experiments
+        else []
+    )
+
+    total_runs = sum(len(exp.get("runs", [])) for exp in eligible_experiments)
+    do_pool = iter(
+        minter.mint("nmdc:DataObject", total_runs) if total_runs else []
+    )
 
     all_nuc_seqs: list[nmdc.NucleotideSequencing] = []
     all_data_objects: list[nmdc.DataObject] = []
-    for exp, ns_id in zip(kept_experiments, ns_ids):
+    for exp, ns_id in zip(eligible_experiments, ns_ids):
         run_count = len(exp.get("runs", []))
         run_do_ids = [next(do_pool) for _ in range(run_count)]
         model = (exp.get("instrument_model") or "").strip()
-        instrument_id = model_to_instrument_id.get(model) if model else None
+        instrument_id = model_to_instrument_id[model]
         records = build_sequencing_records(
             exp,
             study_id,
