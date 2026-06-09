@@ -1682,11 +1682,13 @@ dev = [
     { name = "ruff" },
 ]
 ontology = [
+    { name = "click" },
     { name = "oaklib" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "click", marker = "extra == 'ontology'" },
     { name = "linkml-runtime", specifier = ">=1.9.4,<1.10" },
     { name = "lxml" },
     { name = "nmdc-api-utilities", specifier = ">=0.6.1,<1" },
