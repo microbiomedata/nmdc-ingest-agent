@@ -1,0 +1,12 @@
+worldcover_code	worldcover_label	env_local_scale	env_local_scale_provenance	ols_verified	notes
+10	Tree cover	forested area [ENVO:00000111]	from_worldcover	yes	prefer CORINE forest type when available; corrected from an earlier wrong CURIE
+20	Shrubland	scrubland area [ENVO:00000300]	from_worldcover	yes	biome-level distinction not resolvable from WorldCover class alone
+30	Grassland	grassland area [ENVO:00000106]	from_worldcover	yes	used in crosswalk
+40	Cropland	agricultural field [ENVO:00000114]	from_worldcover	yes	used in crosswalk
+50	Built-up	populated place [ENVO:00000062]	from_worldcover	yes	corrected from an earlier wrong CURIE
+60	Bare / sparse vegetation		from_worldcover	no anchor-valid ELS	no anchor-valid ELS found via runoak; corrected from an earlier wrong CURIE
+70	Snow and ice			no anchor-valid ELS without site-specific context	
+80	Permanent water bodies	water body [ENVO:00000063]	from_worldcover	yes	
+90	Herbaceous wetland	wetland ecosystem [ENVO:01001209]	from_worldcover	yes	too broad; prefer CORINE 411/412/421 when available
+95	Mangroves		from_worldcover	no anchor-valid ELS	mangrove-specific ELS not found in ELS allow-list; mangrove biome is EBS
+100	Moss and lichen			no anchor-valid ELS without site-specific context	
