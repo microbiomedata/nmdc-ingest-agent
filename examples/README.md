@@ -28,7 +28,7 @@ Each project subfolder is self-contained: extracted-verbatim single-record JSON 
 - **Projects are named by human-readable label**, not by accession (e.g. `microflora-danica/`, not `PRJNA1071982/`). When a project name overlaps with another source, suffix with the source (e.g. `microflora-danica-ncbi/` vs `microflora-danica-gold/`).
 - **Files are named `NN_<short-label>.json`** within each collection — numeric prefixes give a canonical sort and let a reader skim the most representative cases first.
 - **Records are extracted verbatim** from real pipeline output. No hand-edits. If a record can't be regenerated under current pipeline logic, the README documents why.
-- **Placeholder NMDC IDs** (`-99-` shoulder) — real ingest requires `--mint-real-ids`. Ids are randomly minted each run, so regenerating produces different ids matching the same criteria.
+- **Placeholder NMDC IDs** (`-99-` shoulder) — real ingest requires `--mint-real-ids`. Ids are randomly minted each run, so regenerating produces different ids matching the same criteria. **Exception:** `instrument_used` references are real, stable `nmdc:inst-…` ids resolved from the live `instrument_set` (instruments are looked up, never minted), so they are identical across runs and independent of `--mint-real-ids`.
 
 ## Adding a new project
 

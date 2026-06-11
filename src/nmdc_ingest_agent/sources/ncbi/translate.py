@@ -13,6 +13,7 @@ Or as a module:
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -26,6 +27,7 @@ from nmdc_schema import nmdc
 from linkml_runtime.dumpers import json_dumper
 
 from nmdc_ingest_agent import GIT_URL as INGEST_AGENT_GIT_URL, __version__ as INGEST_AGENT_VERSION
+from nmdc_ingest_agent.instruments import InstrumentResolver
 from nmdc_ingest_agent.minting import (
     Minter,
     PlaceholderMinter,
@@ -839,7 +841,9 @@ def _is_mag_package(package: str) -> bool:
     return any(p.startswith(prefix) for prefix in _MAG_PACKAGE_PREFIXES)
 
 
-def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
+def build_nmdc_database(
+    data: dict, minter: Minter, resolver: InstrumentResolver
+) -> nmdc.Database:
     project = data["bioproject"]
     raw_biosamples = data["biosamples"]
     experiments = data["sra_experiments"]
@@ -888,38 +892,85 @@ def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
             continue
         kept_experiments.append(exp)
 
+    # Resolve each distinct SRA instrument-model string to an *existing* NMDC
+    # Instrument id (instrument_set name match, else InstrumentModelEnum alias).
+    # This runs *before* minting so we never mint ids for records we won't emit.
+    model_counts: dict[str, int] = {}
+    for exp in kept_experiments:
+        model = (exp.get("instrument_model") or "").strip()
+        if model:
+            model_counts[model] = model_counts.get(model, 0) + 1
+
+    model_to_instrument_id: dict[str, str] = {}
+    unresolved_models: dict[str, int] = {}
+    for model, count in model_counts.items():
+        instrument_id = resolver.resolve(model)
+        if instrument_id:
+            model_to_instrument_id[model] = instrument_id
+        else:
+            unresolved_models[model] = count
+
+    # The forthcoming `instrument_used` minimum_cardinality=1 schema constraint
+    # makes a DataGeneration record with an empty `instrument_used` invalid, so
+    # we exclude experiments without a resolvable instrument rather than emitting
+    # such records. Biosamples are kept regardless (valid standalone records).
+    eligible_experiments: list[dict] = []
+    missing_model_count = 0
+    for exp in kept_experiments:
+        model = (exp.get("instrument_model") or "").strip()
+        if model and model in model_to_instrument_id:
+            eligible_experiments.append(exp)
+        elif not model:
+            missing_model_count += 1
+        # else: model present but unresolved (counted in unresolved_models)
+
+    if model_to_instrument_id:
+        print(
+            f"  Resolved {len(model_to_instrument_id)} instrument model(s) to "
+            f"existing NMDC Instruments:"
+        )
+        for model, instrument_id in sorted(model_to_instrument_id.items()):
+            print(f"    {model!r} -> {instrument_id} ({model_counts[model]} experiment(s))")
+
+    total_unresolved = sum(unresolved_models.values())
+    total_excluded = total_unresolved + missing_model_count
+    if unresolved_models:
+        print(
+            f"  WARNING: excluded {total_unresolved} DataGeneration record(s) from "
+            f"{len(unresolved_models)} instrument model(s) that did not match any "
+            f"NMDC Instrument:"
+        )
+        for model, count in sorted(unresolved_models.items()):
+            print(f"    {model!r} ({count} experiment(s))")
+    if missing_model_count:
+        print(
+            f"  WARNING: excluded {missing_model_count} DataGeneration record(s) from "
+            f"experiment(s) with no instrument model."
+        )
+    if total_excluded:
+        print(
+            f"  Excluded {total_excluded} DataGeneration record(s) total for missing "
+            f"or unresolvable instrument information (instrument_used is required)."
+        )
+
     ns_ids = (
-        minter.mint("nmdc:NucleotideSequencing", len(kept_experiments))
-        if kept_experiments
+        minter.mint("nmdc:NucleotideSequencing", len(eligible_experiments))
+        if eligible_experiments
         else []
     )
 
-    total_runs = sum(len(exp.get("runs", [])) for exp in kept_experiments)
+    total_runs = sum(len(exp.get("runs", [])) for exp in eligible_experiments)
     do_pool = iter(
         minter.mint("nmdc:DataObject", total_runs) if total_runs else []
     )
 
-    unique_models: list[str] = []
-    seen_models: set[str] = set()
-    for exp in kept_experiments:
-        model = (exp.get("instrument_model") or "").strip()
-        if model and model not in seen_models:
-            seen_models.add(model)
-            unique_models.append(model)
-    instrument_ids = (
-        minter.mint("nmdc:Instrument", len(unique_models))
-        if unique_models
-        else []
-    )
-    model_to_instrument_id = dict(zip(unique_models, instrument_ids))
-
     all_nuc_seqs: list[nmdc.NucleotideSequencing] = []
     all_data_objects: list[nmdc.DataObject] = []
-    for exp, ns_id in zip(kept_experiments, ns_ids):
+    for exp, ns_id in zip(eligible_experiments, ns_ids):
         run_count = len(exp.get("runs", []))
         run_do_ids = [next(do_pool) for _ in range(run_count)]
         model = (exp.get("instrument_model") or "").strip()
-        instrument_id = model_to_instrument_id.get(model) if model else None
+        instrument_id = model_to_instrument_id[model]
         records = build_sequencing_records(
             exp,
             study_id,
@@ -1060,16 +1111,31 @@ def main():
             "environment. Without this flag, output uses placeholder shoulder '99'."
         ),
     )
+    parser.add_argument(
+        "--env",
+        choices=("dev", "prod"),
+        default=None,
+        help=(
+            "NMDC runtime environment for ID minting and instrument_set lookup. "
+            "Defaults to NMDC_RUNTIME_ENV, else 'dev'. dev-minted IDs are valid in "
+            "both environments, so dev is the safe default; pass 'prod' to promote."
+        ),
+    )
     args = parser.parse_args()
 
     accession = args.accession.strip()
     out_path = args.out or f"results/ncbi_{accession}_nmdc.json"
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
 
+    # Single source of truth for the runtime environment, used by both minting
+    # and instrument resolution. Precedence: --env flag > NMDC_RUNTIME_ENV > dev.
+    env = args.env or os.environ.get("NMDC_RUNTIME_ENV") or "dev"
+    print(f"NMDC runtime environment: {env}")
+
     minter: Minter
     if args.mint_real_ids:
         try:
-            minter = runtime_minter_from_env()
+            minter = runtime_minter_from_env(env)
         except RuntimeError as e:
             sys.exit(f"ERROR: {e}")
     else:
@@ -1085,8 +1151,14 @@ def main():
         print("Review this file, then re-run without --fetch-only to produce NMDC JSON.")
         return
 
+    # Resolve instrument_used against the live NMDC instrument_set in the same
+    # environment as minting (dev's instrument_set is ahead of prod — e.g.
+    # PromethION and Sequel IIe exist only there).
+    print(f"\nFetching NMDC instrument_set ({env}) to resolve instrument_used...")
+    resolver = InstrumentResolver.from_api(env)
+
     print("\nBuilding NMDC Database...")
-    database = build_nmdc_database(data, minter)
+    database = build_nmdc_database(data, minter, resolver)
 
     print(f"  Study: {database.study_set[0].id}")
     print(f"  Biosamples: {len(database.biosample_set)}")

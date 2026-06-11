@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import os
 import secrets
-from typing import Protocol
+from typing import Optional, Protocol
 
 
 _TYPECODE_BY_CLASS: dict[str, str] = {
@@ -59,15 +59,16 @@ class RuntimeMinter:
         return [result] if isinstance(result, str) else list(result)
 
 
-def runtime_minter_from_env() -> RuntimeMinter:
+def runtime_minter_from_env(env: Optional[str] = None) -> RuntimeMinter:
     """Build a :class:`RuntimeMinter` from environment credentials.
 
     Required:
       - ``NMDC_RUNTIME_CLIENT_ID``
       - ``NMDC_RUNTIME_CLIENT_SECRET``
 
-    Optional:
-      - ``NMDC_RUNTIME_ENV`` — ``prod`` (default) or ``dev``.
+    The runtime environment is taken from ``env`` when given, else the
+    ``NMDC_RUNTIME_ENV`` variable, else ``dev``. dev-minted IDs are valid in
+    both environments, so dev is the safe default.
     """
     client_id = os.environ.get("NMDC_RUNTIME_CLIENT_ID")
     client_secret = os.environ.get("NMDC_RUNTIME_CLIENT_SECRET")
@@ -88,7 +89,7 @@ def runtime_minter_from_env() -> RuntimeMinter:
     from nmdc_api_utilities.auth import NMDCAuth
     from nmdc_api_utilities.minter import Minter as _UpstreamMinter
 
-    env = os.environ.get("NMDC_RUNTIME_ENV", "prod")
+    env = env or os.environ.get("NMDC_RUNTIME_ENV") or "dev"
     auth = NMDCAuth(
         client_id=client_id,
         client_secret=client_secret,
