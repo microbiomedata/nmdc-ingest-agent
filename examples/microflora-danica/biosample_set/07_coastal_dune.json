@@ -1,31 +1,28 @@
 {
-  "id": "nmdc:bsm-99-ca7f4f52",
+  "id": "nmdc:bsm-99-b45076d3",
   "type": "nmdc:Biosample",
   "name": "MFD00010",
   "associated_studies": [
-    "nmdc:sty-99-1e6aca8f"
+    "nmdc:sty-99-ebd80220"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000000",
+      "id": "ENVO:01000215",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "temperate shrubland biome"
     }
   },
   "env_local_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000170",
+      "id": "ENVO:00000416",
       "type": "nmdc:OntologyClass",
-      "name": "dune"
+      "name": "coastal dune"
     }
   },
   "env_medium": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "",
     "term": {
       "id": "ENVO:00001998",
       "type": "nmdc:OntologyClass",
@@ -34,11 +31,11 @@
   },
   "provenance_metadata": {
     "type": "nmdc:ProvenanceMetadata",
-    "add_date": "2026-05-13T18:50:56.295321+00:00",
-    "mod_date": "2026-05-13T18:50:56.295321+00:00",
-    "source_system_of_record": "NCBI",
+    "add_date": "2026-06-11T22:13:20.151566+00:00",
     "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
-    "version": "0.1.0"
+    "mod_date": "2026-06-11T22:13:20.151566+00:00",
+    "version": "0.1.0",
+    "source_system_of_record": "NCBI"
   },
   "insdc_biosample_identifiers": [
     "biosample:SAMN39864942"
