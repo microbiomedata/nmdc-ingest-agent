@@ -28,6 +28,7 @@ from linkml_runtime.dumpers import json_dumper
 
 from nmdc_ingest_agent import GIT_URL as INGEST_AGENT_GIT_URL, __version__ as INGEST_AGENT_VERSION
 from nmdc_ingest_agent.instruments import InstrumentResolver
+from nmdc_ingest_agent.sources.ncbi.mfd import MfdEnvTriadResolver
 from nmdc_ingest_agent.minting import (
     Minter,
     PlaceholderMinter,
@@ -537,7 +538,11 @@ def build_study(project_data: dict, study_id: str, now: datetime) -> nmdc.Study:
 
 
 def build_biosample(
-    sample_data: dict, study_id: str, biosample_id: str, now: datetime
+    sample_data: dict,
+    study_id: str,
+    biosample_id: str,
+    now: datetime,
+    mfd_resolver: Optional[MfdEnvTriadResolver] = None,
 ) -> nmdc.Biosample:
     accession = sample_data["accession"]
     attrs = sample_data["attributes"]
@@ -588,6 +593,19 @@ def build_biosample(
     env_broad = _parse_envo_term(raw_broad)
     env_local = _parse_envo_term(raw_local)
     env_medium = _parse_envo_term(raw_medium)
+
+    # MicroFlora Danica biosamples carry no usable env-triad in NCBI; resolve
+    # them from the v2 MFDO crosswalk by barcode. Only matched slots override the
+    # sentinel; non-MFD samples and unmatched slots keep the placeholder above.
+    if mfd_resolver is not None:
+        resolved = mfd_resolver.resolve(sample_data)
+        if resolved:
+            if "env_broad_scale" in resolved:
+                env_broad = resolved["env_broad_scale"]
+            if "env_local_scale" in resolved:
+                env_local = resolved["env_local_scale"]
+            if "env_medium" in resolved:
+                env_medium = resolved["env_medium"]
 
     lat_lon = None
     raw_latlon = attrs.get("lat_lon", "")
@@ -842,7 +860,10 @@ def _is_mag_package(package: str) -> bool:
 
 
 def build_nmdc_database(
-    data: dict, minter: Minter, resolver: InstrumentResolver
+    data: dict,
+    minter: Minter,
+    resolver: InstrumentResolver,
+    mfd_resolver: Optional[MfdEnvTriadResolver] = None,
 ) -> nmdc.Database:
     project = data["bioproject"]
     raw_biosamples = data["biosamples"]
@@ -876,7 +897,7 @@ def build_nmdc_database(
     biosample_acc_to_id: dict[str, str] = {}
     nmdc_biosamples: list[nmdc.Biosample] = []
     for sample, biosample_id in zip(biosamples, biosample_ids):
-        bs = build_biosample(sample, study_id, biosample_id, now)
+        bs = build_biosample(sample, study_id, biosample_id, now, mfd_resolver)
         nmdc_biosamples.append(bs)
         biosample_acc_to_id[sample["accession"]] = bs.id
 
@@ -1157,8 +1178,14 @@ def main():
     print(f"\nFetching NMDC instrument_set ({env}) to resolve instrument_used...")
     resolver = InstrumentResolver.from_api(env)
 
+    # MicroFlora Danica env-triad is resolved deterministically from the v2 MFDO
+    # crosswalk when its data file is present; absent for non-MFD BioProjects.
+    mfd_resolver = MfdEnvTriadResolver.from_tsv()
+    if mfd_resolver is not None:
+        print("  Loaded MFD env-triad crosswalk (v2); MFD biosamples resolved at pipeline.")
+
     print("\nBuilding NMDC Database...")
-    database = build_nmdc_database(data, minter, resolver)
+    database = build_nmdc_database(data, minter, resolver, mfd_resolver)
 
     print(f"  Study: {database.study_set[0].id}")
     print(f"  Biosamples: {len(database.biosample_set)}")
