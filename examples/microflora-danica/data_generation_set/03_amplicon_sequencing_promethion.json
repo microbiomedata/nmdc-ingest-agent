@@ -1,19 +1,19 @@
 {
-  "id": "nmdc:dgns-99-5bb68446",
+  "id": "nmdc:dgns-99-7b432315",
   "type": "nmdc:NucleotideSequencing",
   "name": "NA",
   "has_input": [
-    "nmdc:procsm-99-8ed3e131"
+    "nmdc:procsm-99-56fb6f21"
   ],
   "has_output": [
-    "nmdc:dobj-99-1b3006b8"
+    "nmdc:dobj-99-c7364dbd"
   ],
-  "analyte_category": "metagenome",
+  "analyte_category": "amplicon_sequencing_assay",
   "associated_studies": [
     "nmdc:sty-99-81e15817"
   ],
   "instrument_used": [
-    "nmdc:inst-14-mr4r2w09"
+    "nmdc:inst-15-pc5b4k98"
   ],
   "provenance_metadata": {
     "type": "nmdc:ProvenanceMetadata",
@@ -24,6 +24,6 @@
     "source_system_of_record": "NCBI"
   },
   "insdc_experiment_identifiers": [
-    "insdc.sra:SRX23599598"
+    "insdc.sra:SRX23662838"
   ]
 }

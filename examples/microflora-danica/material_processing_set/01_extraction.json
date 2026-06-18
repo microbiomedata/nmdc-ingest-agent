@@ -1,0 +1,14 @@
+{
+  "id": "nmdc:extrp-99-ad41a1c3",
+  "type": "nmdc:Extraction",
+  "name": "Extraction for MFD00001",
+  "has_input": [
+    "nmdc:bsm-99-8225d98f"
+  ],
+  "has_output": [
+    "nmdc:procsm-99-a1a97b83"
+  ],
+  "extraction_targets": [
+    "DNA"
+  ]
+}
