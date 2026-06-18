@@ -24,6 +24,9 @@ _TYPECODE_BY_CLASS: dict[str, str] = {
     "nmdc:NucleotideSequencing": "dgns",
     "nmdc:DataObject": "dobj",
     "nmdc:Instrument": "inst",
+    "nmdc:Extraction": "extrp",
+    "nmdc:LibraryPreparation": "libprp",
+    "nmdc:ProcessedSample": "procsm",
 }
 
 

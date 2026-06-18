@@ -717,15 +717,33 @@ def build_sequencing_records(
     experiment: dict,
     study_id: str,
     biosample_id: str,
+    biosample_name: str,
     nucleotide_sequencing_id: str,
     data_object_ids: List[str],
     instrument_id: Optional[str],
+    extraction_id: str,
+    extraction_output_id: str,
+    library_preparation_id: str,
+    library_output_id: str,
     now: datetime,
 ) -> dict:
-    """Build NucleotideSequencing (DataGeneration) and DataObject records for
-    one SRA experiment. The DataGeneration consumes the Biosample directly;
-    Extraction/LibraryPreparation/ProcessedSample records are intentionally
-    out of scope for NCBI-sourced ingest."""
+    """Build the material-processing chain plus DataObjects for one SRA experiment.
+
+    NCBI does not record the wet-lab steps, but the NMDC model requires a
+    NucleotideSequencing to consume a ProcessedSample rather than the Biosample
+    directly. We therefore reconstruct the canonical chain with one Extraction
+    and one LibraryPreparation per experiment, each emitting a ProcessedSample:
+
+        Biosample
+          -> Extraction          (has_output: extracted-nucleic-acid ProcessedSample)
+          -> LibraryPreparation   (has_output: sequencing-library ProcessedSample)
+          -> NucleotideSequencing (has_output: DataObject(s))
+
+    Only fields NCBI actually supports are populated; wet-lab metadata absent
+    from the SRA record (dates, input mass, processing institution) is left
+    unset. The extraction target / library type is inferred from the SRA
+    LIBRARY_SOURCE (transcriptomic -> RNA, else DNA), consistent with the
+    DataObject type and analyte-category inference below."""
 
     exp_acc = experiment["experiment_accession"]
 
@@ -739,8 +757,10 @@ def build_sequencing_records(
     source_upper = (experiment.get("library_source") or "").upper()
     if "TRANSCRIPTOMIC" in source_upper:
         data_object_type = "Metatranscriptome Raw Reads"
+        nucleic_acid = "RNA"
     else:
         data_object_type = "Metagenome Raw Reads"
+        nucleic_acid = "DNA"
 
     data_objects = []
     for run, do_id in zip(runs, data_object_ids):
@@ -755,6 +775,38 @@ def build_sequencing_records(
             type="nmdc:DataObject",
         ))
 
+    # Material-processing / processed-sample records are named after the source
+    # Biosample (its samp_name/name), not the SRA experiment accession, so the
+    # wet-lab chain reads in terms of the sample it came from.
+    extraction = nmdc.Extraction(
+        id=extraction_id,
+        name=f"Extraction for {biosample_name}",
+        has_input=[biosample_id],
+        has_output=[extraction_output_id],
+        extraction_targets=[nucleic_acid],
+        type="nmdc:Extraction",
+    )
+    extraction_output = nmdc.ProcessedSample(
+        id=extraction_output_id,
+        name=f"{nucleic_acid} extracted from {biosample_name}",
+        type="nmdc:ProcessedSample",
+    )
+
+    # LibraryPreparation: extracted nucleic acid -> sequencing-library ProcessedSample.
+    library_preparation = nmdc.LibraryPreparation(
+        id=library_preparation_id,
+        name=f"Library preparation for {biosample_name}",
+        has_input=[extraction_output_id],
+        has_output=[library_output_id],
+        library_type=nucleic_acid,
+        type="nmdc:LibraryPreparation",
+    )
+    library_output = nmdc.ProcessedSample(
+        id=library_output_id,
+        name=f"sequencing library prepared for {biosample_name}",
+        type="nmdc:ProcessedSample",
+    )
+
     analyte_category = _infer_analyte_category(
         experiment.get("library_source", ""),
         experiment.get("library_strategy", ""),
@@ -762,10 +814,12 @@ def build_sequencing_records(
 
     instrument_ids = [instrument_id] if instrument_id else []
 
+    # The NucleotideSequencing now consumes the library ProcessedSample, not the
+    # Biosample directly (the Biosample reaches it transitively via the chain).
     nuc_seq = nmdc.NucleotideSequencing(
         id=nucleotide_sequencing_id,
         name=experiment.get("sample_title", "") or exp_acc,
-        has_input=[biosample_id],
+        has_input=[library_output_id],
         has_output=list(data_object_ids),
         associated_studies=[study_id],
         instrument_used=instrument_ids,
@@ -778,6 +832,8 @@ def build_sequencing_records(
     return {
         "nucleotide_sequencing": nuc_seq,
         "data_objects": data_objects,
+        "material_processings": [extraction, library_preparation],
+        "processed_samples": [extraction_output, library_output],
     }
 
 
@@ -895,11 +951,18 @@ def build_nmdc_database(
         minter.mint("nmdc:Biosample", len(biosamples)) if biosamples else []
     )
     biosample_acc_to_id: dict[str, str] = {}
+    biosample_acc_to_name: dict[str, str] = {}
     nmdc_biosamples: list[nmdc.Biosample] = []
     for sample, biosample_id in zip(biosamples, biosample_ids):
         bs = build_biosample(sample, study_id, biosample_id, now, mfd_resolver)
         nmdc_biosamples.append(bs)
         biosample_acc_to_id[sample["accession"]] = bs.id
+        # Name downstream material-processing records after the biosample's
+        # stable sample identifier (samp_name, e.g. the MFD barcode), falling
+        # back to the display name then accession when samp_name is absent.
+        biosample_acc_to_name[sample["accession"]] = (
+            bs.samp_name or bs.name or sample["accession"]
+        )
 
     kept_experiments: list[dict] = []
     skip_warnings: list[str] = []
@@ -974,10 +1037,20 @@ def build_nmdc_database(
             f"or unresolvable instrument information (instrument_used is required)."
         )
 
+    n_eligible = len(eligible_experiments)
     ns_ids = (
-        minter.mint("nmdc:NucleotideSequencing", len(eligible_experiments))
-        if eligible_experiments
-        else []
+        minter.mint("nmdc:NucleotideSequencing", n_eligible) if n_eligible else []
+    )
+    # One Extraction + one LibraryPreparation per experiment, each emitting a
+    # ProcessedSample (so 2 ProcessedSamples per experiment).
+    extraction_ids = iter(
+        minter.mint("nmdc:Extraction", n_eligible) if n_eligible else []
+    )
+    library_prep_ids = iter(
+        minter.mint("nmdc:LibraryPreparation", n_eligible) if n_eligible else []
+    )
+    processed_sample_ids = iter(
+        minter.mint("nmdc:ProcessedSample", 2 * n_eligible) if n_eligible else []
     )
 
     total_runs = sum(len(exp.get("runs", [])) for exp in eligible_experiments)
@@ -987,6 +1060,8 @@ def build_nmdc_database(
 
     all_nuc_seqs: list[nmdc.NucleotideSequencing] = []
     all_data_objects: list[nmdc.DataObject] = []
+    all_material_processings: list[nmdc.MaterialProcessing] = []
+    all_processed_samples: list[nmdc.ProcessedSample] = []
     for exp, ns_id in zip(eligible_experiments, ns_ids):
         run_count = len(exp.get("runs", []))
         run_do_ids = [next(do_pool) for _ in range(run_count)]
@@ -996,13 +1071,20 @@ def build_nmdc_database(
             exp,
             study_id,
             biosample_acc_to_id[exp["biosample_accession"]],
+            biosample_acc_to_name[exp["biosample_accession"]],
             ns_id,
             run_do_ids,
             instrument_id,
+            next(extraction_ids),
+            next(processed_sample_ids),
+            next(library_prep_ids),
+            next(processed_sample_ids),
             now,
         )
         all_nuc_seqs.append(records["nucleotide_sequencing"])
         all_data_objects.extend(records["data_objects"])
+        all_material_processings.extend(records["material_processings"])
+        all_processed_samples.extend(records["processed_samples"])
 
     for w in skip_warnings:
         print(f"WARNING: {w}")
@@ -1010,6 +1092,8 @@ def build_nmdc_database(
     database = nmdc.Database()
     database.study_set = [study]
     database.biosample_set = nmdc_biosamples
+    database.material_processing_set = all_material_processings
+    database.processed_sample_set = all_processed_samples
     database.data_generation_set = all_nuc_seqs
     database.data_object_set = all_data_objects
 
@@ -1189,6 +1273,8 @@ def main():
 
     print(f"  Study: {database.study_set[0].id}")
     print(f"  Biosamples: {len(database.biosample_set)}")
+    print(f"  MaterialProcessings (Extraction + LibraryPreparation): {len(database.material_processing_set)}")
+    print(f"  ProcessedSamples: {len(database.processed_sample_set)}")
     print(f"  DataGenerations: {len(database.data_generation_set)}")
     print(f"  DataObjects: {len(database.data_object_set)}")
 

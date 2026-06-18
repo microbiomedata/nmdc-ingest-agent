@@ -80,7 +80,9 @@ uv run python -c "
 from nmdc_schema import nmdc
 from linkml_runtime.loaders import json_loader
 db = json_loader.load('results/ncbi_<ACCESSION>_nmdc.json', target_class=nmdc.Database)
-print(f'Loaded: {len(db.study_set)} studies, {len(db.biosample_set)} biosamples, {len(db.data_generation_set)} data generations')
+print(f'Loaded: {len(db.study_set)} studies, {len(db.biosample_set)} biosamples, '
+      f'{len(db.material_processing_set)} material processings, {len(db.processed_sample_set)} processed samples, '
+      f'{len(db.data_generation_set)} data generations')
 print('Validation passed!')
 "
 ```
@@ -91,7 +93,7 @@ When a validation failure points at a non-trivial slot value (nested wrappers, e
 
 Report to the user:
 - Study name and accession
-- Number of Biosamples, DataGenerations, DataObjects
+- Number of Biosamples, Extractions + LibraryPreparations (`material_processing_set`), ProcessedSamples, DataGenerations, DataObjects
 - **Per-slot curation summary** computed from `results/ncbi_<ACCESSION>_nmdc_curation_report.json`. For each of `env_broad_scale`, `env_local_scale`, `env_medium`, count outcomes: `predicted`, `resolved_from_raw`, `resolved_at_pipeline`, `left_sentinel`, `validator_rejected`. The `left_sentinel` count is the curator-follow-up backlog.
 - For soil-package biosamples, whether the MIxS soil-package valueset constraint was enforced (see `nmdc-env-triad.md` § Soil package). If `nmdc-submission-schema` was not importable, surface this explicitly as a known gap in the report — never silent fall-back.
 - Any host / taxon fields left unset and flagged for PI follow-up
@@ -104,14 +106,26 @@ The final JSON file is written to `results/ncbi_<ACCESSION>_nmdc.json` relative 
 
 ## Scope
 
-This skill produces **only** `Study`, `Biosample`, `DataGeneration`, and `DataObject` records. Do **not** create `Pooling`, `Extraction`, `LibraryPreparation`, or other process/material-transformation records — those are out of scope for NCBI-sourced ingest.
+This skill produces `Study`, `Biosample`, `Extraction`, `LibraryPreparation`, `ProcessedSample`, `DataGeneration`, and `DataObject` records.
+
+For each sequenced experiment the pipeline reconstructs the canonical NMDC material-processing chain so a `NucleotideSequencing` consumes a `ProcessedSample` rather than the `Biosample` directly:
+
+```
+Biosample
+  --Extraction-->        ProcessedSample (extracted nucleic acid)
+  --LibraryPreparation--> ProcessedSample (sequencing library)
+  --NucleotideSequencing--> DataObject(s)
+```
+
+One `Extraction` and one `LibraryPreparation` are emitted per SRA experiment (both into `material_processing_set`), each with its own `ProcessedSample` output (into `processed_sample_set`). NCBI/SRA does not record wet-lab metadata, so only fields it actually supports are populated: the extraction target / library type is inferred from `LIBRARY_SOURCE` (transcriptomic → `RNA`, else `DNA`); dates, input mass, and processing institution are left unset. Do **not** create `Pooling` records — NCBI does not model pooling, so it remains out of scope.
 
 ## Reference patterns
 
-The traditional Dagster-orchestrated translators in [microbiomedata/nmdc-runtime](https://github.com/microbiomedata/nmdc-runtime) are still a useful reference for NMDC object construction, but **only** for the four record types in scope above:
+The traditional Dagster-orchestrated translators in [microbiomedata/nmdc-runtime](https://github.com/microbiomedata/nmdc-runtime) are a useful reference for NMDC object construction:
 
 - `nmdc_runtime/site/translation/translator.py` — base Translator class
 - `nmdc_runtime/site/translation/gold_translator.py` — Study/Biosample/DataGeneration patterns
 - `nmdc_runtime/site/translation/neon_utils.py` — helper functions for NMDC value types
+- `nmdc_runtime/site/translation/neon_soil_translator.py` — the `_translate_extraction_process`, `_translate_library_preparation`, and `_translate_processed_sample` helpers show the `Biosample → Extraction → ProcessedSample → LibraryPreparation → ProcessedSample → NucleotideSequencing` wiring this pipeline reproduces (see `build_sequencing_records` in `translate.py`).
 
-Ignore patterns from `neon_soil_translator.py` (and any other translator) that construct `Extraction`, `LibraryPreparation`, or related process records — those do not apply to NCBI ingest.
+Ignore only the `Pooling` patterns from `neon_soil_translator.py` — NCBI does not model sample pooling, so the input to each `Extraction` is the `Biosample` directly rather than an upstream pooling `ProcessedSample`.

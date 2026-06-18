@@ -8,8 +8,9 @@ For a given BioProject accession (e.g. `PRJNA1452545`), the script emits:
 
 - **Study** — one record, derived from the BioProject title/description
 - **Biosample** — one per linked BioSample (discovered via both SRA and E-utils `elink`)
-- **MaterialProcessing** — `Extraction` and `LibraryPreparation` records, where the SRA experiment metadata supports it
-- **DataGeneration** — one `NucleotideSequencing` per SRA experiment
+- **MaterialProcessing** — one `Extraction` and one `LibraryPreparation` per SRA experiment, reconstructing the `Biosample → Extraction → ProcessedSample → LibraryPreparation → ProcessedSample → NucleotideSequencing` chain
+- **ProcessedSample** — two per SRA experiment (the extracted nucleic acid and the sequencing library)
+- **DataGeneration** — one `NucleotideSequencing` per SRA experiment, consuming the library `ProcessedSample`
 - **DataObject** — one per SRA run
 
 All IDs use the shoulder `99` and are placeholders; they must be re-minted via the NMDC Runtime API before ingest.
