@@ -701,16 +701,35 @@ def build_biosample(
     return biosample
 
 
-def _infer_analyte_category(library_source: str, library_strategy: str) -> str:
-    source_lower = library_source.lower() if library_source else ""
-    strategy_lower = library_strategy.lower() if library_strategy else ""
-    if "metatranscriptomic" in source_lower or strategy_lower == "rna-seq":
-        return "metatranscriptome"
-    if "metagenomic" in source_lower or strategy_lower in ("wgs", "wcs"):
+def _resolve_analyte_category(library_source: str, library_strategy: str) -> str:
+    """Map an SRA ``LIBRARY_SOURCE`` / ``LIBRARY_STRATEGY`` pair to an NMDC
+    ``analyte_category`` (a ``NucleotideSequencingEnum`` permissible value).
+
+    Only the combinations NMDC can map unambiguously are accepted; any other
+    pair raises ``ValueError`` so the caller can exclude the experiment rather
+    than silently mislabel it. The previous implementation defaulted unmatched
+    pairs to ``metagenome`` and, worse, ordered its checks so that AMPLICON +
+    METAGENOMIC experiments matched the metagenome branch first — mislabeling
+    all amplicon data as metagenome (issue #46). It also emitted ``metabarcode``,
+    which is not a permissible ``analyte_category`` value.
+
+    Mappings (case-insensitive on both inputs):
+      - AMPLICON + METAGENOMIC      -> amplicon_sequencing_assay
+      - WGS + METAGENOMIC           -> metagenome
+      - RNA-Seq + METATRANSCRIPTOMIC -> metatranscriptome
+    """
+    source = (library_source or "").strip().upper()
+    strategy = (library_strategy or "").strip().upper()
+    if strategy == "AMPLICON" and source == "METAGENOMIC":
+        return "amplicon_sequencing_assay"
+    if strategy == "WGS" and source == "METAGENOMIC":
         return "metagenome"
-    if strategy_lower == "amplicon":
-        return "metabarcode"
-    return "metagenome"
+    if strategy == "RNA-SEQ" and source == "METATRANSCRIPTOMIC":
+        return "metatranscriptome"
+    raise ValueError(
+        f"No analyte_category mapping for SRA library_source="
+        f"{library_source!r} / library_strategy={library_strategy!r}"
+    )
 
 
 def build_sequencing_records(
@@ -807,7 +826,9 @@ def build_sequencing_records(
         type="nmdc:ProcessedSample",
     )
 
-    analyte_category = _infer_analyte_category(
+    # Eligibility (in build_nmdc_database) has already verified this pair maps,
+    # so this will not raise for experiments that reach here.
+    analyte_category = _resolve_analyte_category(
         experiment.get("library_source", ""),
         experiment.get("library_strategy", ""),
     )
@@ -998,15 +1019,32 @@ def build_nmdc_database(
     # makes a DataGeneration record with an empty `instrument_used` invalid, so
     # we exclude experiments without a resolvable instrument rather than emitting
     # such records. Biosamples are kept regardless (valid standalone records).
+    # An experiment is eligible only if it has both a resolvable instrument and a
+    # mappable analyte_category (both are required on NucleotideSequencing). Each
+    # unmet condition excludes the DataGeneration with a warning rather than
+    # emitting an invalid record or crashing the run.
     eligible_experiments: list[dict] = []
     missing_model_count = 0
+    unmappable_analyte: dict[tuple[str, str], int] = {}
     for exp in kept_experiments:
         model = (exp.get("instrument_model") or "").strip()
-        if model and model in model_to_instrument_id:
-            eligible_experiments.append(exp)
-        elif not model:
+        if not model:
             missing_model_count += 1
-        # else: model present but unresolved (counted in unresolved_models)
+            continue
+        if model not in model_to_instrument_id:
+            continue  # model present but unresolved (counted in unresolved_models)
+        source = exp.get("library_source", "")
+        strategy = exp.get("library_strategy", "")
+        try:
+            _resolve_analyte_category(source, strategy)
+        except ValueError:
+            key = (
+                (source or "").strip() or "(none)",
+                (strategy or "").strip() or "(none)",
+            )
+            unmappable_analyte[key] = unmappable_analyte.get(key, 0) + 1
+            continue
+        eligible_experiments.append(exp)
 
     if model_to_instrument_id:
         print(
@@ -1036,6 +1074,17 @@ def build_nmdc_database(
             f"  Excluded {total_excluded} DataGeneration record(s) total for missing "
             f"or unresolvable instrument information (instrument_used is required)."
         )
+
+    total_unmappable_analyte = sum(unmappable_analyte.values())
+    if unmappable_analyte:
+        print(
+            f"  WARNING: excluded {total_unmappable_analyte} DataGeneration record(s) "
+            f"from {len(unmappable_analyte)} (library_source, library_strategy) "
+            f"combination(s) with no analyte_category mapping (analyte_category is "
+            f"required):"
+        )
+        for (src, strat), count in sorted(unmappable_analyte.items()):
+            print(f"    source={src!r} strategy={strat!r} ({count} experiment(s))")
 
     n_eligible = len(eligible_experiments)
     ns_ids = (
