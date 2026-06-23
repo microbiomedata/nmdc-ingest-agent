@@ -41,6 +41,13 @@ dev = [
     "ruff",
 ]
 
+[tool.uv.sources]
+# TEMPORARY: install nmdc-schema from the unreleased PR #3214 branch
+# (microbiomedata/nmdc-schema#3214 — LibraryPreparation INSDC modeling + MFD
+# example). Revert this entry to the PyPI release once it ships (expected
+# 11.21.x), keeping the version pin in [project.dependencies] above.
+nmdc-schema = { git = "https://github.com/microbiomedata/nmdc-schema.git", branch = "3213-add-library-modeling-for-insdc-compatibility" }
+
 [project.scripts]
 nmdc-ingest-ncbi = "nmdc_ingest_agent.sources.ncbi.translate:main"
 
