@@ -16,7 +16,10 @@ class _FakeResolver:
         return "nmdc:inst-14-mr4r2w09" if model else None
 
 
-def _experiment(exp_acc, bs_acc, source, strategy):
+def _experiment(exp_acc, bs_acc, source, strategy, *, selection="RANDOM",
+                layout="PAIRED", library_name="", design_description="", runs=None):
+    if runs is None:
+        runs = [f"SRR{exp_acc[-3:]}"]
     return {
         "experiment_accession": exp_acc,
         "biosample_accession": bs_acc,
@@ -25,11 +28,18 @@ def _experiment(exp_acc, bs_acc, source, strategy):
         "platform_type": "ILLUMINA",
         "library_strategy": strategy,
         "library_source": source,
-        "library_selection": "RANDOM",
-        "library_layout": "PAIRED",
-        "library_name": "",
-        "runs": [{"accession": f"SRR{exp_acc[-3:]}", "total_bases": "1", "total_spots": "1"}],
+        "library_selection": selection,
+        "library_layout": layout,
+        "library_name": library_name,
+        "design_description": design_description,
+        "runs": [{"accession": r, "total_bases": "1", "total_spots": "1"} for r in runs],
     }
+
+
+# Representative SRA design descriptions (verbatim shapes from PRJNA1071982).
+_WGS_DESIGN = "Miniaturized metagenome DNA preps see https://doi.org/10.1101/2023.09.04.556179"
+_AMPLICON_16S_DESIGN = "amplicon sequencing using 8F and 1391R to amplify bacterial 16S rRNA genes"
+_AMPLICON_OPERON_DESIGN = "amplicon sequencing using 8F and 2490R to amplify bacterial rRNA operons"
 
 
 def _data(experiments, biosamples=None):
@@ -61,9 +71,10 @@ def _data(experiments, biosamples=None):
     }
 
 
-def _build(experiments, biosamples=None):
+def _build(experiments, biosamples=None, mfd_resolver=None):
     return T.build_nmdc_database(
-        _data(experiments, biosamples), PlaceholderMinter(), _FakeResolver(), None
+        _data(experiments, biosamples), PlaceholderMinter(), _FakeResolver(),
+        mfd_resolver,
     )
 
 
@@ -94,7 +105,7 @@ def test_chain_wiring_links_biosample_to_sequencing():
     assert ps_ids == {extraction.has_output[0], libprep.has_output[0]}
 
 
-def test_dna_vs_rna_target_inference():
+def test_dna_vs_rna_extraction_target_inference():
     db = _build(
         [
             _experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS"),
@@ -102,27 +113,139 @@ def test_dna_vs_rna_target_inference():
         ]
     )
     extractions = [m for m in db.material_processing_set if m.type == "nmdc:Extraction"]
-    libpreps = [m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation"]
-
     targets = {str(t) for e in extractions for t in e.extraction_targets}
-    lib_types = {str(lp.library_type) for lp in libpreps}
     assert targets == {"DNA", "RNA"}
-    assert lib_types == {"DNA", "RNA"}
 
 
-def test_records_named_after_biosample_not_experiment():
-    # samp_name "MFD00001" comes from the default biosample fixture; the SRA
-    # experiment accession "SRX111" must NOT appear in any chain record name.
+def test_record_names_follow_example_conventions():
+    # samp_name "MFD00001" from the fixture; experiment/run accessions must not
+    # appear in the material-processing / processed-sample names.
+    db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS",
+                             library_name="ilm_MFD00001")])
+    extraction = next(m for m in db.material_processing_set if m.type == "nmdc:Extraction")
+    libprep = next(m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation")
+    extracted_ps = next(p for p in db.processed_sample_set if p.id == extraction.has_output[0])
+    library_ps = next(p for p in db.processed_sample_set if p.id == libprep.has_output[0])
+
+    assert extraction.name == "DNA extraction process for MFD00001"
+    assert extracted_ps.name == "Extracted DNA for MFD00001"
+    assert libprep.name == "Library preparation process for MFD00001"
+    # Library ProcessedSample is named after the SRA library name; the prose
+    # moves to description.
+    assert library_ps.name == "ilm_MFD00001"
+    assert library_ps.description == "Library for sequencing for MFD00001"
+    # Per-run NucleotideSequencing name.
+    assert db.data_generation_set[0].name == "Run SRR111 for experiment SRX111 - MFD00001"
+
+
+def test_library_preparation_carries_sra_descriptor():
+    db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS",
+                             selection="size fractionation", layout="PAIRED")])
+    lp = next(m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation")
+    assert str(lp.library_strategy) == "WGS"
+    assert str(lp.library_source) == "METAGENOMIC"
+    assert str(lp.library_selection) == "size fractionation"
+    assert str(lp.lib_layout) == "paired"  # SRA PAIRED -> LibLayoutEnum paired
+
+
+def test_target_gene_parsed_from_design_description():
+    db = _build([
+        _experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS",
+                    design_description=_WGS_DESIGN),
+        _experiment("SRX222", "SAMN001", "METAGENOMIC", "AMPLICON",
+                    selection="PCR", layout="SINGLE",
+                    design_description=_AMPLICON_16S_DESIGN),
+        _experiment("SRX333", "SAMN001", "METAGENOMIC", "AMPLICON",
+                    selection="PCR", layout="SINGLE",
+                    design_description=_AMPLICON_OPERON_DESIGN),
+    ])
+    libs = [m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation"]
+    by_exp = {m.has_output[0]: m for m in libs}  # unique per experiment
+    genes = {str(m.target_gene) if m.target_gene else None for m in libs}
+    # 16S amplicon and rRNA-operon amplicon both -> 16S_rRNA; WGS -> None.
+    assert genes == {"16S_rRNA", None}
+    wgs = next(m for m in libs if str(m.library_strategy) == "WGS")
+    assert wgs.target_gene is None
+
+
+def test_extract_target_gene_unit():
+    assert T._extract_target_gene(_AMPLICON_16S_DESIGN) == "16S_rRNA"
+    assert T._extract_target_gene(_AMPLICON_OPERON_DESIGN) == "16S_rRNA"
+    assert T._extract_target_gene("amplify 23S rRNA") == "23S_rRNA"
+    assert T._extract_target_gene(_WGS_DESIGN) is None
+    assert T._extract_target_gene("") is None
+
+
+def test_protocol_link_parsed_from_design_description():
+    # The WGS design cites a protocol DOI; the amplicon design does not.
+    db = _build([
+        _experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS",
+                    design_description=_WGS_DESIGN),
+        _experiment("SRX222", "SAMN001", "METAGENOMIC", "AMPLICON",
+                    selection="PCR", layout="SINGLE",
+                    design_description=_AMPLICON_16S_DESIGN),
+    ])
+    libs = {str(m.library_strategy): m for m in db.material_processing_set
+            if m.type == "nmdc:LibraryPreparation"}
+    assert libs["WGS"].protocol_link is not None
+    assert libs["WGS"].protocol_link.url == "https://doi.org/10.1101/2023.09.04.556179"
+    # Amplicon design names primers but cites no DOI -> no protocol_link.
+    assert libs["AMPLICON"].protocol_link is None
+
+
+def test_extract_protocol_url_unit():
+    assert T._extract_protocol_url(_WGS_DESIGN) == "https://doi.org/10.1101/2023.09.04.556179"
+    assert T._extract_protocol_url("see doi: 10.1234/abc.def") == "https://doi.org/10.1234/abc.def"
+    assert T._extract_protocol_url(_AMPLICON_16S_DESIGN) is None
+    assert T._extract_protocol_url("") is None
+
+
+def test_no_design_description_leaves_protocol_and_target_gene_unset():
     db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS")])
-    names = [m.name for m in db.material_processing_set] + [
-        p.name for p in db.processed_sample_set
+    lp = next(m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation")
+    assert lp.protocol_link is None
+    assert lp.target_gene is None
+
+
+def test_data_object_is_sra_toolkit_shape():
+    db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS")])
+    do = db.data_object_set[0]
+    ns = db.data_generation_set[0]
+    assert str(do.data_object_type) == "SRA toolkit-accessible sequence data"
+    assert do.url is None
+    assert do.insdc_run_identifiers == ["insdc.run:SRR111"]
+    assert do.was_generated_by == ns.id
+    assert do.name == "Data file for run accession SRR111"
+
+
+def test_nucleotide_sequencing_has_bioproject_identifier():
+    db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS")])
+    assert db.data_generation_set[0].insdc_bioproject_identifiers == [
+        "bioproject:PRJNA1071982"
     ]
-    assert all("MFD00001" in n for n in names)
-    assert all("SRX111" not in n for n in names)
-    assert "Extraction for MFD00001" in names
-    assert "DNA extracted from MFD00001" in names
-    assert "Library preparation for MFD00001" in names
-    assert "sequencing library prepared for MFD00001" in names
+
+
+def test_per_run_data_generation_and_manifest():
+    # One multi-run experiment -> one chain, two NucleotideSequencings + two
+    # DataObjects + one Manifest grouping the run DataObjects.
+    db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS",
+                             library_name="ilm_MFD00001",
+                             runs=["SRR1", "SRR2"])])
+    assert len(db.material_processing_set) == 2  # still one Extraction + one LibraryPrep
+    assert len(db.data_generation_set) == 2      # one per run
+    assert len(db.data_object_set) == 2
+    assert len(db.manifest_set) == 1
+    manifest = db.manifest_set[0]
+    assert str(manifest.manifest_category) == "poolable_replicates"
+    assert manifest.id.startswith("nmdc:manif-")
+    # Both run DataObjects reference the manifest.
+    assert all(d.in_manifest == [manifest.id] for d in db.data_object_set)
+
+
+def test_single_run_experiment_has_no_manifest():
+    db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS")])
+    assert db.manifest_set == []
+    assert db.data_object_set[0].in_manifest in (None, [])
 
 
 def test_processed_sample_ids_use_procsm_typecode():

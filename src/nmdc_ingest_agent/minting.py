@@ -27,6 +27,7 @@ _TYPECODE_BY_CLASS: dict[str, str] = {
     "nmdc:Extraction": "extrp",
     "nmdc:LibraryPreparation": "libprp",
     "nmdc:ProcessedSample": "procsm",
+    "nmdc:Manifest": "manif",
 }
 
 
