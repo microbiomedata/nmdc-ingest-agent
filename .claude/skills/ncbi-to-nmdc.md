@@ -106,18 +106,28 @@ The final JSON file is written to `results/ncbi_<ACCESSION>_nmdc.json` relative 
 
 ## Scope
 
-This skill produces `Study`, `Biosample`, `Extraction`, `LibraryPreparation`, `ProcessedSample`, `DataGeneration`, and `DataObject` records.
+This skill produces `Study`, `Biosample`, `Extraction`, `LibraryPreparation`, `ProcessedSample`, `DataGeneration`, `DataObject`, and (for multi-run experiments) `Manifest` records.
 
-For each sequenced experiment the pipeline reconstructs the canonical NMDC material-processing chain so a `NucleotideSequencing` consumes a `ProcessedSample` rather than the `Biosample` directly:
+For each sequenced experiment the pipeline reconstructs the canonical NMDC material-processing chain so a `NucleotideSequencing` consumes a `ProcessedSample` rather than the `Biosample` directly, and emits **one `NucleotideSequencing` + one `DataObject` per SRA run**:
 
 ```
 Biosample
-  --Extraction-->        ProcessedSample (extracted nucleic acid)
+  --Extraction-->         ProcessedSample (extracted nucleic acid)
   --LibraryPreparation--> ProcessedSample (sequencing library)
-  --NucleotideSequencing--> DataObject(s)
+  --NucleotideSequencing--> DataObject        (one chain per run)
 ```
 
-One `Extraction` and one `LibraryPreparation` are emitted per SRA experiment (both into `material_processing_set`), each with its own `ProcessedSample` output (into `processed_sample_set`). NCBI/SRA does not record wet-lab metadata, so only fields it actually supports are populated: the extraction target / library type is inferred from `LIBRARY_SOURCE` (transcriptomic → `RNA`, else `DNA`); dates, input mass, and processing institution are left unset. Do **not** create `Pooling` records — NCBI does not model pooling, so it remains out of scope.
+Per-experiment: one `Extraction` and one `LibraryPreparation` (both into `material_processing_set`), each with a `ProcessedSample` output (into `processed_sample_set`). Per-run: one `NucleotideSequencing` (into `data_generation_set`) and one `DataObject` (into `data_object_set`). When an experiment has more than one run, a `Manifest` (`manifest_category: poolable_replicates`, into `manifest_set`) groups those run `DataObject`s via `in_manifest`. NCBI/SRA does not record wet-lab dates/mass/institution, so those stay unset; the fields it *does* supply are populated:
+
+- **Extraction** — `extraction_targets` (`DNA`, or `RNA` for transcriptomic `LIBRARY_SOURCE`).
+- **LibraryPreparation** — `library_strategy`, `library_source`, `library_selection`, `lib_layout` (from the SRA library descriptor). `target_gene` and `protocol_link` are **parsed from the SRA `DESIGN_DESCRIPTION`**, not hardcoded: an rRNA-gene mention (e.g. "amplify bacterial 16S rRNA genes", or "rRNA operons" → `16S_rRNA`) sets `target_gene`; a DOI in the text (e.g. MFD's WGS "…see https://doi.org/…") sets `protocol_link`. Records that name neither leave them unset.
+- **ProcessedSample** — extraction output named `Extracted <DNA|RNA> for <samp_name>`; library output named after the SRA library name (e.g. `ilm_MFD00001`) with a descriptive `description`.
+- **DataObject** — `data_object_type: "SRA toolkit-accessible sequence data"`, `insdc_run_identifiers`, `was_generated_by` (the run's NucleotideSequencing); **no** URL.
+- **NucleotideSequencing** — `insdc_experiment_identifiers` + `insdc_bioproject_identifiers`; named `Run <SRR> for experiment <SRX> - <samp_name>`.
+
+Do **not** create `Pooling` records — NCBI does not model pooling, so each `Extraction` consumes the `Biosample` directly.
+
+> **Schema dependency:** the new `LibraryPreparation` library-descriptor slots and the `SRA toolkit-accessible sequence data` data-object type require [nmdc-schema #3214](https://github.com/microbiomedata/nmdc-schema/pull/3214). Until released, `pyproject.toml` pins `nmdc-schema` to the PR branch in `[tool.uv.sources]`; revert to the PyPI release once it ships.
 
 ## Reference patterns
 
