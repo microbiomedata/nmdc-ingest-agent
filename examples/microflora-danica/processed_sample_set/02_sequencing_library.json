@@ -1,5 +1,6 @@
 {
-  "id": "nmdc:procsm-99-8ed3e131",
+  "id": "nmdc:procsm-99-ac69cb9e",
   "type": "nmdc:ProcessedSample",
-  "name": "sequencing library prepared for MFD00001"
+  "name": "ilm_MFD00001",
+  "description": "Library for sequencing for MFD00001"
 }

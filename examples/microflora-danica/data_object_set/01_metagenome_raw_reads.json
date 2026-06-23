@@ -1,9 +1,0 @@
-{
-  "id": "nmdc:dobj-99-1b3006b8",
-  "type": "nmdc:DataObject",
-  "name": "SRR27943129",
-  "description": "SRA run SRR27943129 for experiment SRX23599598",
-  "data_category": "instrument_data",
-  "data_object_type": "Metagenome Raw Reads",
-  "url": "https://www.ncbi.nlm.nih.gov/sra/SRR27943129"
-}

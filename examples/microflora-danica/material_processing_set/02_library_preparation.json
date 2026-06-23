@@ -1,12 +1,19 @@
 {
-  "id": "nmdc:libprp-99-04cb2d9e",
+  "id": "nmdc:libprp-99-d89be9ad",
   "type": "nmdc:LibraryPreparation",
-  "name": "Library preparation for MFD00001",
+  "name": "Library preparation process for MFD00001",
   "has_input": [
-    "nmdc:procsm-99-a1a97b83"
+    "nmdc:procsm-99-cacd1a6a"
   ],
   "has_output": [
-    "nmdc:procsm-99-8ed3e131"
+    "nmdc:procsm-99-ac69cb9e"
   ],
-  "library_type": "DNA"
+  "protocol_link": {
+    "type": "nmdc:Protocol",
+    "url": "https://doi.org/10.1101/2023.09.04.556179"
+  },
+  "library_selection": "size fractionation",
+  "library_strategy": "WGS",
+  "library_source": "METAGENOMIC",
+  "lib_layout": "paired"
 }

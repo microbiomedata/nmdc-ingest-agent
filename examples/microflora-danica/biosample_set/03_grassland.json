@@ -1,9 +1,9 @@
 {
-  "id": "nmdc:bsm-99-0d86af2d",
+  "id": "nmdc:bsm-99-7eba675f",
   "type": "nmdc:Biosample",
   "name": "MFD04804",
   "associated_studies": [
-    "nmdc:sty-99-81e15817"
+    "nmdc:sty-99-dfe6ea08"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
@@ -31,9 +31,9 @@
   },
   "provenance_metadata": {
     "type": "nmdc:ProvenanceMetadata",
-    "add_date": "2026-06-18T21:55:41.800415+00:00",
+    "add_date": "2026-06-23T20:44:19.980942+00:00",
     "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
-    "mod_date": "2026-06-18T21:55:41.800415+00:00",
+    "mod_date": "2026-06-23T20:44:19.980942+00:00",
     "version": "0.1.0",
     "source_system_of_record": "NCBI"
   },

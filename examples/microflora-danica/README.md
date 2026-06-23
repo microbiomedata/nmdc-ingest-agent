@@ -4,16 +4,18 @@ Single-record JSON files extracted from the NMDC ingest output for NCBI BioProje
 
 **Source.** All examples were extracted verbatim from a **single pipeline build** — one run of `uv run nmdc-ingest-ncbi PRJNA1071982` (default output `results/ncbi_PRJNA1071982_nmdc.json`, which is gitignored and not checked in). Record content is unedited. Because every example comes from the same run, the placeholder ids cross-reference: the `material_processing_set`, `processed_sample_set`, `data_generation_set/01`, and `data_object_set/01` examples form **one connected chain** rooted at the `02_forest` biosample (MFD00001), and every biosample's `associated_studies` matches the `study_set/01` id. (Regenerating produces a fresh run with new ids — see *Regenerating from a fresh ingest* below.)
 
-**Material-processing chain.** Each sequenced experiment is modeled as the canonical NMDC chain rather than wiring the `NucleotideSequencing` straight to the `Biosample`:
+**Material-processing chain.** Each sequenced experiment is modeled as the canonical NMDC chain rather than wiring the `NucleotideSequencing` straight to the `Biosample`, with **one `NucleotideSequencing` + one `DataObject` per SRA run**:
 
 ```
 Biosample
   --Extraction-->          ProcessedSample (extracted nucleic acid)
   --LibraryPreparation-->  ProcessedSample (sequencing library)
-  --NucleotideSequencing--> DataObject(s)
+  --NucleotideSequencing--> DataObject        (one chain per run)
 ```
 
-NCBI/SRA does not record wet-lab metadata, so only fields it supports are populated: `extraction_targets` / `library_type` are inferred from `LIBRARY_SOURCE` (all MFD libraries are DNA), and each record is named after the source biosample's `samp_name` (the MFD barcode), e.g. `Extraction for MFD00001`. Dates, input mass, and processing institution are intentionally unset. The example chain links `02_forest` → `material_processing_set/01_extraction` → `processed_sample_set/01_extracted_dna` → `material_processing_set/02_library_preparation` → `processed_sample_set/02_sequencing_library` → `data_generation_set/01` → `data_object_set/01`.
+NCBI/SRA does not record wet-lab dates/mass/institution (left unset), but the SRA library descriptor *is* carried on the `LibraryPreparation` (`library_strategy`, `library_source`, `library_selection`, `lib_layout`). `target_gene` and `protocol_link` are **parsed from the SRA `DESIGN_DESCRIPTION`** (not hardcoded): MFD's amplicon designs name an rRNA target (→ `target_gene: 16S_rRNA`) but cite no DOI, while its WGS designs cite the methods DOI (→ `protocol_link`) but no gene — so the two slots appear on *different* libraries. Record names follow the schema-PR example conventions (e.g. `DNA extraction process for MFD00001`; the library `ProcessedSample` is named after the SRA library name like `ilm_MFD00001`). The example chain links `02_forest` → `material_processing_set/01_extraction` → `processed_sample_set/01_extracted_dna` → `material_processing_set/02_library_preparation` → `processed_sample_set/02_sequencing_library` → `data_generation_set/01` → `data_object_set/01`.
+
+> **Manifest.** When an experiment has more than one SRA run, the run `DataObject`s are grouped by a `Manifest` (`manifest_category: poolable_replicates`) via `in_manifest`. **MicroFlora Danica has exactly one run per experiment, so it produces no `Manifest` records** — none appear in these examples (the behavior is covered by unit tests instead).
 
 **Env-triad resolved at pipeline (v2 crosswalk).** For MFD biosamples the env-triad is resolved **deterministically in code** during the build: `MfdEnvTriadResolver` (`src/nmdc_ingest_agent/sources/ncbi/mfd.py`) joins each biosample's `samp_name`/`MFDID` to `data/mfdo-crosswalk-v2/mfd_biosamples_annotated.tsv` and commits `env_broad_scale`, `env_local_scale`, and `env_medium`, so the curation report records `outcome: "resolved_at_pipeline"` for all three slots. Every MFD biosample gets all three slots — **100% coverage, no `ENVO:00000000` sentinels**. The v2 mapping draws on the full five-level MFD habitat hierarchy plus GEE land-cover refinement, so it is finer-grained than NCBI's coarse `isolation_source` (e.g. `02_forest` resolves to `temperate broadleaf forest biome` / `temperate freshwater swamp forest`, not a generic `forest biome`). The former two-stage "emit sentinels → agent curation pass" flow still applies to non-MFD sources; for MFD it is superseded.
 
@@ -25,11 +27,13 @@ NCBI/SRA does not record wet-lab metadata, so only fields it supports are popula
 
 **These are reference documents, not test fixtures.** They illustrate the variation that shows up in pipeline output; they are not asserted-against by any automated test.
 
+**Schema version.** The `LibraryPreparation` library-descriptor slots and the `SRA toolkit-accessible sequence data` data-object type require [nmdc-schema #3214](https://github.com/microbiomedata/nmdc-schema/pull/3214). Until it ships on PyPI, `pyproject.toml` pins `nmdc-schema` to that PR branch via `[tool.uv.sources]`.
+
 ## study_set/
 
 | File | Source id | Demonstrates |
 |---|---|---|
-| `01_research_study.json` | `nmdc:sty-99-81e15817` | NMDC `Study` for the MicroFlora Danica BioProject — id, name, description (NCBI-provided, mentions the project scope and metadata GitHub repo), type. All biosample/data-generation examples reference this id via `associated_studies`. |
+| `01_research_study.json` | `nmdc:sty-99-dfe6ea08` | NMDC `Study` for the MicroFlora Danica BioProject — id, name, description (NCBI-provided, mentions the project scope and metadata GitHub repo), type. All biosample/data-generation examples reference this id via `associated_studies`. |
 
 ## biosample_set/
 
@@ -37,36 +41,37 @@ Eight examples spanning the v2-resolved MFDO categories, including a sample-type
 
 | File | Source id | env_broad_scale | env_local_scale | env_medium | samp_taxon_id | Notes |
 |---|---|---|---|---|---|---|
-| `01_cropland_agricultural_field.json` | `nmdc:bsm-99-64b78204` | `ENVO:01000245` cropland biome | `ENVO:00000114` agricultural field | `ENVO:00002259` agricultural soil | soil metagenome | The **modal** MFDO mapping — every slot has a precise ENVO term. 3,002 biosamples (~28%) follow this pattern. Gold-standard for a clean resolved record. |
-| `02_forest.json` | `nmdc:bsm-99-8225d98f` | `ENVO:01000202` temperate broadleaf forest biome | `ENVO:01000398` temperate freshwater swamp forest | `ENVO:00001998` soil | soil metagenome | Forest sample (MFD00001). Shows v2 specificity: the hab2/hab3 levels (Temperate forests → Alluvial woodland) plus GEE refinement drive a precise `temperate freshwater swamp forest` feature, not the generic `forest ecosystem` v1 produced. **This is the biosample at the head of the example material-processing chain.** |
-| `03_grassland.json` | `nmdc:bsm-99-0d86af2d` | `ENVO:01000177` grassland biome | `ENVO:01001811` temperate grassland | `ENVO:00001998` soil | soil metagenome | Grassland sample — 852 records (~8%) share this triple. v2 maps the local feature to `temperate grassland` (Denmark context) rather than a generic grassland ecosystem. |
-| `04_urban_park.json` | `nmdc:bsm-99-5ffa3f5b` | `ENVO:01000249` urban biome | `ENVO:00000562` park | `ENVO:00001998` soil | soil metagenome | Urban green-space sample — 628 records (~6%). Demonstrates the `urban biome` + park feature mapping. |
-| `05_marine_coast_sediment.json` | `nmdc:bsm-99-bfd53fdd` | `ENVO:00000447` marine biome | `ENVO:00000016` sea | `ENVO:03000033` marine sediment | sediment metagenome | Marine sediment sample — 320 records (~3%). Different sample-type axis (Sediment, not Soil) → different env_medium (`marine sediment`). |
-| `06_wastewater_treatment.json` | `nmdc:bsm-99-5b9aad99` | `ENVO:01000249` urban biome | `ENVO:00002043` wastewater treatment plant | `ENVO:00002001` waste water | wastewater metagenome | Built-environment sample. `env_medium` is `waste water` (not soil/sediment) and `samp_taxon_id` reflects the environment. |
-| `07_coastal_dune.json` | `nmdc:bsm-99-466518db` | `ENVO:01000215` temperate shrubland biome | `ENVO:00000416` coastal dune | `ENVO:00001998` soil | soil metagenome | **v1→v2 improvement.** Natural Dunes had no clean broad-biome term under v1, so v1 left `env_broad_scale` an `ENVO:00000000` sentinel. v2 resolves all three slots (`temperate shrubland biome` / `coastal dune` / `soil`). 457 records (~4%). |
-| `08_no_lat_lon.json` | `nmdc:bsm-99-5a026110` | `ENVO:01000245` cropland biome | `ENVO:00000114` agricultural field | `ENVO:00002259` agricultural soil | soil metagenome | Same env triad as `01` but `lat_lon` is null. The env-triad is resolved from the MFD habitat barcode, independent of coordinates — ~26% of biosamples lack `lat_lon`. |
+| `01_cropland_agricultural_field.json` | `nmdc:bsm-99-d79f513c` | `ENVO:01000245` cropland biome | `ENVO:00000114` agricultural field | `ENVO:00002259` agricultural soil | soil metagenome | The **modal** MFDO mapping — every slot has a precise ENVO term. 3,002 biosamples (~28%) follow this pattern. Gold-standard for a clean resolved record. |
+| `02_forest.json` | `nmdc:bsm-99-778da48a` | `ENVO:01000202` temperate broadleaf forest biome | `ENVO:01000398` temperate freshwater swamp forest | `ENVO:00001998` soil | soil metagenome | Forest sample (MFD00001). Shows v2 specificity: the hab2/hab3 levels (Temperate forests → Alluvial woodland) plus GEE refinement drive a precise `temperate freshwater swamp forest` feature, not the generic `forest ecosystem` v1 produced. **This is the biosample at the head of the example material-processing chain.** |
+| `03_grassland.json` | `nmdc:bsm-99-7eba675f` | `ENVO:01000177` grassland biome | `ENVO:01001811` temperate grassland | `ENVO:00001998` soil | soil metagenome | Grassland sample — 852 records (~8%) share this triple. v2 maps the local feature to `temperate grassland` (Denmark context) rather than a generic grassland ecosystem. |
+| `04_urban_park.json` | `nmdc:bsm-99-a89b3b6d` | `ENVO:01000249` urban biome | `ENVO:00000562` park | `ENVO:00001998` soil | soil metagenome | Urban green-space sample — 628 records (~6%). Demonstrates the `urban biome` + park feature mapping. |
+| `05_marine_coast_sediment.json` | `nmdc:bsm-99-1e1eb980` | `ENVO:00000447` marine biome | `ENVO:00000016` sea | `ENVO:03000033` marine sediment | sediment metagenome | Marine sediment sample — 320 records (~3%). Different sample-type axis (Sediment, not Soil) → different env_medium (`marine sediment`). |
+| `06_wastewater_treatment.json` | `nmdc:bsm-99-39ead642` | `ENVO:01000249` urban biome | `ENVO:00002043` wastewater treatment plant | `ENVO:00002001` waste water | wastewater metagenome | Built-environment sample. `env_medium` is `waste water` (not soil/sediment) and `samp_taxon_id` reflects the environment. |
+| `07_coastal_dune.json` | `nmdc:bsm-99-2bcea741` | `ENVO:01000215` temperate shrubland biome | `ENVO:00000416` coastal dune | `ENVO:00001998` soil | soil metagenome | **v1→v2 improvement.** Natural Dunes had no clean broad-biome term under v1, so v1 left `env_broad_scale` an `ENVO:00000000` sentinel. v2 resolves all three slots (`temperate shrubland biome` / `coastal dune` / `soil`). 457 records (~4%). |
+| `08_no_lat_lon.json` | `nmdc:bsm-99-6bd202b1` | `ENVO:01000245` cropland biome | `ENVO:00000114` agricultural field | `ENVO:00002259` agricultural soil | soil metagenome | Same env triad as `01` but `lat_lon` is null. The env-triad is resolved from the MFD habitat barcode, independent of coordinates — ~26% of biosamples lack `lat_lon`. |
 
 ## material_processing_set/
 
-The `Extraction` and `LibraryPreparation` steps of the chain (see **Material-processing chain** above). Both belong to the same collection. NCBI carries no wet-lab detail, so MFD's records are uniform — every extraction targets DNA and every library is DNA — and the two examples are the consecutive steps of the `02_forest` (MFD00001) chain.
+The `Extraction` and `LibraryPreparation` steps of the chain (see **Material-processing chain** above) — both in this collection. `01`/`02` are the consecutive steps of the `02_forest` (MFD00001) WGS chain; `03` is an amplicon `LibraryPreparation` showing the `target_gene` assertion (it is the input-producer of `data_generation_set/02`).
 
 | File | Source id | `has_input` → `has_output` | Demonstrates |
 |---|---|---|---|
-| `01_extraction.json` | `nmdc:extrp-99-ad41a1c3` | Biosample `02_forest` → extracted-DNA ProcessedSample (`01_extracted_dna`) | `Extraction` consuming the Biosample directly. `extraction_targets=["DNA"]`; named `Extraction for MFD00001` after the source biosample's `samp_name`. Dates / input mass / processing institution are unset (not in NCBI). |
-| `02_library_preparation.json` | `nmdc:libprp-99-04cb2d9e` | extracted-DNA ProcessedSample (`01_extracted_dna`) → library ProcessedSample (`02_sequencing_library`) | `LibraryPreparation` consuming the extraction's output, not the Biosample. `library_type="DNA"`; named `Library preparation for MFD00001`. |
+| `01_extraction.json` | `nmdc:extrp-99-3802f95a` | Biosample `02_forest` → extracted-DNA ProcessedSample (`01_extracted_dna`) | `Extraction` consuming the Biosample directly. `extraction_targets=["DNA"]`; named `DNA extraction process for MFD00001`. Dates / input mass / processing institution are unset (not in NCBI). |
+| `02_library_preparation.json` | `nmdc:libprp-99-d89be9ad` | extracted-DNA ProcessedSample (`01_extracted_dna`) → library ProcessedSample (`02_sequencing_library`) | WGS metagenome `LibraryPreparation` for MFD00001. Carries the SRA descriptor (`library_strategy=WGS`, `library_source=METAGENOMIC`, `library_selection="size fractionation"`, `lib_layout=paired`) and a `protocol_link` (the DOI parsed from its `DESIGN_DESCRIPTION`). No `target_gene` (the WGS design names no rRNA target). |
+| `03_amplicon_library_preparation.json` | `nmdc:libprp-99-fc2fa6c3` | extracted-DNA ProcessedSample → library ProcessedSample (consumed by `data_generation_set/02`) | **Amplicon** `LibraryPreparation`: `library_strategy=AMPLICON`, `library_selection=PCR`, `lib_layout=single`, and **`target_gene="16S_rRNA"`** (parsed from the design "...amplify bacterial rRNA operons"). No `protocol_link` (the amplicon design cites no DOI) — the inverse of `02`. |
 
 ## processed_sample_set/
 
-The two `ProcessedSample` outputs threaded through the chain — the extracted nucleic acid and the sequencing library. They carry only an `id`, `type`, and a `name` derived from the source biosample's `samp_name`; NCBI supplies no concentration/purity detail.
+The two `ProcessedSample` outputs threaded through the `02_forest` chain — the extracted nucleic acid and the sequencing library. NCBI supplies no concentration/purity detail.
 
 | File | Source id | Role | Demonstrates |
 |---|---|---|---|
-| `01_extracted_dna.json` | `nmdc:procsm-99-a1a97b83` | output of `01_extraction`, input of `02_library_preparation` | `ProcessedSample` named `DNA extracted from MFD00001`. |
-| `02_sequencing_library.json` | `nmdc:procsm-99-8ed3e131` | output of `02_library_preparation`, input of `data_generation_set/01` | `ProcessedSample` named `sequencing library prepared for MFD00001` — this is what the `NucleotideSequencing` consumes (its `has_input`), **not** the Biosample. |
+| `01_extracted_dna.json` | `nmdc:procsm-99-cacd1a6a` | output of `01_extraction`, input of `02_library_preparation` | `ProcessedSample` named `Extracted DNA for MFD00001`. |
+| `02_sequencing_library.json` | `nmdc:procsm-99-ac69cb9e` | output of `02_library_preparation`, input of `data_generation_set/01` | `ProcessedSample` named after the SRA library name (`ilm_MFD00001`), with `description = "Library for sequencing for MFD00001"`. This is what the `NucleotideSequencing` consumes (its `has_input`), **not** the Biosample. |
 
 ## data_generation_set/
 
-Every record has a single `has_input` (the library `ProcessedSample`, never the Biosample directly) and a single `has_output` data object. Variation is along two correlated axes — sequencer and analyte category:
+**One `NucleotideSequencing` per SRA run** (MFD has one run per experiment). Each record has a single `has_input` (the library `ProcessedSample`, never the Biosample directly), a single `has_output` `DataObject`, `insdc_experiment_identifiers` + `insdc_bioproject_identifiers`, and a name like `Run <SRR> for experiment <SRX> - <samp_name>`. Variation is along two correlated axes — sequencer and analyte category:
 
 - **NovaSeq 6000 → `metagenome`** (10,683 experiments, ~89%) — the WGS shotgun libraries.
 - **Sequel IIe / PromethION → `amplicon_sequencing_assay`** (900 + 412, ~11%) — long-read amplicon libraries.
@@ -75,17 +80,17 @@ The `analyte_category` is derived from the SRA `LIBRARY_SOURCE`/`LIBRARY_STRATEG
 
 | File | Source id | Instrument id | analyte_category | Demonstrates |
 |---|---|---|---|---|
-| `01_metagenome_nucleotide_sequencing.json` | `nmdc:dgns-99-5bb68446` | `nmdc:inst-14-mr4r2w09` — Illumina NovaSeq 6000 | `metagenome` | Modal record and terminal step of the example chain: `has_input` is the library `ProcessedSample` (`02_sequencing_library`), `has_output` is `data_object_set/01`. `instrument_used` is a **real** resolved Instrument id (matched on `name` against the live `instrument_set`), not a minted placeholder. |
-| `02_amplicon_sequencing_sequel.json` | `nmdc:dgns-99-dec6a11c` | `nmdc:inst-15-qkz3d028` — Sequel IIe | `amplicon_sequencing_assay` | Long-read amplicon assay. This is exactly the case the old analyte logic mislabeled `metagenome`; it now resolves to `amplicon_sequencing_assay`. |
-| `03_amplicon_sequencing_promethion.json` | `nmdc:dgns-99-7b432315` | `nmdc:inst-15-pc5b4k98` — PromethION | `amplicon_sequencing_assay` | Same analyte on the third sequencer — documents that this BioProject uses three distinct instruments (NovaSeq 6000, Sequel IIe, PromethION). |
+| `01_metagenome_nucleotide_sequencing.json` | `nmdc:dgns-99-3d08ff66` | `nmdc:inst-14-mr4r2w09` — Illumina NovaSeq 6000 | `metagenome` | Modal record and terminal step of the example chain: `has_input` is the library `ProcessedSample` (`02_sequencing_library`), `has_output` is `data_object_set/01`. `instrument_used` is a **real** resolved Instrument id (matched on `name` against the live `instrument_set`), not a minted placeholder. |
+| `02_amplicon_sequencing_sequel.json` | `nmdc:dgns-99-4488a669` | `nmdc:inst-15-qkz3d028` — Sequel IIe | `amplicon_sequencing_assay` | Long-read amplicon assay (its library is `material_processing_set/03`). This is exactly the case the old analyte logic mislabeled `metagenome`; it now resolves to `amplicon_sequencing_assay`. |
+| `03_amplicon_sequencing_promethion.json` | `nmdc:dgns-99-cce2832e` | `nmdc:inst-15-pc5b4k98` — PromethION | `amplicon_sequencing_assay` | Same analyte on the third sequencer — documents that this BioProject uses three distinct instruments (NovaSeq 6000, Sequel IIe, PromethION). |
 
 ## data_object_set/
 
-One data-object type, one example.
+One data-object type, one example (one per SRA run).
 
 | File | Source id | Demonstrates |
 |---|---|---|
-| `01_metagenome_raw_reads.json` | `nmdc:dobj-99-1b3006b8` | `data_object_type="Metagenome Raw Reads"`, `data_category="instrument_data"`, NCBI SRA URL. This is the `has_output` of `data_generation_set/01`. **Caveat:** `md5_checksum` and `file_size_bytes` are null — NCBI's source-side metadata does not expose these for SRA runs; they need to be filled when files are actually retrieved/staged for ingest. |
+| `01_sra_sequence_data.json` | `nmdc:dobj-99-d364d886` | `data_object_type="SRA toolkit-accessible sequence data"`, `data_category="instrument_data"`, `insdc_run_identifiers=["insdc.run:SRR…"]`, and `was_generated_by` pointing back at the run's `NucleotideSequencing` (`data_generation_set/01`). There is **no** `url` — the file is reached via the SRA toolkit and the INSDC run accession. **Caveat:** `md5_checksum` and `file_size_bytes` are null — NCBI's source-side metadata does not expose these for SRA runs; they are filled when files are actually retrieved/staged for ingest. |
 
 ## Validation snippet
 

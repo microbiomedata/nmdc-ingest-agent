@@ -1,28 +1,31 @@
 {
-  "id": "nmdc:dgns-99-5bb68446",
+  "id": "nmdc:dgns-99-3d08ff66",
   "type": "nmdc:NucleotideSequencing",
-  "name": "NA",
+  "name": "Run SRR27943129 for experiment SRX23599598 - MFD00001",
   "has_input": [
-    "nmdc:procsm-99-8ed3e131"
+    "nmdc:procsm-99-ac69cb9e"
   ],
   "has_output": [
-    "nmdc:dobj-99-1b3006b8"
+    "nmdc:dobj-99-d364d886"
   ],
   "analyte_category": "metagenome",
   "associated_studies": [
-    "nmdc:sty-99-81e15817"
+    "nmdc:sty-99-dfe6ea08"
   ],
   "instrument_used": [
     "nmdc:inst-14-mr4r2w09"
   ],
   "provenance_metadata": {
     "type": "nmdc:ProvenanceMetadata",
-    "add_date": "2026-06-18T21:55:41.800415+00:00",
+    "add_date": "2026-06-23T20:44:19.980942+00:00",
     "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
-    "mod_date": "2026-06-18T21:55:41.800415+00:00",
+    "mod_date": "2026-06-23T20:44:19.980942+00:00",
     "version": "0.1.0",
     "source_system_of_record": "NCBI"
   },
+  "insdc_bioproject_identifiers": [
+    "bioproject:PRJNA1071982"
+  ],
   "insdc_experiment_identifiers": [
     "insdc.sra:SRX23599598"
   ]
