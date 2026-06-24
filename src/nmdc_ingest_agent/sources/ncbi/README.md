@@ -16,7 +16,7 @@ For a given BioProject accession (e.g. `PRJNA1452545`), the script emits:
 
 All IDs use the shoulder `99` and are placeholders; they must be re-minted via the NMDC Runtime API before ingest.
 
-> **Schema dependency:** the `LibraryPreparation` library-descriptor slots and the `SRA toolkit-accessible sequence data` data-object type were added in [nmdc-schema #3214](https://github.com/microbiomedata/nmdc-schema/pull/3214). Until that ships on PyPI, `pyproject.toml` pins `nmdc-schema` to the PR branch via `[tool.uv.sources]`.
+> **Schema dependency:** the `LibraryPreparation` library-descriptor slots and the `SRA toolkit-accessible sequence data` data-object type were added in [nmdc-schema #3214](https://github.com/microbiomedata/nmdc-schema/pull/3214), released in **nmdc-schema 11.21.0** (`pyproject.toml` requires `nmdc-schema>=11.21.0`).
 
 ## Quirks worth knowing
 

@@ -1666,7 +1666,7 @@ wheels = [
 
 [[package]]
 name = "nmdc-ingest-agent"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "linkml-runtime" },
@@ -1692,7 +1692,7 @@ requires-dist = [
     { name = "linkml-runtime", specifier = ">=1.9.4,<1.10" },
     { name = "lxml" },
     { name = "nmdc-api-utilities", specifier = ">=0.6.1,<1" },
-    { name = "nmdc-schema", git = "https://github.com/microbiomedata/nmdc-schema.git?branch=3213-add-library-modeling-for-insdc-compatibility" },
+    { name = "nmdc-schema", specifier = ">=11.21.0,<12" },
     { name = "oaklib", marker = "extra == 'ontology'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "requests" },
@@ -1702,8 +1702,8 @@ provides-extras = ["ontology", "dev"]
 
 [[package]]
 name = "nmdc-schema"
-version = "0.0.0"
-source = { git = "https://github.com/microbiomedata/nmdc-schema.git?branch=3213-add-library-modeling-for-insdc-compatibility#7995a4d2de4224d7c379c89d84e6869c3efed87e" }
+version = "11.21.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "click-log" },
@@ -1720,6 +1720,10 @@ dependencies = [
     { name = "rdflib" },
     { name = "requests" },
     { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a8/3a/387548ca9721704a3a4a38568c39b61b3cbaa0d86ca04f797a8c127d46e5/nmdc_schema-11.21.0.tar.gz", hash = "sha256:6d2cf2793fc256666b524500a7a5b7a4b81c870de0dbcb66036f5606f7db97ad", size = 779295, upload-time = "2026-06-23T22:45:18.04Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/27/f7/5358fe192cf581e91b8ef60940cc8dfa3aa09ea8c946e55b1e54ec790fdc/nmdc_schema-11.21.0-py3-none-any.whl", hash = "sha256:093881b0aed97ff7898e2db978bdd4eab8101b7475417c61d49408250369f121", size = 856375, upload-time = "2026-06-23T22:45:16.131Z" },
 ]
 
 [[package]]

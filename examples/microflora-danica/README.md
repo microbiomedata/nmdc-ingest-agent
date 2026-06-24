@@ -27,7 +27,7 @@ NCBI/SRA does not record wet-lab dates/mass/institution (left unset), but the SR
 
 **These are reference documents, not test fixtures.** They illustrate the variation that shows up in pipeline output; they are not asserted-against by any automated test.
 
-**Schema version.** The `LibraryPreparation` library-descriptor slots and the `SRA toolkit-accessible sequence data` data-object type require [nmdc-schema #3214](https://github.com/microbiomedata/nmdc-schema/pull/3214). Until it ships on PyPI, `pyproject.toml` pins `nmdc-schema` to that PR branch via `[tool.uv.sources]`.
+**Schema version.** The `LibraryPreparation` library-descriptor slots and the `SRA toolkit-accessible sequence data` data-object type require **nmdc-schema 11.21.0** ([nmdc-schema #3214](https://github.com/microbiomedata/nmdc-schema/pull/3214)); `pyproject.toml` requires `nmdc-schema>=11.21.0`.
 
 ## study_set/
 

@@ -127,7 +127,7 @@ Biosample
 
 Do **not** create `Pooling` records — NCBI does not model pooling, so each `Extraction` consumes the `Biosample` directly.
 
-> **Schema dependency:** the new `LibraryPreparation` library-descriptor slots and the `SRA toolkit-accessible sequence data` data-object type require [nmdc-schema #3214](https://github.com/microbiomedata/nmdc-schema/pull/3214). Until released, `pyproject.toml` pins `nmdc-schema` to the PR branch in `[tool.uv.sources]`; revert to the PyPI release once it ships.
+> **Schema dependency:** the `LibraryPreparation` library-descriptor slots and the `SRA toolkit-accessible sequence data` data-object type were added in [nmdc-schema #3214](https://github.com/microbiomedata/nmdc-schema/pull/3214), released in **nmdc-schema 11.21.0**; `pyproject.toml` requires `nmdc-schema>=11.21.0`.
 
 ## Reference patterns
 
