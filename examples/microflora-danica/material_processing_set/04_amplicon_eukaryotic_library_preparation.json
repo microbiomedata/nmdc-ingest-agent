@@ -1,14 +1,14 @@
 {
-  "id": "nmdc:libprp-99-2c37e48b",
+  "id": "nmdc:libprp-99-654373f2",
   "type": "nmdc:LibraryPreparation",
-  "name": "Library preparation process for MFD09758",
+  "name": "Library preparation process for MFD09683",
   "has_input": [
-    "nmdc:procsm-99-6426646f"
+    "nmdc:procsm-99-369f5095"
   ],
   "has_output": [
-    "nmdc:procsm-99-e087c7b6"
+    "nmdc:procsm-99-e044ab1c"
   ],
-  "target_gene": "16S_rRNA",
+  "target_gene": "18S_rRNA",
   "library_selection": "PCR",
   "library_strategy": "AMPLICON",
   "library_source": "METAGENOMIC",

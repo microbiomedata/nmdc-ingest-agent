@@ -23,7 +23,7 @@ Each project subfolder is self-contained: extracted-verbatim single-record JSON 
 
 | Folder | Source | Records |
 |---|---|---|
-| [`microflora-danica/`](microflora-danica/) | NCBI BioProject [PRJNA1071982](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA1071982) — *MicroFlora Danica* ([Sereika et al., Nature 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12823411/)) | 1 study · 8 biosamples · 3 material_processings · 2 processed_samples · 3 data_generations · 1 data_object |
+| [`microflora-danica/`](microflora-danica/) | NCBI BioProject [PRJNA1071982](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA1071982) — *MicroFlora Danica* ([Sereika et al., Nature 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12823411/)) | 1 study · 8 biosamples · 4 material_processings · 2 processed_samples · 3 data_generations · 1 data_object |
 
 ## Conventions
 

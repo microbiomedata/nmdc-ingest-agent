@@ -1,5 +1,5 @@
 {
-  "id": "nmdc:dobj-99-d364d886",
+  "id": "nmdc:dobj-99-193daaf1",
   "type": "nmdc:DataObject",
   "name": "Data file for run accession SRR27943129",
   "description": "Data file for run accession SRR27943129",
@@ -8,5 +8,5 @@
   "insdc_run_identifiers": [
     "insdc.run:SRR27943129"
   ],
-  "was_generated_by": "nmdc:dgns-99-3d08ff66"
+  "was_generated_by": "nmdc:dgns-99-3ae01571"
 }

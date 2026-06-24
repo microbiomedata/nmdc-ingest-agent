@@ -1,9 +1,9 @@
 {
-  "id": "nmdc:bsm-99-1e1eb980",
+  "id": "nmdc:bsm-99-49231047",
   "type": "nmdc:Biosample",
-  "name": "MFD10409",
+  "name": "MFD10365",
   "associated_studies": [
-    "nmdc:sty-99-dfe6ea08"
+    "nmdc:sty-99-e87ce5df"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
@@ -31,18 +31,18 @@
   },
   "provenance_metadata": {
     "type": "nmdc:ProvenanceMetadata",
-    "add_date": "2026-06-23T20:44:19.980942+00:00",
+    "add_date": "2026-06-24T04:30:34.597253+00:00",
     "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
-    "mod_date": "2026-06-23T20:44:19.980942+00:00",
-    "version": "0.1.0",
+    "mod_date": "2026-06-24T04:30:34.597253+00:00",
+    "version": "1.0.0",
     "source_system_of_record": "NCBI"
   },
   "insdc_biosample_identifiers": [
-    "biosample:SAMN39879184"
+    "biosample:SAMN39874314"
   ],
   "collection_date": {
     "type": "nmdc:TimestampValue",
-    "has_raw_value": "2016-06-01"
+    "has_raw_value": "2014-08-01"
   },
   "env_package": {
     "type": "nmdc:TextValue",
@@ -54,10 +54,10 @@
   },
   "lat_lon": {
     "type": "nmdc:GeolocationValue",
-    "latitude": 55.372,
-    "longitude": 15.4613
+    "latitude": 58.1035,
+    "longitude": 9.8223
   },
-  "samp_name": "MFD10409",
+  "samp_name": "MFD10365",
   "samp_taxon_id": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "term": {

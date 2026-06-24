@@ -1,26 +1,26 @@
 {
-  "id": "nmdc:dgns-99-cce2832e",
+  "id": "nmdc:dgns-99-75b33b27",
   "type": "nmdc:NucleotideSequencing",
   "name": "Run SRR28010325 for experiment SRX23662838 - MFD07568",
   "has_input": [
-    "nmdc:procsm-99-5c32b1ac"
+    "nmdc:procsm-99-46c47708"
   ],
   "has_output": [
-    "nmdc:dobj-99-fa0c3c5f"
+    "nmdc:dobj-99-fd9b8c8c"
   ],
   "analyte_category": "amplicon_sequencing_assay",
   "associated_studies": [
-    "nmdc:sty-99-dfe6ea08"
+    "nmdc:sty-99-e87ce5df"
   ],
   "instrument_used": [
     "nmdc:inst-15-pc5b4k98"
   ],
   "provenance_metadata": {
     "type": "nmdc:ProvenanceMetadata",
-    "add_date": "2026-06-23T20:44:19.980942+00:00",
+    "add_date": "2026-06-24T04:30:34.597253+00:00",
     "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
-    "mod_date": "2026-06-23T20:44:19.980942+00:00",
-    "version": "0.1.0",
+    "mod_date": "2026-06-24T04:30:34.597253+00:00",
+    "version": "1.0.0",
     "source_system_of_record": "NCBI"
   },
   "insdc_bioproject_identifiers": [
