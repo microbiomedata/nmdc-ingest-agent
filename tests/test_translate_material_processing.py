@@ -17,14 +17,15 @@ class _FakeResolver:
 
 
 def _experiment(exp_acc, bs_acc, source, strategy, *, selection="RANDOM",
-                layout="PAIRED", library_name="", design_description="", runs=None):
+                layout="PAIRED", library_name="", design_description="",
+                instrument="Illumina NovaSeq 6000", runs=None):
     if runs is None:
         runs = [f"SRR{exp_acc[-3:]}"]
     return {
         "experiment_accession": exp_acc,
         "biosample_accession": bs_acc,
         "sample_title": f"{exp_acc} title",
-        "instrument_model": "Illumina NovaSeq 6000",
+        "instrument_model": instrument,
         "platform_type": "ILLUMINA",
         "library_strategy": strategy,
         "library_source": source,
@@ -39,7 +40,8 @@ def _experiment(exp_acc, bs_acc, source, strategy, *, selection="RANDOM",
 # Representative SRA design descriptions (verbatim shapes from PRJNA1071982).
 _WGS_DESIGN = "Miniaturized metagenome DNA preps see https://doi.org/10.1101/2023.09.04.556179"
 _AMPLICON_16S_DESIGN = "amplicon sequencing using 8F and 1391R to amplify bacterial 16S rRNA genes"
-_AMPLICON_OPERON_DESIGN = "amplicon sequencing using 8F and 2490R to amplify bacterial rRNA operons"
+_AMPLICON_BACOPERON_DESIGN = "amplicon sequencing using 8F and 2490R to amplify bacterial rRNA operons"
+_AMPLICON_EUKOPERON_DESIGN = "amplicon sequencing using 3NDF and 21R to amplify eukaryotic rRNA operons"
 
 
 def _data(experiments, biosamples=None):
@@ -157,23 +159,39 @@ def test_target_gene_parsed_from_design_description():
                     design_description=_AMPLICON_16S_DESIGN),
         _experiment("SRX333", "SAMN001", "METAGENOMIC", "AMPLICON",
                     selection="PCR", layout="SINGLE",
-                    design_description=_AMPLICON_OPERON_DESIGN),
+                    design_description=_AMPLICON_BACOPERON_DESIGN),
+        _experiment("SRX444", "SAMN001", "METAGENOMIC", "AMPLICON",
+                    selection="PCR", layout="SINGLE",
+                    design_description=_AMPLICON_EUKOPERON_DESIGN),
     ])
     libs = [m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation"]
-    by_exp = {m.has_output[0]: m for m in libs}  # unique per experiment
-    genes = {str(m.target_gene) if m.target_gene else None for m in libs}
-    # 16S amplicon and rRNA-operon amplicon both -> 16S_rRNA; WGS -> None.
-    assert genes == {"16S_rRNA", None}
+    genes = sorted(str(m.target_gene) for m in libs if m.target_gene)
+    # 16S amplicon + bacterial operon -> 16S; eukaryotic operon -> 18S; WGS -> none.
+    assert genes == ["16S_rRNA", "16S_rRNA", "18S_rRNA"]
     wgs = next(m for m in libs if str(m.library_strategy) == "WGS")
     assert wgs.target_gene is None
 
 
 def test_extract_target_gene_unit():
     assert T._extract_target_gene(_AMPLICON_16S_DESIGN) == "16S_rRNA"
-    assert T._extract_target_gene(_AMPLICON_OPERON_DESIGN) == "16S_rRNA"
+    # Operon designs resolve to the domain's SSU rRNA gene: bacterial -> 16S,
+    # eukaryotic -> 18S (NOT a blanket 16S).
+    assert T._extract_target_gene(_AMPLICON_BACOPERON_DESIGN) == "16S_rRNA"
+    assert T._extract_target_gene(_AMPLICON_EUKOPERON_DESIGN) == "18S_rRNA"
     assert T._extract_target_gene("amplify 23S rRNA") == "23S_rRNA"
+    # Multiple distinct genes named -> ambiguous, do not guess.
+    assert T._extract_target_gene("targeting both 16S and 23S rRNA") is None
+    # Operon with no stated domain -> cannot resolve SSU -> unset.
+    assert T._extract_target_gene("amplify rRNA operons") is None
     assert T._extract_target_gene(_WGS_DESIGN) is None
     assert T._extract_target_gene("") is None
+
+
+def test_lib_layout_values_come_from_schema_enum():
+    from nmdc_schema import nmdc
+    assert T._LIB_LAYOUT_VALUES == T._enum_value_texts(nmdc.LibLayoutEnum)
+    assert "paired" in T._LIB_LAYOUT_VALUES and "single" in T._LIB_LAYOUT_VALUES
+    assert "MissingRequiredField" not in T._LIB_LAYOUT_VALUES
 
 
 def test_protocol_link_parsed_from_design_description():
@@ -246,6 +264,57 @@ def test_single_run_experiment_has_no_manifest():
     db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS")])
     assert db.manifest_set == []
     assert db.data_object_set[0].in_manifest in (None, [])
+
+
+def test_experiments_sharing_library_dedup_with_manifest():
+    # SAMEA7724300-shaped: 4 separate WGS experiments (1 run each) share one
+    # library name + instrument; a 5th amplicon experiment reuses the name on a
+    # different instrument/descriptor. Expect: dedup to 2 library chains (not 5),
+    # one data-generation per run, and a Manifest over the 4 poolable WGS runs.
+    exps = [
+        _experiment(f"ERX{i}", "SAMN001", "METAGENOMIC", "WGS",
+                    library_name="shared.lib.s004", selection="size fractionation",
+                    instrument="Illumina NovaSeq 6000", runs=[f"ERR{i}"])
+        for i in range(1, 5)
+    ] + [
+        _experiment("ERX5", "SAMN001", "METAGENOMIC", "AMPLICON",
+                    library_name="shared.lib.s004", selection="PCR", layout="SINGLE",
+                    instrument="Illumina MiSeq", runs=["ERR5"]),
+    ]
+    db = _build(exps)
+    libpreps = [m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation"]
+    extractions = [m for m in db.material_processing_set if m.type == "nmdc:Extraction"]
+
+    assert len(libpreps) == 2        # WGS library + amplicon library, not 5
+    assert len(extractions) == 2     # one Extraction per unique library
+    assert len(db.processed_sample_set) == 4
+    assert len(db.data_generation_set) == 5   # one NucleotideSequencing per run
+    assert len(db.data_object_set) == 5
+    assert len(db.manifest_set) == 1          # the 4 NovaSeq WGS runs
+
+    manifest = db.manifest_set[0]
+    assert str(manifest.manifest_category) == "poolable_replicates"
+    in_manifest = [d for d in db.data_object_set if d.in_manifest]
+    assert len(in_manifest) == 4
+    assert all(d.in_manifest == [manifest.id] for d in in_manifest)
+
+    # The 4 WGS NucleotideSequencings all consume the same WGS library ProcessedSample.
+    wgs_lib = next(m for m in libpreps if str(m.library_strategy) == "WGS")
+    wgs_ns = [ns for ns in db.data_generation_set if ns.has_input == wgs_lib.has_output]
+    assert len(wgs_ns) == 4
+
+
+def test_distinct_library_names_are_not_merged():
+    # One biosample, two distinct library names (e.g. WGS + amplicon) -> two
+    # independent library chains.
+    db = _build([
+        _experiment("SRX1", "SAMN001", "METAGENOMIC", "WGS", library_name="ilm_X"),
+        _experiment("SRX2", "SAMN001", "METAGENOMIC", "AMPLICON",
+                    library_name="pb_X", selection="PCR", layout="SINGLE"),
+    ])
+    assert len([m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation"]) == 2
+    assert len([m for m in db.material_processing_set if m.type == "nmdc:Extraction"]) == 2
+    assert db.manifest_set == []
 
 
 def test_processed_sample_ids_use_procsm_typecode():

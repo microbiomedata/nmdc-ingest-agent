@@ -106,9 +106,9 @@ The final JSON file is written to `results/ncbi_<ACCESSION>_nmdc.json` relative 
 
 ## Scope
 
-This skill produces `Study`, `Biosample`, `Extraction`, `LibraryPreparation`, `ProcessedSample`, `DataGeneration`, `DataObject`, and (for multi-run experiments) `Manifest` records.
+This skill produces `Study`, `Biosample`, `Extraction`, `LibraryPreparation`, `ProcessedSample`, `DataGeneration`, `DataObject`, and (for poolable replicate runs) `Manifest` records.
 
-For each sequenced experiment the pipeline reconstructs the canonical NMDC material-processing chain so a `NucleotideSequencing` consumes a `ProcessedSample` rather than the `Biosample` directly, and emits **one `NucleotideSequencing` + one `DataObject` per SRA run**:
+The pipeline reconstructs the canonical NMDC material-processing chain so a `NucleotideSequencing` consumes a `ProcessedSample` rather than the `Biosample` directly, and emits **one `NucleotideSequencing` + one `DataObject` per SRA run**:
 
 ```
 Biosample
@@ -117,7 +117,7 @@ Biosample
   --NucleotideSequencing--> DataObject        (one chain per run)
 ```
 
-Per-experiment: one `Extraction` and one `LibraryPreparation` (both into `material_processing_set`), each with a `ProcessedSample` output (into `processed_sample_set`). Per-run: one `NucleotideSequencing` (into `data_generation_set`) and one `DataObject` (into `data_object_set`). When an experiment has more than one run, a `Manifest` (`manifest_category: poolable_replicates`, into `manifest_set`) groups those run `DataObject`s via `in_manifest`. NCBI/SRA does not record wet-lab dates/mass/institution, so those stay unset; the fields it *does* supply are populated:
+**Per unique library — not per experiment.** Several SRA experiments can re-sequence one library (same `LIBRARY_NAME` + descriptor under distinct experiment accessions), so the chain is keyed on the unique library `(biosample, library_name, strategy, source, selection, layout)`: one `Extraction` and one `LibraryPreparation` (both into `material_processing_set`), each with a `ProcessedSample` output (into `processed_sample_set`), per unique library. Per-run: one `NucleotideSequencing` (into `data_generation_set`) and one `DataObject` (into `data_object_set`). When a library's runs **share an instrument** — i.e. ≥2 runs sharing `(biosample, library_name, instrument)` — a `Manifest` (`manifest_category: poolable_replicates`, into `manifest_set`) groups those run `DataObject`s via `in_manifest`. (MicroFlora Danica has one library/run per experiment, so it produces no `Manifest`s; a project like [`SAMEA7724300`](https://www.ncbi.nlm.nih.gov/Traces/study/?acc=SAMEA7724300) with 4 WGS experiments sharing one library yields 1 library chain, 4 data-generations, and 1 manifest.) NCBI/SRA does not record wet-lab dates/mass/institution, so those stay unset; the fields it *does* supply are populated:
 
 - **Extraction** — `extraction_targets` (`DNA`, or `RNA` for transcriptomic `LIBRARY_SOURCE`).
 - **LibraryPreparation** — `library_strategy`, `library_source`, `library_selection`, `lib_layout` (from the SRA library descriptor). `target_gene` and `protocol_link` are **parsed from the SRA `DESIGN_DESCRIPTION`**, not hardcoded: an rRNA-gene mention (e.g. "amplify bacterial 16S rRNA genes", or "rRNA operons" → `16S_rRNA`) sets `target_gene`; a DOI in the text (e.g. MFD's WGS "…see https://doi.org/…") sets `protocol_link`. Records that name neither leave them unset.

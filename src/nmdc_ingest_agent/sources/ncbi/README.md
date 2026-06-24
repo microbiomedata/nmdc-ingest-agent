@@ -8,11 +8,11 @@ For a given BioProject accession (e.g. `PRJNA1452545`), the script emits:
 
 - **Study** — one record, derived from the BioProject title/description
 - **Biosample** — one per linked BioSample (discovered via both SRA and E-utils `elink`)
-- **MaterialProcessing** — one `Extraction` and one `LibraryPreparation` per SRA experiment, reconstructing the chain `Biosample → Extraction → ProcessedSample → LibraryPreparation → ProcessedSample → NucleotideSequencing`. The `LibraryPreparation` carries the SRA library descriptor (`library_strategy`, `library_source`, `library_selection`, `lib_layout`); `target_gene` and `protocol_link` are **parsed from the SRA `DESIGN_DESCRIPTION`** (an rRNA-gene mention → `TargetGeneEnum`; a DOI in the text → `protocol_link`), not hardcoded.
-- **ProcessedSample** — two per SRA experiment: the extracted nucleic acid (`Extracted DNA for <samp>`) and the sequencing library (named after the SRA library name, e.g. `ilm_MFD00001`).
+- **MaterialProcessing** — one `Extraction` and one `LibraryPreparation` **per unique library** (keyed on `(biosample, library_name, strategy, source, selection, layout)`, *not* per experiment — several experiments can re-sequence one library), reconstructing the chain `Biosample → Extraction → ProcessedSample → LibraryPreparation → ProcessedSample → NucleotideSequencing`. The `LibraryPreparation` carries the SRA library descriptor (`library_strategy`, `library_source`, `library_selection`, `lib_layout`); `target_gene` and `protocol_link` are **parsed from the SRA `DESIGN_DESCRIPTION`** (an rRNA-gene mention → `TargetGeneEnum`; a DOI in the text → `protocol_link`), not hardcoded.
+- **ProcessedSample** — two per unique library: the extracted nucleic acid (`Extracted DNA for <samp>`) and the sequencing library (named after the SRA library name, e.g. `ilm_MFD00001`).
 - **DataGeneration** — one `NucleotideSequencing` **per SRA run**, consuming the library `ProcessedSample`; carries `insdc_experiment_identifiers` and `insdc_bioproject_identifiers`.
 - **DataObject** — one per SRA run (`data_object_type = "SRA toolkit-accessible sequence data"`, `insdc_run_identifiers`, `was_generated_by` the run's NucleotideSequencing; no URL).
-- **Manifest** — one per *multi-run* experiment, grouping that experiment's run `DataObject`s as `poolable_replicates` (via `DataObject.in_manifest`). Single-run experiments (e.g. all of MicroFlora Danica) produce none.
+- **Manifest** — one per group of **poolable replicate runs** sharing `(biosample, library_name, instrument)` with ≥2 runs, grouping their `DataObject`s via `DataObject.in_manifest` (`poolable_replicates`). MicroFlora Danica has one run per library, so it produces none; a project like `SAMEA7724300` (4 WGS experiments sharing one library) yields 1 library chain, 4 data-generations, and 1 manifest.
 
 All IDs use the shoulder `99` and are placeholders; they must be re-minted via the NMDC Runtime API before ingest.
 

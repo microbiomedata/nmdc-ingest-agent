@@ -764,7 +764,18 @@ def _resolve_analyte_category(library_source: str, library_strategy: str) -> str
     )
 
 
-_LIB_LAYOUT_VALUES = {"paired", "single", "other", "vector"}
+def _enum_value_texts(enum_cls) -> set:
+    """Permissible-value texts of a generated LinkML enum (excludes the
+    MissingRequiredField sentinel). Used so the valid value sets come from the
+    schema enumeration rather than being hardcoded."""
+    return {
+        v.text
+        for v in vars(enum_cls).values()
+        if getattr(v, "text", None) and v.text != "MissingRequiredField"
+    }
+
+
+_LIB_LAYOUT_VALUES = _enum_value_texts(nmdc.LibLayoutEnum)
 
 
 def _lib_layout(library_layout: str) -> Optional[str]:
@@ -796,100 +807,129 @@ def _extract_protocol_url(design_description: str) -> Optional[str]:
     return f"https://doi.org/{bare}"
 
 
-# rRNA gene mentions in the DESIGN_DESCRIPTION -> TargetGeneEnum value, in priority
-# order. MFD amplicon designs read e.g. "amplify bacterial 16S rRNA genes" or
-# "amplify bacterial rRNA operons".
-_TARGET_GENE_RES = [
-    (re.compile(r"\b16S\b", re.IGNORECASE), "16S_rRNA"),
-    (re.compile(r"\b18S\b", re.IGNORECASE), "18S_rRNA"),
-    (re.compile(r"\b23S\b", re.IGNORECASE), "23S_rRNA"),
-    (re.compile(r"\b28S\b", re.IGNORECASE), "28S_rRNA"),
-]
+# Explicit rRNA-gene tokens in the DESIGN_DESCRIPTION; "<n>S" maps to "<n>S_rRNA".
+_GENE_TOKEN_RE = re.compile(r"\b(16S|18S|23S|28S)\b", re.IGNORECASE)
+# An "rRNA operon" amplicon names no explicit gene number; the small-subunit (SSU)
+# rRNA its forward primer anchors on is domain-specific — 16S for bacteria/archaea,
+# 18S for eukaryotes (e.g. MFD's pb_bacoperon vs pb_eukoperon designs).
 _RRNA_OPERON_RE = re.compile(r"rRNA\s+operon", re.IGNORECASE)
+_PROKARYOTIC_RE = re.compile(r"\b(?:bacterial|archaeal|prokaryotic)\b", re.IGNORECASE)
+_EUKARYOTIC_RE = re.compile(r"\beukaryotic\b", re.IGNORECASE)
+_TARGET_GENE_VALUES = _enum_value_texts(nmdc.TargetGeneEnum)
 
 
 def _extract_target_gene(design_description: str) -> Optional[str]:
-    """Map an rRNA-gene mention in the SRA DESIGN_DESCRIPTION to a TargetGeneEnum
-    value, or None when the description names no rRNA target (e.g. shotgun WGS).
+    """Map an rRNA target named in the SRA DESIGN_DESCRIPTION to a TargetGeneEnum
+    value.
 
-    An "rRNA operon" amplicon (MFD's PacBio full-operon design, primer 8F→2490R)
-    is anchored at the 16S gene, so it maps to ``16S_rRNA`` — the schema's enum
-    has no whole-operon value."""
+    An explicit gene token ("16S"/"18S"/"23S"/"28S") wins. Otherwise, a
+    non-specific "rRNA operon" resolves to the domain's SSU rRNA gene — 16S for
+    bacterial/archaeal, 18S for eukaryotic. Returns None when no rRNA target is
+    named (e.g. shotgun WGS), and also when more than one distinct gene is named
+    or an operon's domain is unstated — in those ambiguous cases we warn (for the
+    multi-gene case) and leave ``target_gene`` unset rather than guessing."""
     if not design_description:
         return None
-    for pat, gene in _TARGET_GENE_RES:
-        if pat.search(design_description):
-            return gene
-    if _RRNA_OPERON_RE.search(design_description):
-        return "16S_rRNA"
+    found = {
+        f"{m.group(1).upper()}_rRNA" for m in _GENE_TOKEN_RE.finditer(design_description)
+    }
+    if not found and _RRNA_OPERON_RE.search(design_description):
+        if _EUKARYOTIC_RE.search(design_description):
+            found = {"18S_rRNA"}
+        elif _PROKARYOTIC_RE.search(design_description):
+            found = {"16S_rRNA"}
+    found &= _TARGET_GENE_VALUES
+    if len(found) == 1:
+        return next(iter(found))
+    if len(found) > 1:
+        print(
+            f"  WARNING: DESIGN_DESCRIPTION names multiple target genes "
+            f"{sorted(found)}; leaving target_gene unset: {design_description!r}"
+        )
     return None
 
 
-def build_sequencing_records(
-    experiment: dict,
+def _library_key(experiment: dict) -> tuple:
+    """Identity of the *unique library* an SRA experiment represents.
+
+    Multiple SRA experiments can describe the same physical library (e.g. one
+    library re-sequenced across runs/lanes under distinct experiment
+    accessions). They share the SRA library name *and* descriptor, so we key on
+    ``(biosample, library_name, strategy, source, selection, layout)`` and build
+    one Extraction/LibraryPreparation chain per key rather than per experiment.
+
+    The descriptor is part of the key so two genuinely different preps that
+    happen to reuse one library-name string (e.g. a WGS and an amplicon library
+    both named after the sample) are not merged. When the SRA record has no
+    library name we cannot dedup, so we fall back to the experiment accession to
+    keep each experiment its own library."""
+    lib = (experiment.get("library_name") or "").strip()
+    lib_or_exp = lib or f"__exp__{experiment['experiment_accession']}"
+    return (
+        experiment["biosample_accession"],
+        lib_or_exp,
+        experiment.get("library_strategy", ""),
+        experiment.get("library_source", ""),
+        experiment.get("library_selection", ""),
+        experiment.get("library_layout", ""),
+    )
+
+
+def build_library_records(
+    library_experiments: List[dict],
     study_id: str,
     biosample_id: str,
     biosample_name: str,
     bioproject_accession: str,
-    instrument_id: Optional[str],
+    run_units: List[dict],
     extraction_id: str,
     extraction_output_id: str,
     library_preparation_id: str,
     library_output_id: str,
-    nucleotide_sequencing_ids: List[str],
-    data_object_ids: List[str],
-    manifest_id: Optional[str],
+    manifest_ids: List[str],
     now: datetime,
 ) -> dict:
-    """Build the material-processing chain plus per-run sequencing records for
-    one SRA experiment.
+    """Build the material-processing chain + per-run sequencing records for one
+    *unique library* (a group of SRA experiments sharing a ``_library_key``).
 
     NCBI does not record the wet-lab steps, but the NMDC model requires a
     NucleotideSequencing to consume a ProcessedSample rather than the Biosample
-    directly. We reconstruct the canonical chain — one Extraction and one
-    LibraryPreparation per experiment (each emitting a ProcessedSample) — and
-    then emit one NucleotideSequencing + one DataObject *per SRA run*:
+    directly. We reconstruct the canonical chain — **one Extraction and one
+    LibraryPreparation per unique library** (each emitting a ProcessedSample) —
+    and then emit **one NucleotideSequencing + one DataObject per SRA run**
+    across all of the library's experiments:
 
         Biosample
           -> Extraction          (has_output: extracted-nucleic-acid ProcessedSample)
           -> LibraryPreparation   (has_output: sequencing-library ProcessedSample)
           -> NucleotideSequencing  (one per run; has_output: that run's DataObject)
 
-    When an experiment has more than one run (so ``manifest_id`` is provided),
-    the run DataObjects are grouped by a Manifest (``in_manifest``); the runs
-    share one biosample, one library, and one instrument — poolable replicates.
+    ``run_units`` is one dict per run — ``{run_acc, exp_acc, instrument_model,
+    instrument_id, ns_id, do_id}`` — already minted by the caller. Runs of this
+    library that share an instrument (so they share biosample + library name +
+    instrument) are poolable replicates: each such group of >1 run is bound by a
+    Manifest via ``DataObject.in_manifest``. ``manifest_ids`` supplies one minted
+    id per such group, consumed in instrument-sorted order.
 
-    Record names follow the MFD example-data conventions (see the schema PR
-    example): "<NA> extraction process for <samp>", "Library preparation process
-    for <samp>", "Run <SRR> for experiment <SRX> - <samp>", etc. Library records
-    carry the SRA library descriptor (strategy/source/selection/layout); the
-    library ProcessedSample is named after the SRA library name."""
+    Record names follow the MFD example-data conventions; the LibraryPreparation
+    carries the SRA descriptor (strategy/source/selection/layout) and the library
+    ProcessedSample is named after the SRA library name."""
 
-    exp_acc = experiment["experiment_accession"]
-    runs = experiment.get("runs", [])
-    if not (len(data_object_ids) == len(nucleotide_sequencing_ids) == len(runs)):
-        raise ValueError(
-            f"build_sequencing_records: expected {len(runs)} DataObject and "
-            f"NucleotideSequencing IDs for experiment {exp_acc}, got "
-            f"{len(data_object_ids)} / {len(nucleotide_sequencing_ids)}"
-        )
+    rep = library_experiments[0]
 
     # Transcriptomic libraries extract RNA; everything else DNA. NCBI's SRA
     # data_object_type is uniform ("SRA toolkit-accessible sequence data");
     # the nucleic acid only drives extraction_targets and the record names.
-    source_upper = (experiment.get("library_source") or "").upper()
+    source_upper = (rep.get("library_source") or "").upper()
     nucleic_acid = "RNA" if "TRANSCRIPTOMIC" in source_upper else "DNA"
 
-    # Eligibility (in build_nmdc_database) has already verified this pair maps,
-    # so this will not raise for experiments that reach here.
+    # Eligibility (in build_nmdc_database) has already verified this pair maps.
     analyte_category = _resolve_analyte_category(
-        experiment.get("library_source", ""),
-        experiment.get("library_strategy", ""),
+        rep.get("library_source", ""), rep.get("library_strategy", "")
     )
     # protocol DOI and amplicon target gene are parsed from the SRA
-    # DESIGN_DESCRIPTION (not hardcoded); both are None when the record's
-    # design text names neither.
-    design_description = experiment.get("design_description", "")
+    # DESIGN_DESCRIPTION (not hardcoded); both None when the design names neither.
+    design_description = rep.get("design_description", "")
     target_gene = _extract_target_gene(design_description)
     protocol_url = _extract_protocol_url(design_description)
 
@@ -910,24 +950,22 @@ def build_sequencing_records(
 
     # --- LibraryPreparation: extracted nucleic acid -> library ProcessedSample --
     protocol_link = (
-        nmdc.Protocol(url=protocol_url, type="nmdc:Protocol")
-        if protocol_url
-        else None
+        nmdc.Protocol(url=protocol_url, type="nmdc:Protocol") if protocol_url else None
     )
     library_preparation = nmdc.LibraryPreparation(
         id=library_preparation_id,
         name=f"Library preparation process for {biosample_name}",
         has_input=[extraction_output_id],
         has_output=[library_output_id],
-        library_strategy=(experiment.get("library_strategy") or None),
-        library_source=(experiment.get("library_source") or None),
-        library_selection=(experiment.get("library_selection") or None),
-        lib_layout=_lib_layout(experiment.get("library_layout", "")),
+        library_strategy=(rep.get("library_strategy") or None),
+        library_source=(rep.get("library_source") or None),
+        library_selection=(rep.get("library_selection") or None),
+        lib_layout=_lib_layout(rep.get("library_layout", "")),
         target_gene=target_gene,
         protocol_link=protocol_link,
         type="nmdc:LibraryPreparation",
     )
-    library_name = (experiment.get("library_name") or "").strip()
+    library_name = (rep.get("library_name") or "").strip()
     library_output = nmdc.ProcessedSample(
         id=library_output_id,
         name=library_name or f"Sequencing library for {biosample_name}",
@@ -935,14 +973,35 @@ def build_sequencing_records(
         type="nmdc:ProcessedSample",
     )
 
-    # --- Per-run NucleotideSequencing + DataObject -----------------------------
-    instrument_ids = [instrument_id] if instrument_id else []
-    in_manifest = [manifest_id] if manifest_id else None
+    # --- Manifests: group this library's runs by instrument; >1 run = poolable
+    #     replicates sharing (biosample, library name, instrument) -------------
+    runs_by_instrument: dict[str, list] = {}
+    for ru in run_units:
+        runs_by_instrument.setdefault(ru["instrument_model"], []).append(ru)
+    manifest_id_iter = iter(manifest_ids)
+    do_manifest: dict[str, str] = {}
+    manifests = []
+    label = library_name or biosample_name
+    for instrument in sorted(runs_by_instrument):
+        group = runs_by_instrument[instrument]
+        if len(group) > 1:
+            mid = next(manifest_id_iter)
+            manifests.append(nmdc.Manifest(
+                id=mid,
+                name=f"Sequencing runs for {label} on {instrument}",
+                manifest_category=nmdc.ManifestCategoryEnum.poolable_replicates.text,
+                type="nmdc:Manifest",
+            ))
+            for ru in group:
+                do_manifest[ru["do_id"]] = mid
 
+    # --- Per-run NucleotideSequencing + DataObject -----------------------------
     nuc_seqs = []
     data_objects = []
-    for run, ns_id, do_id in zip(runs, nucleotide_sequencing_ids, data_object_ids):
-        run_acc = run["accession"]
+    for ru in run_units:
+        run_acc, exp_acc = ru["run_acc"], ru["exp_acc"]
+        ns_id, do_id = ru["ns_id"], ru["do_id"]
+        mid = do_manifest.get(do_id)
         data_objects.append(nmdc.DataObject(
             id=do_id,
             name=f"Data file for run accession {run_acc}",
@@ -951,7 +1010,7 @@ def build_sequencing_records(
             data_object_type="SRA toolkit-accessible sequence data",
             insdc_run_identifiers=[f"insdc.run:{run_acc}"],
             was_generated_by=ns_id,
-            in_manifest=in_manifest,
+            in_manifest=[mid] if mid else None,
             type="nmdc:DataObject",
         ))
         nuc_seqs.append(nmdc.NucleotideSequencing(
@@ -960,22 +1019,12 @@ def build_sequencing_records(
             has_input=[library_output_id],
             has_output=[do_id],
             associated_studies=[study_id],
-            instrument_used=instrument_ids,
+            instrument_used=[ru["instrument_id"]] if ru["instrument_id"] else [],
             analyte_category=analyte_category,
             insdc_experiment_identifiers=[f"insdc.sra:{exp_acc}"],
             insdc_bioproject_identifiers=[f"bioproject:{bioproject_accession}"],
             type="nmdc:NucleotideSequencing",
             provenance_metadata=_build_provenance_metadata(now),
-        ))
-
-    # --- Manifest grouping the run DataObjects of a multi-run experiment -------
-    manifests = []
-    if manifest_id:
-        manifests.append(nmdc.Manifest(
-            id=manifest_id,
-            name=f"Sequencing runs for {library_name or biosample_name}",
-            manifest_category=nmdc.ManifestCategoryEnum.poolable_replicates.text,
-            type="nmdc:Manifest",
         ))
 
     return {
@@ -1215,25 +1264,50 @@ def build_nmdc_database(
         for (src, strat), count in sorted(unmappable_analyte.items()):
             print(f"    source={src!r} strategy={strat!r} ({count} experiment(s))")
 
-    # Minting (done up front so we never mint ids for records we won't emit):
-    #   - one Extraction + one LibraryPreparation per experiment, each emitting a
-    #     ProcessedSample (2 ProcessedSamples/experiment);
-    #   - one NucleotideSequencing + one DataObject *per SRA run*;
-    #   - one Manifest per experiment that has more than one run (its runs are
-    #     poolable replicates grouped via DataObject.in_manifest).
+    # Group eligible experiments into *unique libraries* (one chain per library,
+    # not per experiment — several experiments can re-sequence one library; see
+    # _library_key). Runs of a library that share an instrument are poolable
+    # replicates bound by a Manifest.
     bioproject_accession = project["accession"]
-    n_eligible = len(eligible_experiments)
-    total_runs = sum(len(exp.get("runs", [])) for exp in eligible_experiments)
-    n_multi_run = sum(1 for exp in eligible_experiments if len(exp.get("runs", [])) > 1)
+    libraries: dict[tuple, list[dict]] = {}
+    for exp in eligible_experiments:
+        libraries.setdefault(_library_key(exp), []).append(exp)
+    library_groups = list(libraries.values())
+
+    # Per library, assemble the run units (one per run, carrying its experiment's
+    # instrument) and tally how many Manifests it needs (instrument subgroups of
+    # >1 run). Minting up front so we never mint ids for records we won't emit.
+    lib_run_units: list[list[dict]] = []
+    n_manifests = 0
+    for group in library_groups:
+        units: list[dict] = []
+        for exp in group:
+            model = (exp.get("instrument_model") or "").strip()
+            instrument_id = model_to_instrument_id[model]
+            for run in exp.get("runs", []):
+                units.append({
+                    "run_acc": run["accession"],
+                    "exp_acc": exp["experiment_accession"],
+                    "instrument_model": model,
+                    "instrument_id": instrument_id,
+                })
+        lib_run_units.append(units)
+        inst_counts: dict[str, int] = {}
+        for u in units:
+            inst_counts[u["instrument_model"]] = inst_counts.get(u["instrument_model"], 0) + 1
+        n_manifests += sum(1 for c in inst_counts.values() if c > 1)
+
+    n_libraries = len(library_groups)
+    total_runs = sum(len(units) for units in lib_run_units)
 
     extraction_ids = iter(
-        minter.mint("nmdc:Extraction", n_eligible) if n_eligible else []
+        minter.mint("nmdc:Extraction", n_libraries) if n_libraries else []
     )
     library_prep_ids = iter(
-        minter.mint("nmdc:LibraryPreparation", n_eligible) if n_eligible else []
+        minter.mint("nmdc:LibraryPreparation", n_libraries) if n_libraries else []
     )
     processed_sample_ids = iter(
-        minter.mint("nmdc:ProcessedSample", 2 * n_eligible) if n_eligible else []
+        minter.mint("nmdc:ProcessedSample", 2 * n_libraries) if n_libraries else []
     )
     ns_pool = iter(
         minter.mint("nmdc:NucleotideSequencing", total_runs) if total_runs else []
@@ -1242,7 +1316,7 @@ def build_nmdc_database(
         minter.mint("nmdc:DataObject", total_runs) if total_runs else []
     )
     manifest_pool = iter(
-        minter.mint("nmdc:Manifest", n_multi_run) if n_multi_run else []
+        minter.mint("nmdc:Manifest", n_manifests) if n_manifests else []
     )
 
     all_nuc_seqs: list[nmdc.NucleotideSequencing] = []
@@ -1250,28 +1324,29 @@ def build_nmdc_database(
     all_material_processings: list[nmdc.MaterialProcessing] = []
     all_processed_samples: list[nmdc.ProcessedSample] = []
     all_manifests: list[nmdc.Manifest] = []
-    for exp in eligible_experiments:
-        run_count = len(exp.get("runs", []))
-        run_ns_ids = [next(ns_pool) for _ in range(run_count)]
-        run_do_ids = [next(do_pool) for _ in range(run_count)]
-        manifest_id = next(manifest_pool) if run_count > 1 else None
-        model = (exp.get("instrument_model") or "").strip()
-        instrument_id = model_to_instrument_id[model]
-        bs_acc = exp["biosample_accession"]
-        records = build_sequencing_records(
-            exp,
+    for group, units in zip(library_groups, lib_run_units):
+        for u in units:
+            u["ns_id"] = next(ns_pool)
+            u["do_id"] = next(do_pool)
+        inst_counts = {}
+        for u in units:
+            inst_counts[u["instrument_model"]] = inst_counts.get(u["instrument_model"], 0) + 1
+        lib_manifest_ids = [
+            next(manifest_pool) for c in inst_counts.values() if c > 1
+        ]
+        bs_acc = group[0]["biosample_accession"]
+        records = build_library_records(
+            group,
             study_id,
             biosample_acc_to_id[bs_acc],
             biosample_acc_to_name[bs_acc],
             bioproject_accession,
-            instrument_id,
+            units,
             next(extraction_ids),
             next(processed_sample_ids),
             next(library_prep_ids),
             next(processed_sample_ids),
-            run_ns_ids,
-            run_do_ids,
-            manifest_id,
+            lib_manifest_ids,
             now,
         )
         all_nuc_seqs.extend(records["nucleotide_sequencings"])
@@ -1280,10 +1355,15 @@ def build_nmdc_database(
         all_processed_samples.extend(records["processed_samples"])
         all_manifests.extend(records["manifests"])
 
+    if n_libraries != len(eligible_experiments):
+        print(
+            f"  Grouped {len(eligible_experiments)} eligible experiment(s) into "
+            f"{n_libraries} unique library/-ies (deduplicated by SRA library name)."
+        )
     if all_manifests:
         print(
-            f"  Created {len(all_manifests)} Manifest record(s) grouping the "
-            f"runs of multi-run experiments (poolable_replicates)."
+            f"  Created {len(all_manifests)} Manifest record(s) grouping poolable "
+            f"replicate runs (shared biosample + library name + instrument)."
         )
 
     for w in skip_warnings:
