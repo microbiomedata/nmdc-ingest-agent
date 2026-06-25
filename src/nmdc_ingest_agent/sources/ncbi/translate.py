@@ -839,7 +839,7 @@ def _library_key(experiment: dict) -> tuple:
     library re-sequenced across runs/lanes under distinct experiment
     accessions). They share the SRA library name *and* descriptor, so we key on
     ``(biosample, library_name, strategy, source, selection, layout)`` and build
-    one Extraction/LibraryPreparation chain per key rather than per experiment.
+    one LibraryPreparation chain per key rather than per experiment.
 
     The descriptor is part of the key so two genuinely different preps that
     happen to reuse one library-name string (e.g. a WGS and an amplicon library
@@ -865,8 +865,6 @@ def build_library_records(
     biosample_name: str,
     bioproject_accession: str,
     run_units: List[dict],
-    extraction_id: str,
-    extraction_output_id: str,
     library_preparation_id: str,
     library_output_id: str,
     manifest_ids: List[str],
@@ -875,36 +873,28 @@ def build_library_records(
     """Build the material-processing chain + per-run sequencing records for one
     *unique library* (a group of SRA experiments sharing a ``_library_key``).
 
-    NCBI does not record the wet-lab steps, but the NMDC model requires a
-    NucleotideSequencing to consume a ProcessedSample rather than the Biosample
-    directly. We reconstruct the canonical chain — **one Extraction and one
-    LibraryPreparation per unique library** (each emitting a ProcessedSample) —
-    and then emit **one NucleotideSequencing + one DataObject per SRA run**
-    across all of the library's experiments:
+    The chain is **Biosample -> LibraryPreparation -> ProcessedSample ->
+    NucleotideSequencing -> DataObject(s)**. We deliberately do **not** create an
+    Extraction record: NCBI/SRA gives enough information to assert the library
+    prep, but not the nucleic-acid extraction (it is most likely 1:1 with the
+    Biosample, but that cannot be confirmed). So the LibraryPreparation consumes
+    the Biosample directly (``has_input = [biosample]``) and emits the sequencing
+    library ProcessedSample, which the per-run NucleotideSequencing consumes.
 
-        Biosample
-          -> Extraction          (has_output: extracted-nucleic-acid ProcessedSample)
-          -> LibraryPreparation   (has_output: sequencing-library ProcessedSample)
-          -> NucleotideSequencing  (one per run; has_output: that run's DataObject)
-
-    ``run_units`` is one dict per run — ``{run_acc, exp_acc, instrument_model,
-    instrument_id, ns_id, do_id}`` — already minted by the caller. Runs of this
-    library that share an instrument (so they share biosample + library name +
-    instrument) are poolable replicates: each such group of >1 run is bound by a
-    Manifest via ``DataObject.in_manifest``. ``manifest_ids`` supplies one minted
-    id per such group, consumed in instrument-sorted order.
+    One NucleotideSequencing + one DataObject is emitted **per SRA run** across
+    all of the library's experiments. ``run_units`` is one dict per run —
+    ``{run_acc, exp_acc, instrument_model, instrument_id, ns_id, do_id}`` — already
+    minted by the caller. Runs of this library that share an instrument (so they
+    share biosample + library name + instrument) are poolable replicates: each
+    such group of >1 run is bound by a Manifest via ``DataObject.in_manifest``.
+    ``manifest_ids`` supplies one minted id per such group, consumed in
+    instrument-sorted order.
 
     Record names follow the MFD example-data conventions; the LibraryPreparation
     carries the SRA descriptor (strategy/source/selection/layout) and the library
     ProcessedSample is named after the SRA library name."""
 
     rep = library_experiments[0]
-
-    # Transcriptomic libraries extract RNA; everything else DNA. NCBI's SRA
-    # data_object_type is uniform ("SRA toolkit-accessible sequence data");
-    # the nucleic acid only drives extraction_targets and the record names.
-    source_upper = (rep.get("library_source") or "").upper()
-    nucleic_acid = "RNA" if "TRANSCRIPTOMIC" in source_upper else "DNA"
 
     # Eligibility (in build_nmdc_database) has already verified this pair maps.
     analyte_category = _resolve_analyte_category(
@@ -916,29 +906,14 @@ def build_library_records(
     target_gene = _extract_target_gene(design_description)
     protocol_url = _extract_protocol_url(design_description)
 
-    # --- Extraction: Biosample -> extracted nucleic-acid ProcessedSample -------
-    extraction = nmdc.Extraction(
-        id=extraction_id,
-        name=f"{nucleic_acid} extraction process for {biosample_name}",
-        has_input=[biosample_id],
-        has_output=[extraction_output_id],
-        extraction_targets=[nucleic_acid],
-        type="nmdc:Extraction",
-    )
-    extraction_output = nmdc.ProcessedSample(
-        id=extraction_output_id,
-        name=f"Extracted {nucleic_acid} for {biosample_name}",
-        type="nmdc:ProcessedSample",
-    )
-
-    # --- LibraryPreparation: extracted nucleic acid -> library ProcessedSample --
+    # --- LibraryPreparation: Biosample -> sequencing-library ProcessedSample ----
     protocol_link = (
         nmdc.Protocol(url=protocol_url, type="nmdc:Protocol") if protocol_url else None
     )
     library_preparation = nmdc.LibraryPreparation(
         id=library_preparation_id,
         name=f"Library preparation process for {biosample_name}",
-        has_input=[extraction_output_id],
+        has_input=[biosample_id],
         has_output=[library_output_id],
         library_strategy=(rep.get("library_strategy") or None),
         library_source=(rep.get("library_source") or None),
@@ -1013,8 +988,8 @@ def build_library_records(
     return {
         "nucleotide_sequencings": nuc_seqs,
         "data_objects": data_objects,
-        "material_processings": [extraction, library_preparation],
-        "processed_samples": [extraction_output, library_output],
+        "material_processings": [library_preparation],
+        "processed_samples": [library_output],
         "manifests": manifests,
     }
 
@@ -1283,14 +1258,14 @@ def build_nmdc_database(
     n_libraries = len(library_groups)
     total_runs = sum(len(units) for units in lib_run_units)
 
-    extraction_ids = iter(
-        minter.mint("nmdc:Extraction", n_libraries) if n_libraries else []
-    )
     library_prep_ids = iter(
         minter.mint("nmdc:LibraryPreparation", n_libraries) if n_libraries else []
     )
+    # One ProcessedSample (the sequencing library) per unique library; no
+    # Extraction record / extracted-nucleic-acid ProcessedSample (NCBI does not
+    # support asserting the extraction — see build_library_records).
     processed_sample_ids = iter(
-        minter.mint("nmdc:ProcessedSample", 2 * n_libraries) if n_libraries else []
+        minter.mint("nmdc:ProcessedSample", n_libraries) if n_libraries else []
     )
     ns_pool = iter(
         minter.mint("nmdc:NucleotideSequencing", total_runs) if total_runs else []
@@ -1325,8 +1300,6 @@ def build_nmdc_database(
             biosample_acc_to_name[bs_acc],
             bioproject_accession,
             units,
-            next(extraction_ids),
-            next(processed_sample_ids),
             next(library_prep_ids),
             next(processed_sample_ids),
             lib_manifest_ids,
@@ -1580,7 +1553,7 @@ def main():
 
     print(f"  Study: {database.study_set[0].id}")
     print(f"  Biosamples: {len(database.biosample_set)}")
-    print(f"  MaterialProcessings (Extraction + LibraryPreparation): {len(database.material_processing_set)}")
+    print(f"  MaterialProcessings (LibraryPreparation): {len(database.material_processing_set)}")
     print(f"  ProcessedSamples: {len(database.processed_sample_set)}")
     print(f"  DataGenerations (NucleotideSequencing, one per run): {len(database.data_generation_set)}")
     print(f"  DataObjects: {len(database.data_object_set)}")

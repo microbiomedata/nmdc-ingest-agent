@@ -1,5 +1,6 @@
-"""Tests for the Extraction/LibraryPreparation/ProcessedSample chain that links
-each Biosample to its NucleotideSequencing in the NCBI translator."""
+"""Tests for the LibraryPreparation/ProcessedSample chain that links each
+Biosample to its NucleotideSequencing in the NCBI translator (no Extraction
+record — the LibraryPreparation consumes the Biosample directly)."""
 
 from nmdc_schema import nmdc
 from linkml_runtime.dumpers import json_dumper
@@ -84,39 +85,32 @@ def test_chain_validates_against_schema():
     db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS")])
     # Round-trips through the NMDC schema loader without validation error.
     loaded = json_loader.loads(json_dumper.dumps(db), target_class=nmdc.Database)
-    assert len(loaded.material_processing_set) == 2
-    assert len(loaded.processed_sample_set) == 2
+    # One LibraryPreparation + one ProcessedSample (the library); no Extraction.
+    assert len(loaded.material_processing_set) == 1
+    assert len(loaded.processed_sample_set) == 1
 
 
 def test_chain_wiring_links_biosample_to_sequencing():
     db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS")])
 
     biosample_id = db.biosample_set[0].id
-    extraction = next(m for m in db.material_processing_set if m.type == "nmdc:Extraction")
     libprep = next(m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation")
     nuc_seq = db.data_generation_set[0]
 
-    # Biosample -> Extraction -> ProcessedSample -> LibraryPreparation -> ProcessedSample -> NucleotideSequencing
-    assert extraction.has_input == [biosample_id]
-    assert extraction.has_output == libprep.has_input
+    # Biosample -> LibraryPreparation -> ProcessedSample -> NucleotideSequencing
+    # (no Extraction; the LibraryPreparation consumes the Biosample directly).
+    assert not any(m.type == "nmdc:Extraction" for m in db.material_processing_set)
+    assert libprep.has_input == [biosample_id]
     assert libprep.has_output == nuc_seq.has_input
-    # The sequencing no longer consumes the Biosample directly.
     assert biosample_id not in nuc_seq.has_input
-    # Both ProcessedSamples are the ones emitted by the two processes.
     ps_ids = {p.id for p in db.processed_sample_set}
-    assert ps_ids == {extraction.has_output[0], libprep.has_output[0]}
+    assert ps_ids == {libprep.has_output[0]}
 
 
-def test_dna_vs_rna_extraction_target_inference():
-    db = _build(
-        [
-            _experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS"),
-            _experiment("SRX222", "SAMN001", "METATRANSCRIPTOMIC", "RNA-Seq"),
-        ]
-    )
-    extractions = [m for m in db.material_processing_set if m.type == "nmdc:Extraction"]
-    targets = {str(t) for e in extractions for t in e.extraction_targets}
-    assert targets == {"DNA", "RNA"}
+def test_no_extraction_records():
+    db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS")])
+    assert all(m.type == "nmdc:LibraryPreparation" for m in db.material_processing_set)
+    assert not any(p.id.startswith("nmdc:extrp-") for p in db.processed_sample_set)
 
 
 def test_record_names_follow_example_conventions():
@@ -124,19 +118,13 @@ def test_record_names_follow_example_conventions():
     # appear in the material-processing / processed-sample names.
     db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS",
                              library_name="ilm_MFD00001")])
-    extraction = next(m for m in db.material_processing_set if m.type == "nmdc:Extraction")
     libprep = next(m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation")
-    extracted_ps = next(p for p in db.processed_sample_set if p.id == extraction.has_output[0])
     library_ps = next(p for p in db.processed_sample_set if p.id == libprep.has_output[0])
 
-    assert extraction.name == "DNA extraction process for MFD00001"
-    assert extracted_ps.name == "Extracted DNA for MFD00001"
     assert libprep.name == "Library preparation process for MFD00001"
-    # Library ProcessedSample is named after the SRA library name; the prose
-    # moves to description.
+    # Library ProcessedSample is named after the SRA library name; prose -> description.
     assert library_ps.name == "ilm_MFD00001"
     assert library_ps.description == "Library for sequencing for MFD00001"
-    # Per-run NucleotideSequencing name.
     assert db.data_generation_set[0].name == "Run SRR111 for experiment SRX111 - MFD00001"
 
 
@@ -274,7 +262,7 @@ def test_per_run_data_generation_and_manifest():
     db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS",
                              library_name="ilm_MFD00001",
                              runs=["SRR1", "SRR2"])])
-    assert len(db.material_processing_set) == 2  # still one Extraction + one LibraryPrep
+    assert len(db.material_processing_set) == 1  # one LibraryPreparation
     assert len(db.data_generation_set) == 2      # one per run
     assert len(db.data_object_set) == 2
     assert len(db.manifest_set) == 1
@@ -308,11 +296,10 @@ def test_experiments_sharing_library_dedup_with_manifest():
     ]
     db = _build(exps)
     libpreps = [m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation"]
-    extractions = [m for m in db.material_processing_set if m.type == "nmdc:Extraction"]
 
-    assert len(libpreps) == 2        # WGS library + amplicon library, not 5
-    assert len(extractions) == 2     # one Extraction per unique library
-    assert len(db.processed_sample_set) == 4
+    assert len(db.material_processing_set) == 2  # WGS library + amplicon library, not 5
+    assert len(libpreps) == 2                     # all LibraryPreparation (no Extraction)
+    assert len(db.processed_sample_set) == 2      # one library ProcessedSample each
     assert len(db.data_generation_set) == 5   # one NucleotideSequencing per run
     assert len(db.data_object_set) == 5
     assert len(db.manifest_set) == 1          # the 4 NovaSeq WGS runs
@@ -338,14 +325,12 @@ def test_distinct_library_names_are_not_merged():
                     library_name="pb_X", selection="PCR", layout="SINGLE"),
     ])
     assert len([m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation"]) == 2
-    assert len([m for m in db.material_processing_set if m.type == "nmdc:Extraction"]) == 2
+    assert len(db.material_processing_set) == 2  # no Extraction records
     assert db.manifest_set == []
 
 
-def test_processed_sample_ids_use_procsm_typecode():
+def test_processed_sample_and_libprep_typecodes():
     db = _build([_experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS")])
     assert all(p.id.startswith("nmdc:procsm-") for p in db.processed_sample_set)
-    extraction = next(m for m in db.material_processing_set if m.type == "nmdc:Extraction")
     libprep = next(m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation")
-    assert extraction.id.startswith("nmdc:extrp-")
     assert libprep.id.startswith("nmdc:libprp-")

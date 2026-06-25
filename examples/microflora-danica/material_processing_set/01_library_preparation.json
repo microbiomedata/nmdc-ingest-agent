@@ -1,12 +1,12 @@
 {
-  "id": "nmdc:libprp-99-c39986fb",
+  "id": "nmdc:libprp-99-4cc4208c",
   "type": "nmdc:LibraryPreparation",
   "name": "Library preparation process for MFD00001",
   "has_input": [
-    "nmdc:procsm-99-18499525"
+    "nmdc:bsm-99-4f0b1a1a"
   ],
   "has_output": [
-    "nmdc:procsm-99-7cb3bc6c"
+    "nmdc:procsm-99-249aae69"
   ],
   "protocol_link": {
     "type": "nmdc:Protocol",

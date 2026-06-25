@@ -11,7 +11,7 @@ examples/
     ├── README.md            # project-specific framing, source links, per-collection tables
     ├── study_set/
     ├── biosample_set/
-    ├── material_processing_set/   # Extraction + LibraryPreparation
+    ├── material_processing_set/   # LibraryPreparation
     ├── processed_sample_set/      # ProcessedSample chain outputs
     ├── data_generation_set/
     └── data_object_set/
@@ -23,7 +23,7 @@ Each project subfolder is self-contained: extracted-verbatim single-record JSON 
 
 | Folder | Source | Records |
 |---|---|---|
-| [`microflora-danica/`](microflora-danica/) | NCBI BioProject [PRJNA1071982](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA1071982) — *MicroFlora Danica* ([Sereika et al., Nature 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12823411/)) | 1 study · 8 biosamples · 4 material_processings · 2 processed_samples · 3 data_generations · 1 data_object |
+| [`microflora-danica/`](microflora-danica/) | NCBI BioProject [PRJNA1071982](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA1071982) — *MicroFlora Danica* ([Sereika et al., Nature 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12823411/)) | 1 study · 8 biosamples · 3 material_processings · 1 processed_sample · 3 data_generations · 1 data_object |
 
 ## Conventions
 
@@ -41,7 +41,7 @@ Each project subfolder is self-contained: extracted-verbatim single-record JSON 
 
 ## Validation snippet (all projects)
 
-Each file is validated against the class named by its own `type` (so mixed-type collections like `material_processing_set` work):
+Each file is validated against the class named by its own `type`:
 
 ```bash
 uv run python -c "
@@ -50,7 +50,6 @@ from nmdc_schema import nmdc
 from linkml_runtime.loaders import json_loader
 type2cls = {'nmdc:Study': nmdc.Study,
             'nmdc:Biosample': nmdc.Biosample,
-            'nmdc:Extraction': nmdc.Extraction,
             'nmdc:LibraryPreparation': nmdc.LibraryPreparation,
             'nmdc:ProcessedSample': nmdc.ProcessedSample,
             'nmdc:NucleotideSequencing': nmdc.NucleotideSequencing,
