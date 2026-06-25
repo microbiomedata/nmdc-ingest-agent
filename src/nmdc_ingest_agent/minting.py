@@ -35,7 +35,17 @@ class Minter(Protocol):
 
 
 class PlaceholderMinter:
-    """Emit ``nmdc:<typecode>-99-<random8>`` IDs. Offline use only."""
+    """Emit ``nmdc:<typecode>-99-<random>`` IDs. Offline use only.
+
+    IDs are guaranteed unique across the lifetime of the instance: a 5-byte
+    (40-bit) random blade makes collisions vanishingly unlikely, and a record of
+    every issued id rejects any that does collide. (A 4-byte blade hit the
+    birthday bound around ~12k ids of one type — e.g. one ProcessedSample per
+    library for a large BioProject — and produced duplicate ids.)
+    """
+
+    def __init__(self) -> None:
+        self._issued: set[str] = set()
 
     def mint(self, schema_class: str, count: int = 1) -> list[str]:
         try:
@@ -44,7 +54,14 @@ class PlaceholderMinter:
             raise ValueError(
                 f"PlaceholderMinter has no typecode mapping for {schema_class!r}"
             ) from exc
-        return [f"nmdc:{typecode}-99-{secrets.token_hex(4)}" for _ in range(count)]
+        out: list[str] = []
+        while len(out) < count:
+            candidate = f"nmdc:{typecode}-99-{secrets.token_hex(5)}"
+            if candidate in self._issued:
+                continue
+            self._issued.add(candidate)
+            out.append(candidate)
+        return out
 
 
 class RuntimeMinter:
