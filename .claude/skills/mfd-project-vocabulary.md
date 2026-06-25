@@ -70,12 +70,14 @@ from the SRA `DESIGN_DESCRIPTION` free text, which MFD populates per library
   so they get that DOI as an inline `nmdc:Protocol`. MFD's **amplicon** designs
   cite no DOI, so they get no `protocol_link` (this is *more* correct than
   blanket-applying the metagenome-prep DOI to amplicon libraries).
-- **`target_gene`** ← an rRNA-gene mention in the design text →
-  `TargetGeneEnum`. MFD amplicon designs read `"...amplify bacterial 16S rRNA
-  genes"` (Nanopore, lib `npumi_16SrRNA_*`) or `"...amplify bacterial rRNA
-  operons"` (PacBio, lib `pb_bacoperon_*`, primer 8F→2490R). Both anchor at 16S,
-  so both map to `16S_rRNA` (the enum has no whole-operon value). WGS designs
-  name no rRNA target → `target_gene` unset.
+- **`target_gene`** — the pipeline commits it only for designs naming **one
+  explicit** rRNA gene: MFD's Nanopore amplicon (`npumi_16SrRNA_*`, `"...amplify
+  bacterial 16S rRNA genes"`) → `16S_rRNA`. The **operon** designs name no single
+  gene and are left **unset** for the `nmdc-target-gene` curation skill to resolve
+  by reasoning over the design + primers: `pb_bacoperon_*` (`8F`/`2490R`,
+  "bacterial rRNA operons") → `16S_rRNA`; `pb_eukoperon_*` (`3NDF`/`21R`,
+  "eukaryotic rRNA operons") → `18S_rRNA` (eukaryotic SSU). WGS names no rRNA
+  target → unset. Final MFD counts: 862 × `16S_rRNA`, 450 × `18S_rRNA`.
 
 The SRA library descriptor (`library_strategy`, `library_source`,
 `library_selection`, `lib_layout`) is likewise passed through from the SRA

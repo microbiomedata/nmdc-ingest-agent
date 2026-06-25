@@ -10,6 +10,7 @@ Given a BioProject accession (e.g. `PRJNA1452545`), fetch linked BioSample and S
 - `.claude/skills/nmdc-curation-rules.md` — evidence-first rules every commit must satisfy (cross-skill)
 - `.claude/skills/nmdc-env-triad.md` — ENVO term selection / inference for `env_broad_scale` / `env_local_scale` / `env_medium`
 - `.claude/skills/nmdc-taxon-resolution.md` — NCBITaxon resolution for host / `samp_taxon`
+- `.claude/skills/nmdc-target-gene.md` — `TargetGeneEnum` selection for amplicon `LibraryPreparation.target_gene` the pipeline left unset
 - `.claude/skills/nmdc-schema-reference.md` — LinkML slot ranges, value-type wrappers, enum traps
 
 ## Prerequisites
@@ -67,11 +68,15 @@ Read `.claude/skills/nmdc-curation-rules.md` and `.claude/skills/nmdc-env-triad.
 
 If the BioProject implies a host organism (e.g. host-associated samples, rhizosphere studies that name the plant) or a `samp_taxon` value needs lifting from free text, read `.claude/skills/nmdc-taxon-resolution.md` and follow its lookup + disambiguation pattern. Apply the unambiguous-intent rule: leave host fields unset and flag for PI follow-up rather than guessing.
 
-### Step 5: Verify instrument records
+### Step 5: Resolve amplicon `target_gene`
+
+The pipeline commits `LibraryPreparation.target_gene` only when the SRA design names one explicit rRNA gene; amplicon designs that need inference (rRNA operons) are left unset and listed in the `target_gene_curation` section of the curation-inputs sidecar. Read `.claude/skills/nmdc-target-gene.md` and resolve each distinct design to a `TargetGeneEnum` value (reasoning over the design text + primer names + library name), then patch the listed `LibraryPreparation` records in the generated JSON. For MFD this resolves the bacterial-operon designs to `16S_rRNA` and the eukaryotic-operon designs to `18S_rRNA`.
+
+### Step 6: Verify instrument records
 
 The script stores SRA `instrument_model` strings verbatim and assigns an instrument ID — placeholder shoulder (`-99-`) by default, or a real minted ID when `--mint-real-ids` was passed. Leave the ID in place — real Instrument records are resolved at ingest. But verify the string is sensible (e.g. `Illumina NovaSeq X`, `Illumina NovaSeq 6000`, `Illumina HiSeq 2500`, `Illumina MiSeq`).
 
-### Step 6: Validate
+### Step 7: Validate
 
 Validate the output JSON against the NMDC schema:
 
@@ -89,7 +94,7 @@ print('Validation passed!')
 
 When a validation failure points at a non-trivial slot value (nested wrappers, enum ranges, range/scalar confusion), read `.claude/skills/nmdc-schema-reference.md` before guessing at the fix.
 
-### Step 7: Report summary
+### Step 8: Report summary
 
 Report to the user:
 - Study name and accession
@@ -120,7 +125,7 @@ Biosample
 **Per unique library — not per experiment.** Several SRA experiments can re-sequence one library (same `LIBRARY_NAME` + descriptor under distinct experiment accessions), so the chain is keyed on the unique library `(biosample, library_name, strategy, source, selection, layout)`: one `Extraction` and one `LibraryPreparation` (both into `material_processing_set`), each with a `ProcessedSample` output (into `processed_sample_set`), per unique library. Per-run: one `NucleotideSequencing` (into `data_generation_set`) and one `DataObject` (into `data_object_set`). When a library's runs **share an instrument** — i.e. ≥2 runs sharing `(biosample, library_name, instrument)` — a `Manifest` (`manifest_category: poolable_replicates`, into `manifest_set`) groups those run `DataObject`s via `in_manifest`. (MicroFlora Danica has one library/run per experiment, so it produces no `Manifest`s; a project like [`SAMEA7724300`](https://www.ncbi.nlm.nih.gov/Traces/study/?acc=SAMEA7724300) with 4 WGS experiments sharing one library yields 1 library chain, 4 data-generations, and 1 manifest.) NCBI/SRA does not record wet-lab dates/mass/institution, so those stay unset; the fields it *does* supply are populated:
 
 - **Extraction** — `extraction_targets` (`DNA`, or `RNA` for transcriptomic `LIBRARY_SOURCE`).
-- **LibraryPreparation** — `library_strategy`, `library_source`, `library_selection`, `lib_layout` (from the SRA library descriptor). `target_gene` and `protocol_link` are **parsed from the SRA `DESIGN_DESCRIPTION`**, not hardcoded: an rRNA-gene mention (e.g. "amplify bacterial 16S rRNA genes", or "rRNA operons" → `16S_rRNA`) sets `target_gene`; a DOI in the text (e.g. MFD's WGS "…see https://doi.org/…") sets `protocol_link`. Records that name neither leave them unset.
+- **LibraryPreparation** — `library_strategy`, `library_source`, `library_selection`, `lib_layout` (from the SRA library descriptor). `protocol_link` is parsed from a DOI in the `DESIGN_DESCRIPTION` (e.g. MFD's WGS "…see https://doi.org/…"). `target_gene` is committed only when the design names **one explicit rRNA gene** (e.g. "amplify bacterial 16S rRNA genes" → `16S_rRNA`); designs that need inference (rRNA operons) are **left unset for the `nmdc-target-gene` curation skill** (Step 5) — the pipeline does not guess (a bacterial operon spans 16S and 23S).
 - **ProcessedSample** — extraction output named `Extracted <DNA|RNA> for <samp_name>`; library output named after the SRA library name (e.g. `ilm_MFD00001`) with a descriptive `description`.
 - **DataObject** — `data_object_type: "SRA toolkit-accessible sequence data"`, `insdc_run_identifiers`, `was_generated_by` (the run's NucleotideSequencing); **no** URL.
 - **NucleotideSequencing** — `insdc_experiment_identifiers` + `insdc_bioproject_identifiers`; named `Run <SRR> for experiment <SRX> - <samp_name>`.

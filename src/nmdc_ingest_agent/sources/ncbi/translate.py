@@ -809,44 +809,27 @@ def _extract_protocol_url(design_description: str) -> Optional[str]:
 
 # Explicit rRNA-gene tokens in the DESIGN_DESCRIPTION; "<n>S" maps to "<n>S_rRNA".
 _GENE_TOKEN_RE = re.compile(r"\b(16S|18S|23S|28S)\b", re.IGNORECASE)
-# An "rRNA operon" amplicon names no explicit gene number; the small-subunit (SSU)
-# rRNA its forward primer anchors on is domain-specific — 16S for bacteria/archaea,
-# 18S for eukaryotes (e.g. MFD's pb_bacoperon vs pb_eukoperon designs).
-_RRNA_OPERON_RE = re.compile(r"rRNA\s+operon", re.IGNORECASE)
-_PROKARYOTIC_RE = re.compile(r"\b(?:bacterial|archaeal|prokaryotic)\b", re.IGNORECASE)
-_EUKARYOTIC_RE = re.compile(r"\beukaryotic\b", re.IGNORECASE)
 _TARGET_GENE_VALUES = _enum_value_texts(nmdc.TargetGeneEnum)
 
 
 def _extract_target_gene(design_description: str) -> Optional[str]:
-    """Map an rRNA target named in the SRA DESIGN_DESCRIPTION to a TargetGeneEnum
-    value.
+    """Resolve ``target_gene`` from the SRA DESIGN_DESCRIPTION *only when it is
+    unambiguous* — i.e. the design names exactly one explicit rRNA gene token
+    ("...amplify bacterial 16S rRNA genes" -> ``16S_rRNA``).
 
-    An explicit gene token ("16S"/"18S"/"23S"/"28S") wins. Otherwise, a
-    non-specific "rRNA operon" resolves to the domain's SSU rRNA gene — 16S for
-    bacterial/archaeal, 18S for eukaryotic. Returns None when no rRNA target is
-    named (e.g. shotgun WGS), and also when more than one distinct gene is named
-    or an operon's domain is unstated — in those ambiguous cases we warn (for the
-    multi-gene case) and leave ``target_gene`` unset rather than guessing."""
+    Anything that needs inference is deliberately **not** guessed here and is
+    left ``None`` for the ``nmdc-target-gene`` curation skill to resolve (it
+    reasons over the design text + primer names with the running agent's model;
+    see ``build_curation_inputs_sidecar`` / ``.claude/skills/nmdc-target-gene.md``).
+    That covers an "rRNA operon" (a bacterial operon spans 16S *and* 23S, so it
+    cannot be reduced to one gene by a rule), a design naming more than one gene,
+    and shotgun WGS (which names none)."""
     if not design_description:
         return None
     found = {
         f"{m.group(1).upper()}_rRNA" for m in _GENE_TOKEN_RE.finditer(design_description)
-    }
-    if not found and _RRNA_OPERON_RE.search(design_description):
-        if _EUKARYOTIC_RE.search(design_description):
-            found = {"18S_rRNA"}
-        elif _PROKARYOTIC_RE.search(design_description):
-            found = {"16S_rRNA"}
-    found &= _TARGET_GENE_VALUES
-    if len(found) == 1:
-        return next(iter(found))
-    if len(found) > 1:
-        print(
-            f"  WARNING: DESIGN_DESCRIPTION names multiple target genes "
-            f"{sorted(found)}; leaving target_gene unset: {design_description!r}"
-        )
-    return None
+    } & _TARGET_GENE_VALUES
+    return next(iter(found)) if len(found) == 1 else None
 
 
 def _library_key(experiment: dict) -> tuple:
@@ -1384,13 +1367,55 @@ def build_nmdc_database(
 _TRIAD_SLOTS = ("env_broad_scale", "env_local_scale", "env_medium")
 
 
+def build_target_gene_curation(data: dict, database: nmdc.Database) -> list[dict]:
+    """List the amplicon LibraryPreparations whose ``target_gene`` the pipeline
+    left unset (the SRA design names no single explicit rRNA gene), grouped by
+    distinct DESIGN_DESCRIPTION so the ``nmdc-target-gene`` skill resolves each
+    design once and patches all of its LibraryPreparation ids.
+
+    The join is library_name -> library ProcessedSample (named after it) ->
+    LibraryPreparation. Libraries already resolved deterministically (an explicit
+    gene token) are skipped — only the inference cases reach the agent.
+    """
+    libprep_by_output = {
+        out_id: m
+        for m in database.material_processing_set
+        if m.type == "nmdc:LibraryPreparation"
+        for out_id in (m.has_output or [])
+    }
+    ps_name_to_id = {p.name: p.id for p in database.processed_sample_set}
+
+    by_design: dict[str, dict] = {}
+    for exp in data.get("sra_experiments", []):
+        if (exp.get("library_strategy") or "").upper() != "AMPLICON":
+            continue
+        lib_name = (exp.get("library_name") or "").strip()
+        ps_id = ps_name_to_id.get(lib_name)
+        libprep = libprep_by_output.get(ps_id) if ps_id else None
+        if libprep is None or libprep.target_gene:  # skip unmatched / already resolved
+            continue
+        entry = by_design.setdefault(exp.get("design_description", ""), {
+            "design_description": exp.get("design_description", ""),
+            "example_library_name": lib_name,
+            "library_preparation_ids": [],
+        })
+        if libprep.id not in entry["library_preparation_ids"]:
+            entry["library_preparation_ids"].append(libprep.id)
+
+    rows = sorted(by_design.values(), key=lambda e: e["design_description"])
+    for e in rows:
+        e["count"] = len(e["library_preparation_ids"])
+    return rows
+
+
 def build_curation_inputs_sidecar(data: dict, database: nmdc.Database) -> dict:
-    """Inputs file the curation agent reads when filling env-triad gaps.
+    """Inputs file the curation agent reads when filling gaps the pipeline leaves
+    for evidence-based resolution (env-triad, and amplicon ``target_gene``).
 
     Bundles BioProject context plus the full raw NCBI attributes dict per
-    biosample, keyed by NMDC biosample id. The NMDC schema doesn't model
-    every NCBI attribute (e.g. isol_growth_condt, ecosystem*), so the agent
-    needs this sidecar to do evidence-based inference per nmdc-env-triad.md.
+    biosample (keyed by NMDC biosample id) for env-triad inference per
+    nmdc-env-triad.md, and a ``target_gene_curation`` list of unset amplicon
+    LibraryPreparations grouped by SRA design for nmdc-target-gene.md.
     """
     project = data.get("bioproject", {})
     raw_biosamples = {bs["accession"]: bs for bs in data.get("biosamples", [])}
@@ -1421,6 +1446,7 @@ def build_curation_inputs_sidecar(data: dict, database: nmdc.Database) -> dict:
             "publications": project.get("publications", []),
         },
         "biosamples": biosamples_out,
+        "target_gene_curation": build_target_gene_curation(data, database),
     }
 
 
@@ -1597,6 +1623,18 @@ def main():
             print(f"    {slot}: {', '.join(parts) if parts else '0'}")
         print("  Run /ncbi-to-nmdc to fill gaps via the nmdc-env-triad skill, ")
         print(f"  using the curation inputs sidecar and updating {report_path} in place.")
+
+    tg_rows = inputs_sidecar.get("target_gene_curation", [])
+    tg_libs = sum(r["count"] for r in tg_rows)
+    if tg_rows:
+        print(
+            f"\n⚠ TARGET_GENE CURATION NEEDED: {tg_libs} amplicon LibraryPreparation(s) "
+            f"across {len(tg_rows)} SRA design(s) have target_gene unset."
+        )
+        for r in tg_rows:
+            print(f"    {r['count']:>5} × {r['example_library_name']}: {r['design_description']}")
+        print("  Run /ncbi-to-nmdc to resolve via the nmdc-target-gene skill, using the")
+        print(f"  'target_gene_curation' section of {inputs_path} and patching the output.")
 
 
 if __name__ == "__main__":

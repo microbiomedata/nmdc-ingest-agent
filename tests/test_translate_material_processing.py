@@ -150,41 +150,66 @@ def test_library_preparation_carries_sra_descriptor():
     assert str(lp.lib_layout) == "paired"  # SRA PAIRED -> LibLayoutEnum paired
 
 
-def test_target_gene_parsed_from_design_description():
+def test_pipeline_commits_only_explicit_target_gene():
+    # The pipeline commits target_gene only for the design naming one explicit
+    # gene (the 16S amplicon); operons + WGS are left unset for the curation skill.
     db = _build([
         _experiment("SRX111", "SAMN001", "METAGENOMIC", "WGS",
                     design_description=_WGS_DESIGN),
         _experiment("SRX222", "SAMN001", "METAGENOMIC", "AMPLICON",
-                    selection="PCR", layout="SINGLE",
-                    design_description=_AMPLICON_16S_DESIGN),
+                    library_name="npumi_16SrRNA_MFD00001", selection="PCR",
+                    layout="SINGLE", design_description=_AMPLICON_16S_DESIGN),
         _experiment("SRX333", "SAMN001", "METAGENOMIC", "AMPLICON",
-                    selection="PCR", layout="SINGLE",
-                    design_description=_AMPLICON_BACOPERON_DESIGN),
+                    library_name="pb_bacoperon_MFD00001", selection="PCR",
+                    layout="SINGLE", design_description=_AMPLICON_BACOPERON_DESIGN),
         _experiment("SRX444", "SAMN001", "METAGENOMIC", "AMPLICON",
-                    selection="PCR", layout="SINGLE",
-                    design_description=_AMPLICON_EUKOPERON_DESIGN),
+                    library_name="pb_eukoperon_MFD00001", selection="PCR",
+                    layout="SINGLE", design_description=_AMPLICON_EUKOPERON_DESIGN),
     ])
     libs = [m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation"]
     genes = sorted(str(m.target_gene) for m in libs if m.target_gene)
-    # 16S amplicon + bacterial operon -> 16S; eukaryotic operon -> 18S; WGS -> none.
-    assert genes == ["16S_rRNA", "16S_rRNA", "18S_rRNA"]
-    wgs = next(m for m in libs if str(m.library_strategy) == "WGS")
-    assert wgs.target_gene is None
+    assert genes == ["16S_rRNA"]  # only the explicit-gene amplicon; operons unset
 
 
-def test_extract_target_gene_unit():
+def test_extract_target_gene_only_explicit_single_gene():
+    # Explicit single gene token -> that gene.
     assert T._extract_target_gene(_AMPLICON_16S_DESIGN) == "16S_rRNA"
-    # Operon designs resolve to the domain's SSU rRNA gene: bacterial -> 16S,
-    # eukaryotic -> 18S (NOT a blanket 16S).
-    assert T._extract_target_gene(_AMPLICON_BACOPERON_DESIGN) == "16S_rRNA"
-    assert T._extract_target_gene(_AMPLICON_EUKOPERON_DESIGN) == "18S_rRNA"
     assert T._extract_target_gene("amplify 23S rRNA") == "23S_rRNA"
-    # Multiple distinct genes named -> ambiguous, do not guess.
-    assert T._extract_target_gene("targeting both 16S and 23S rRNA") is None
-    # Operon with no stated domain -> cannot resolve SSU -> unset.
+    # Operons name no single gene -> unset (deferred to the nmdc-target-gene skill);
+    # the pipeline does not guess bacterial->16S / eukaryotic->18S.
+    assert T._extract_target_gene(_AMPLICON_BACOPERON_DESIGN) is None
+    assert T._extract_target_gene(_AMPLICON_EUKOPERON_DESIGN) is None
     assert T._extract_target_gene("amplify rRNA operons") is None
+    # More than one explicit gene -> ambiguous -> unset.
+    assert T._extract_target_gene("targeting both 16S and 23S rRNA") is None
     assert T._extract_target_gene(_WGS_DESIGN) is None
     assert T._extract_target_gene("") is None
+
+
+def test_unset_amplicon_target_gene_surfaced_for_curation():
+    # The operon libraries the pipeline leaves unset are listed in the
+    # curation-inputs sidecar, grouped by distinct design; the explicit-gene
+    # (resolved) amplicon is NOT listed.
+    data = _data([
+        _experiment("SRX222", "SAMN001", "METAGENOMIC", "AMPLICON",
+                    library_name="npumi_16SrRNA_MFD00001", selection="PCR",
+                    layout="SINGLE", design_description=_AMPLICON_16S_DESIGN),
+        _experiment("SRX333", "SAMN001", "METAGENOMIC", "AMPLICON",
+                    library_name="pb_bacoperon_MFD00001", selection="PCR",
+                    layout="SINGLE", design_description=_AMPLICON_BACOPERON_DESIGN),
+        _experiment("SRX444", "SAMN001", "METAGENOMIC", "AMPLICON",
+                    library_name="pb_eukoperon_MFD00001", selection="PCR",
+                    layout="SINGLE", design_description=_AMPLICON_EUKOPERON_DESIGN),
+    ])
+    db = T.build_nmdc_database(data, PlaceholderMinter(), _FakeResolver(), None)
+    sidecar = T.build_curation_inputs_sidecar(data, db)
+    rows = sidecar["target_gene_curation"]
+    designs = {r["design_description"] for r in rows}
+    assert designs == {_AMPLICON_BACOPERON_DESIGN, _AMPLICON_EUKOPERON_DESIGN}
+    # The explicit-16S design is resolved, so it is not in the curation list.
+    assert _AMPLICON_16S_DESIGN not in designs
+    # Each row carries the libprep ids to patch.
+    assert all(r["count"] == len(r["library_preparation_ids"]) >= 1 for r in rows)
 
 
 def test_lib_layout_values_come_from_schema_enum():
