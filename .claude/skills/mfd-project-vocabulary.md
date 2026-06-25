@@ -57,6 +57,34 @@ ENVO CURIE and its official label. Per `nmdc-curation-rules.md` Rule 5, the offi
 If a biosample has no row in the annotated file, leave the slot's `ENVO:00000000` sentinel and follow
 `nmdc-env-triad.md` §1b inference.
 
+## MFD library-preparation modeling (NCBI ingest)
+
+Beyond the env-triad, the NCBI pipeline enriches the `LibraryPreparation`
+records it builds. **None of this is hardcoded or MFD-gated** — it is parsed
+from the SRA `DESIGN_DESCRIPTION` free text, which MFD populates per library
+(`src/nmdc_ingest_agent/sources/ncbi/translate.py`, `_extract_protocol_url` /
+`_extract_target_gene`):
+
+- **`protocol_link`** ← a DOI in the design text. MFD's **WGS** libraries read
+  `"Miniaturized metagenome DNA preps see https://doi.org/10.1101/2023.09.04.556179"`,
+  so they get that DOI as an inline `nmdc:Protocol`. MFD's **amplicon** designs
+  cite no DOI, so they get no `protocol_link` (this is *more* correct than
+  blanket-applying the metagenome-prep DOI to amplicon libraries).
+- **`target_gene`** — the pipeline commits it only for designs naming **one
+  explicit** rRNA gene: MFD's Nanopore amplicon (`npumi_16SrRNA_*`, `"...amplify
+  bacterial 16S rRNA genes"`) → `16S_rRNA`. The **operon** designs name no single
+  gene and are left **unset** for the `nmdc-target-gene` curation skill to resolve
+  by reasoning over the design + primers: `pb_bacoperon_*` (`8F`/`2490R`,
+  "bacterial rRNA operons") → `16S_rRNA`; `pb_eukoperon_*` (`3NDF`/`21R`,
+  "eukaryotic rRNA operons") → `18S_rRNA` (eukaryotic SSU). WGS names no rRNA
+  target → unset. Final MFD counts: 862 × `16S_rRNA`, 450 × `18S_rRNA`.
+
+The SRA library descriptor (`library_strategy`, `library_source`,
+`library_selection`, `lib_layout`) is likewise passed through from the SRA
+`LIBRARY_DESCRIPTOR`. Primer *names* (`8F`/`1391R`/`2490R`) are **not** mapped to
+`pcr_primers`, which requires DNA sequences (`FWD:…;REV:…`). See
+`.claude/skills/ncbi-to-nmdc.md` § Scope.
+
 ## Maintaining the crosswalk
 
 All edits go to the scripts in [`data/mfdo-crosswalk-v2/`](../../data/mfdo-crosswalk-v2/), not to the

@@ -11,6 +11,8 @@ examples/
     ├── README.md            # project-specific framing, source links, per-collection tables
     ├── study_set/
     ├── biosample_set/
+    ├── material_processing_set/   # LibraryPreparation
+    ├── processed_sample_set/      # ProcessedSample chain outputs
     ├── data_generation_set/
     └── data_object_set/
 ```
@@ -21,7 +23,7 @@ Each project subfolder is self-contained: extracted-verbatim single-record JSON 
 
 | Folder | Source | Records |
 |---|---|---|
-| [`microflora-danica/`](microflora-danica/) | NCBI BioProject [PRJNA1071982](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA1071982) — *MicroFlora Danica* ([Sereika et al., Nature 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12823411/)) | 1 study · 8 biosamples · 2 data_generations · 1 data_object |
+| [`microflora-danica/`](microflora-danica/) | NCBI BioProject [PRJNA1071982](https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA1071982) — *MicroFlora Danica* ([Sereika et al., Nature 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12823411/)) | 1 study · 8 biosamples · 3 material_processings · 1 processed_sample · 3 data_generations · 1 data_object |
 
 ## Conventions
 
@@ -32,29 +34,33 @@ Each project subfolder is self-contained: extracted-verbatim single-record JSON 
 
 ## Adding a new project
 
-1. Create `examples/<project>/` with the four collection subfolders (`study_set/`, `biosample_set/`, `data_generation_set/`, `data_object_set/`) and a `README.md` describing the source.
+1. Create `examples/<project>/` with the collection subfolders the source populates (`study_set/`, `biosample_set/`, `material_processing_set/`, `processed_sample_set/`, `data_generation_set/`, `data_object_set/`) and a `README.md` describing the source.
 2. Extract representative records via `jq` from the ingest output.
 3. Validate every file (snippet below).
 4. Add a row to the **Projects** table above linking to the new subfolder.
 
 ## Validation snippet (all projects)
 
+Each file is validated against the class named by its own `type`:
+
 ```bash
 uv run python -c "
+import json, pathlib
 from nmdc_schema import nmdc
 from linkml_runtime.loaders import json_loader
-import pathlib
-target = {'study_set': nmdc.Study,
-          'biosample_set': nmdc.Biosample,
-          'data_generation_set': nmdc.NucleotideSequencing,
-          'data_object_set': nmdc.DataObject}
+type2cls = {'nmdc:Study': nmdc.Study,
+            'nmdc:Biosample': nmdc.Biosample,
+            'nmdc:LibraryPreparation': nmdc.LibraryPreparation,
+            'nmdc:ProcessedSample': nmdc.ProcessedSample,
+            'nmdc:NucleotideSequencing': nmdc.NucleotideSequencing,
+            'nmdc:DataObject': nmdc.DataObject}
 for project_dir in sorted(pathlib.Path('examples').iterdir()):
     if not project_dir.is_dir():
         continue
-    for col, cls in target.items():
-        for p in sorted((project_dir / col).glob('*.json')):
-            json_loader.loads(p.read_text(), target_class=cls)
-            print(f'OK  {p}')
+    for p in sorted(project_dir.rglob('*.json')):
+        rec = json.loads(p.read_text())
+        json_loader.loads(p.read_text(), target_class=type2cls[rec['type']])
+        print(f'OK  {p}')
 "
 ```
 

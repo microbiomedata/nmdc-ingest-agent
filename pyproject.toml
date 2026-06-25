@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nmdc-ingest-agent"
-version = "0.1.0"
+version = "1.0.0"
 description = "AI-agent-assisted workflows for translating external metadata sources into NMDC-schema-compliant JSON"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -26,7 +26,10 @@ dependencies = [
     "linkml-runtime>=1.9.4,<1.10",
     "lxml",
     "nmdc-api-utilities>=0.6.1,<1",
-    "nmdc-schema>=11.18.1,<12",
+    # 11.21.0 adds the LibraryPreparation INSDC slots (library_strategy/source/
+    # selection, lib_layout) and the "SRA toolkit-accessible sequence data"
+    # data-object type (microbiomedata/nmdc-schema#3214).
+    "nmdc-schema>=11.21.0,<12",
     "requests",
 ]
 

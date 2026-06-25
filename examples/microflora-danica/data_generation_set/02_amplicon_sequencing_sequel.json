@@ -1,19 +1,19 @@
 {
-  "id": "nmdc:dgns-99-9193bff4",
+  "id": "nmdc:dgns-99-8ecc500b",
   "type": "nmdc:NucleotideSequencing",
-  "name": "Run SRR27943129 for experiment SRX23599598 - MFD00001",
+  "name": "Run SRR27974663 for experiment SRX23628290 - MFD09758",
   "has_input": [
-    "nmdc:procsm-99-249aae69"
+    "nmdc:procsm-99-a99ad8be"
   ],
   "has_output": [
-    "nmdc:dobj-99-bc519d42"
+    "nmdc:dobj-99-17dd8810"
   ],
-  "analyte_category": "metagenome",
+  "analyte_category": "amplicon_sequencing_assay",
   "associated_studies": [
     "nmdc:sty-99-e9066e1d"
   ],
   "instrument_used": [
-    "nmdc:inst-14-mr4r2w09"
+    "nmdc:inst-15-qkz3d028"
   ],
   "provenance_metadata": {
     "type": "nmdc:ProvenanceMetadata",
@@ -27,6 +27,6 @@
     "bioproject:PRJNA1071982"
   ],
   "insdc_experiment_identifiers": [
-    "insdc.sra:SRX23599598"
+    "insdc.sra:SRX23628290"
   ]
 }

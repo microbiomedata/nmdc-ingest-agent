@@ -1,0 +1,19 @@
+{
+  "id": "nmdc:libprp-99-4cc4208c",
+  "type": "nmdc:LibraryPreparation",
+  "name": "Library preparation process for MFD00001",
+  "has_input": [
+    "nmdc:bsm-99-4f0b1a1a"
+  ],
+  "has_output": [
+    "nmdc:procsm-99-249aae69"
+  ],
+  "protocol_link": {
+    "type": "nmdc:Protocol",
+    "url": "https://doi.org/10.1101/2023.09.04.556179"
+  },
+  "library_selection": "size fractionation",
+  "library_strategy": "WGS",
+  "library_source": "METAGENOMIC",
+  "lib_layout": "paired"
+}
