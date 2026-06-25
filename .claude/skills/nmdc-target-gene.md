@@ -44,18 +44,24 @@ names, and the library name — and select a permissible value of
 [`TargetGeneEnum`](https://microbiomedata.github.io/nmdc-schema/TargetGeneEnum/)
 (`16S_rRNA`, `18S_rRNA`, `23S_rRNA`, `28S_rRNA`):
 
-1. **Domain → small-subunit (SSU) rRNA gene.** The SSU rRNA gene is **16S** in
-   bacteria/archaea and **18S** in eukaryotes. An amplicon whose forward primer
-   sits in the SSU and reads "bacterial … operon" targets `16S_rRNA`; "eukaryotic
-   … operon" targets `18S_rRNA`.
-2. **Primer names locate the region.** Use them to confirm — e.g. `8F`/`1391R` and
-   `8F`/`27F` are bacterial 16S primers; `3NDF`/`21R` (a.k.a. NS-style euk primers)
-   target the eukaryotic 18S–28S operon; `2490R` reads into the 23S/28S large
-   subunit. If you are unsure of a primer, check a primer database / the literature
-   rather than guessing.
-3. **Library name corroborates.** MFD encodes it: `npumi_16SrRNA_*` → `16S_rRNA`,
-   `pb_bacoperon_*` (bacterial operon) → `16S_rRNA`, `pb_eukoperon_*` (eukaryotic
-   operon) → `18S_rRNA`.
+1. **Domain excludes the other domain's rRNA genes.** A *prokaryotic*
+   (bacterial/archaeal) target is one of `16S_rRNA` (SSU) or `23S_rRNA` (LSU); a
+   *eukaryotic* target is one of `18S_rRNA` (SSU) or `28S_rRNA` (LSU). So the
+   domain narrows the choice to a pair and **rules out the other domain's pair** —
+   it does not by itself pick SSU vs LSU (a whole "rRNA operon" spans both).
+2. **Primer names select within the pair.** The forward primer's binding region
+   picks SSU vs LSU — e.g. `8F`/`1391R` and `8F`/`27F` are bacterial 16S (SSU)
+   primers → `16S_rRNA`; `3NDF`/`21R` (a.k.a. NS-style euk primers) anchor the
+   eukaryotic 18S → `18S_rRNA`; `2490R` reads into the 23S/28S large subunit. If
+   you are unsure of a primer, check a primer database / the literature rather
+   than guessing.
+3. **Library name corroborates the domain (as an exclusion).** MFD encodes it:
+   `npumi_16SrRNA_*` names the gene outright (`16S_rRNA`); `pb_bacoperon_*` is a
+   *bacterial* operon (spans 16S **and** 23S) → **excludes** `18S_rRNA` and
+   `28S_rRNA`; `pb_eukoperon_*` is a *eukaryotic* operon (spans 18S **and** 28S) →
+   **excludes** `16S_rRNA` and `23S_rRNA`. Combine with the primer evidence
+   (item 2) — the SSU forward primer then selects the small subunit (`16S`/`18S`)
+   within the remaining pair.
 
 **When the evidence genuinely does not resolve to one SSU gene, leave it unset**
 (omit-rather-than-guess). Do not assert `23S_rRNA`/`28S_rRNA` for a whole-operon
