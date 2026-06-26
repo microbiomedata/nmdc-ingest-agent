@@ -1559,10 +1559,17 @@ def main():
     print(f"  DataObjects: {len(database.data_object_set)}")
     print(f"  Manifests: {len(database.manifest_set)}")
 
-    json_str = json_dumper.dumps(database)
+    # Serialize with json_dumper.to_dict (not .dumps) to match the canonical
+    # nmdc-runtime ETL (RuntimeApiUserClient.{validate,submit}_metadata both POST
+    # json_dumper.to_dict(database)). to_dict omits the top-level "@type": "Database"
+    # that .dumps injects, so our deliverable is byte-shaped like what the runtime
+    # produces. to_dict already yields JSON-safe primitives (datetimes serialized to
+    # strings), and local linkml validation passes target_class explicitly so it
+    # never needed the @type header.
+    database_dict = json_dumper.to_dict(database)
 
     with open(out_path, "w") as f:
-        f.write(json_str)
+        json.dump(database_dict, f, indent=2)
     print(f"\nNMDC Database JSON written to {out_path}")
 
     inputs_path = out_path.replace(".json", "_curation_inputs.json")
