@@ -30,6 +30,16 @@ All IDs use the shoulder `99` and are placeholders; they must be re-minted via t
 ```bash
 nmdc-ingest-ncbi PRJNA1452545 --fetch-only   # dump raw NCBI data for review
 nmdc-ingest-ncbi PRJNA1452545                # produce NMDC JSON
+nmdc-ingest-ncbi PRJNA1452545 --validate     # produce, then runtime-validate the JSON
 ```
+
+### Runtime validation (`--validate`)
+
+`--validate` POSTs the written deliverable to the NMDC runtime `/metadata/json:validate` endpoint after the file and sidecars are written. This is stronger than the local linkml schema load: on top of per-collection schema validation the endpoint enforces **referential integrity** (every `has_input` / `has_output` / `associated_studies` / `instrument_used` / `was_generated_by` / `in_manifest` reference must resolve), **biosample-name-uniqueness-per-study**, and **id-uniqueness**. No auth is required. On failure the per-collection `detail` is printed and the process exits non-zero (the file is preserved).
+
+- **The env must match instrument resolution.** Validation runs against the same `--env` (default `dev`, else `NMDC_RUNTIME_ENV`) used to resolve `instrument_used`. Those ids exist only in that env's `instrument_set`, so validating against the other env fails referential integrity.
+- The deliverable carries **no** top-level `@type: Database`. The pipeline serializes with `json_dumper.to_dict` (then `json.dump`) to match the canonical nmdc-runtime ETL (`RuntimeApiUserClient.{validate,submit}_metadata` both POST `json_dumper.to_dict(database)`), which omits `@type`; `json_dumper.dumps` would have injected it. (The endpoint ignores unknown / `@`-prefixed top-level keys regardless, so it isn't load-bearing either way.)
+- Placeholder `-99-` ids validate fine. Network errors or an HTTP 5xx (a very large deliverable — tens of thousands of records — can 502 the endpoint) report a friendly message; the offline linkml load is the fallback.
+- The reusable helper is `nmdc_ingest_agent.validation.validate_runtime(json_path, env)`.
 
 For the full curator-quality workflow (ontology resolution, validation, review), use the `ncbi-to-nmdc` Claude Code skill at the repo root.

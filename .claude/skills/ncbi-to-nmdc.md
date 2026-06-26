@@ -78,7 +78,9 @@ The script stores SRA `instrument_model` strings verbatim and assigns an instrum
 
 ### Step 7: Validate
 
-Validate the output JSON against the NMDC schema:
+Validate in two passes. Run this step **after** the env-triad (Step 3) and `target_gene` (Step 5) curation so the validated artifact is the *final* one.
+
+**7a — Local linkml load (fast, offline first pass).** Schema-only; catches structural and enum problems without a network round-trip:
 
 ```bash
 uv run python -c "
@@ -93,6 +95,20 @@ print('Validation passed!')
 ```
 
 When a validation failure points at a non-trivial slot value (nested wrappers, enum ranges, range/scalar confusion), read `.claude/skills/nmdc-schema-reference.md` before guessing at the fix.
+
+**7b — Runtime endpoint (authoritative).** The NMDC runtime `POST /metadata/json:validate` enforces, on top of per-collection schema validation, **referential integrity** (every `has_input` / `has_output` / `associated_studies` / `instrument_used` / `was_generated_by` / `in_manifest` reference must resolve in the payload or the runtime DB), **biosample-name-uniqueness-per-study**, and **id-uniqueness**:
+
+```bash
+uv run python -c "
+from nmdc_ingest_agent.validation import validate_runtime
+validate_runtime('results/ncbi_<ACCESSION>_nmdc.json', env='<ENV>')
+print('Runtime validation passed (All Okay!).')
+"
+```
+
+- **`<ENV>` must match the env instruments were resolved against** (the `--env` used for the run, default `dev`). `instrument_used` ids exist only in that env's `instrument_set`, so validating against the wrong env fails referential integrity. No auth is needed.
+- The deliverable carries **no** top-level `@type: Database`: the pipeline serializes with `json_dumper.to_dict` to match the canonical nmdc-runtime ETL (`RuntimeApiUserClient.{validate,submit}_metadata`), which omits it. (The endpoint also ignores unknown / `@`-prefixed top-level keys, so a stray `@type` would validate too — but our output simply doesn't include one.)
+- On failure the error carries the endpoint's **per-collection `detail`**; fix the flagged records and re-run 7b. A network error or HTTP 5xx (a very large deliverable — tens of thousands of records — can 502 the endpoint) reports a friendly message; in that case the local 7a pass is the fallback.
 
 ### Step 8: Report summary
 
