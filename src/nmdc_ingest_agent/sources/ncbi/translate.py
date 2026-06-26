@@ -34,6 +34,7 @@ from nmdc_ingest_agent.minting import (
     PlaceholderMinter,
     runtime_minter_from_env,
 )
+from nmdc_ingest_agent.validation import RuntimeValidationError, validate_runtime
 
 EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 RATE_LIMIT_DELAY = 0.35
@@ -1506,6 +1507,17 @@ def main():
             "both environments, so dev is the safe default; pass 'prod' to promote."
         ),
     )
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help=(
+            "After writing the deliverable, validate it against the NMDC runtime "
+            "'/metadata/json:validate' endpoint (referential integrity + "
+            "biosample-name-uniqueness + id-uniqueness on top of schema). Uses the "
+            "same --env as instrument resolution (instrument_used refs must resolve "
+            "there). Exits non-zero on failure; the file is preserved."
+        ),
+    )
     args = parser.parse_args()
 
     accession = args.accession.strip()
@@ -1559,10 +1571,17 @@ def main():
     print(f"  DataObjects: {len(database.data_object_set)}")
     print(f"  Manifests: {len(database.manifest_set)}")
 
-    json_str = json_dumper.dumps(database)
+    # Serialize with json_dumper.to_dict (not .dumps) to match the canonical
+    # nmdc-runtime ETL (RuntimeApiUserClient.{validate,submit}_metadata both POST
+    # json_dumper.to_dict(database)). to_dict omits the top-level "@type": "Database"
+    # that .dumps injects, so our deliverable is byte-shaped like what the runtime
+    # produces. to_dict already yields JSON-safe primitives (datetimes serialized to
+    # strings), and local linkml validation passes target_class explicitly so it
+    # never needed the @type header.
+    database_dict = json_dumper.to_dict(database)
 
     with open(out_path, "w") as f:
-        f.write(json_str)
+        json.dump(database_dict, f, indent=2)
     print(f"\nNMDC Database JSON written to {out_path}")
 
     inputs_path = out_path.replace(".json", "_curation_inputs.json")
@@ -1608,6 +1627,18 @@ def main():
             print(f"    {r['count']:>5} × {r['example_library_name']}: {r['design_description']}")
         print("  Run /ncbi-to-nmdc to resolve via the nmdc-target-gene skill, using the")
         print(f"  'target_gene_curation' section of {inputs_path} and patching the output.")
+
+    # Runtime endpoint validation (referential integrity + uniqueness on top of
+    # schema). Runs against the same env as instrument resolution so instrument_used
+    # refs resolve. The file is already written, so it is preserved on failure.
+    if args.validate:
+        print(f"\nValidating {out_path} against the NMDC {env} runtime endpoint...")
+        try:
+            validate_runtime(out_path, env)
+        except RuntimeValidationError as e:
+            print(f"✗ Runtime validation FAILED:\n{e}")
+            sys.exit(1)
+        print("✓ Runtime validation passed (All Okay!).")
 
 
 if __name__ == "__main__":
