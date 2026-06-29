@@ -71,13 +71,23 @@ from the SRA `DESIGN_DESCRIPTION` free text, which MFD populates per library
   cite no DOI, so they get no `protocol_link` (this is *more* correct than
   blanket-applying the metagenome-prep DOI to amplicon libraries).
 - **`target_gene`** — the pipeline commits it only for designs naming **one
-  explicit** rRNA gene: MFD's Nanopore amplicon (`npumi_16SrRNA_*`, `"...amplify
-  bacterial 16S rRNA genes"`) → `16S_rRNA`. The **operon** designs name no single
-  gene and are left **unset** for the `nmdc-target-gene` curation skill to resolve
-  by reasoning over the design + primers: `pb_bacoperon_*` (`8F`/`2490R`,
-  "bacterial rRNA operons") → `16S_rRNA`; `pb_eukoperon_*` (`3NDF`/`21R`,
-  "eukaryotic rRNA operons") → `18S_rRNA` (eukaryotic SSU). WGS names no rRNA
-  target → unset. Final MFD counts: 862 × `16S_rRNA`, 450 × `18S_rRNA`.
+  explicit** rRNA gene: MFD's `npumi_16SrRNA_*` amplicon (`"...amplify bacterial
+  16S rRNA genes"`) → `16S_rRNA`. The **operon** designs name no single gene and
+  are deliberately left **unset**: `target_gene` is single-valued and has no
+  whole-operon value, so `pb_bacoperon_*` (`8F`/`2490R`, "bacterial rRNA operons",
+  spans 16S **and** 23S) and `pb_eukoperon_*` (`3NDF`/`21R`, "eukaryotic rRNA
+  operons", spans 18S **and** 28S) get **no `target_gene`** — the `nmdc-target-gene`
+  curation skill confirms the omission rather than reducing an operon to one of its
+  genes (see [nmdc-schema #3238](https://github.com/microbiomedata/nmdc-schema/pull/3238)).
+  WGS names no rRNA target → unset.
+- **`description`** — for amplicon designs the **`nmdc-target-gene` curation skill**
+  (not the pipeline) restates the design as prose, e.g. `"Amplicon library preparation
+  targeting bacterial rRNA operons using 8F and 2490R primers"`. The MFD design shape
+  is `"amplicon sequencing using <primers> to amplify <target>"`, so the skill lifts
+  the primer pair and the amplified target from that text. This carries what was
+  amplified (target + primers) on the operon records that have no `target_gene`. The
+  pipeline does **not** parse this (no brittle free-text regex); the design text is
+  carried to the skill in the `amplicon_curation` sidecar.
 
 The SRA library descriptor (`library_strategy`, `library_source`,
 `library_selection`, `lib_layout`) is likewise passed through from the SRA

@@ -174,10 +174,12 @@ def test_extract_target_gene_only_explicit_single_gene():
     assert T._extract_target_gene("") is None
 
 
-def test_unset_amplicon_target_gene_surfaced_for_curation():
-    # The operon libraries the pipeline leaves unset are listed in the
-    # curation-inputs sidecar, grouped by distinct design; the explicit-gene
-    # (resolved) amplicon is NOT listed.
+def test_all_amplicon_designs_surfaced_for_curation():
+    # Every amplicon library is listed in the curation-inputs sidecar, grouped by
+    # distinct design — both the operons (target_gene unset) AND the explicit-gene
+    # amplicon (target_gene already set). Descriptions are written by the skill for
+    # all of them, so all must be present; the row's target_gene records the
+    # pipeline's current value so the skill knows which still need resolving.
     data = _data([
         _experiment("SRX222", "SAMN001", "METAGENOMIC", "AMPLICON",
                     library_name="npumi_16SrRNA_MFD00001", selection="PCR",
@@ -191,13 +193,37 @@ def test_unset_amplicon_target_gene_surfaced_for_curation():
     ])
     db = T.build_nmdc_database(data, PlaceholderMinter(), _FakeResolver(), None)
     sidecar = T.build_curation_inputs_sidecar(data, db)
-    rows = sidecar["target_gene_curation"]
-    designs = {r["design_description"] for r in rows}
-    assert designs == {_AMPLICON_BACOPERON_DESIGN, _AMPLICON_EUKOPERON_DESIGN}
-    # The explicit-16S design is resolved, so it is not in the curation list.
-    assert _AMPLICON_16S_DESIGN not in designs
+    rows = sidecar["amplicon_curation"]
+    tg_by_design = {r["design_description"]: r["target_gene"] for r in rows}
+    # All three amplicon designs are present (so each gets a description).
+    assert set(tg_by_design) == {
+        _AMPLICON_16S_DESIGN, _AMPLICON_BACOPERON_DESIGN, _AMPLICON_EUKOPERON_DESIGN
+    }
+    # The pipeline resolved the explicit-gene design; the operons stay unset.
+    assert tg_by_design[_AMPLICON_16S_DESIGN] == "16S_rRNA"
+    assert tg_by_design[_AMPLICON_BACOPERON_DESIGN] is None
+    assert tg_by_design[_AMPLICON_EUKOPERON_DESIGN] is None
     # Each row carries the libprep ids to patch.
     assert all(r["count"] == len(r["library_preparation_ids"]) >= 1 for r in rows)
+
+
+def test_pipeline_leaves_amplicon_description_for_curation():
+    # The pipeline does not parse the free-text design into a description — that
+    # is delegated to the nmdc-target-gene skill. So amplicon LibraryPreparations
+    # come out of the build with no description (the design text rides along in the
+    # amplicon_curation sidecar instead).
+    data = _data([
+        _experiment("SRX333", "SAMN001", "METAGENOMIC", "AMPLICON",
+                    library_name="pb_bacoperon_MFD00001", selection="PCR",
+                    layout="SINGLE", design_description=_AMPLICON_BACOPERON_DESIGN),
+    ])
+    db = T.build_nmdc_database(data, PlaceholderMinter(), _FakeResolver(), None)
+    lp = next(m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation")
+    assert lp.description is None
+    assert lp.target_gene is None
+    # The design text the skill needs is carried in the sidecar.
+    row = T.build_curation_inputs_sidecar(data, db)["amplicon_curation"][0]
+    assert row["design_description"] == _AMPLICON_BACOPERON_DESIGN
 
 
 def test_lib_layout_values_come_from_schema_enum():
@@ -236,6 +262,7 @@ def test_no_design_description_leaves_protocol_and_target_gene_unset():
     lp = next(m for m in db.material_processing_set if m.type == "nmdc:LibraryPreparation")
     assert lp.protocol_link is None
     assert lp.target_gene is None
+    assert lp.description is None
 
 
 def test_data_object_is_sra_toolkit_shape():
