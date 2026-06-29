@@ -911,6 +911,11 @@ def build_library_records(
     protocol_link = (
         nmdc.Protocol(url=protocol_url, type="nmdc:Protocol") if protocol_url else None
     )
+    # NOTE: ``description`` is deliberately *not* set here. For amplicon libraries
+    # it restates the target + primers parsed from the free-text DESIGN_DESCRIPTION
+    # — a natural-language judgment task delegated to the ``nmdc-target-gene``
+    # curation skill (same design text, same records, same pass as target_gene),
+    # rather than a brittle pipeline-side regex. See build_amplicon_curation.
     library_preparation = nmdc.LibraryPreparation(
         id=library_preparation_id,
         name=f"Library preparation process for {biosample_name}",
@@ -1341,15 +1346,25 @@ def build_nmdc_database(
 _TRIAD_SLOTS = ("env_broad_scale", "env_local_scale", "env_medium")
 
 
-def build_target_gene_curation(data: dict, database: nmdc.Database) -> list[dict]:
-    """List the amplicon LibraryPreparations whose ``target_gene`` the pipeline
-    left unset (the SRA design names no single explicit rRNA gene), grouped by
-    distinct DESIGN_DESCRIPTION so the ``nmdc-target-gene`` skill resolves each
-    design once and patches all of its LibraryPreparation ids.
+def build_amplicon_curation(data: dict, database: nmdc.Database) -> list[dict]:
+    """List **every** amplicon LibraryPreparation grouped by distinct SRA
+    DESIGN_DESCRIPTION, for the ``nmdc-target-gene`` skill to resolve per design
+    and patch all of the design's LibraryPreparation ids in one pass.
+
+    Two free-text→record tasks share this work-list because both read the same
+    DESIGN_DESCRIPTION and write the same records:
+
+    - ``description`` — the skill restates the design (target + primers) as prose
+      on every amplicon library. The pipeline does not parse this (no brittle
+      regex on free text); the design text is carried here because it is the only
+      place the target/primers appear (neither is kept as an output slot).
+    - ``target_gene`` — the pipeline already committed it for designs naming one
+      explicit rRNA gene; each row carries that current value (``None`` when the
+      pipeline left it unset, e.g. an rRNA operon) so the skill knows which still
+      need resolving and which to leave alone.
 
     The join is library_name -> library ProcessedSample (named after it) ->
-    LibraryPreparation. Libraries already resolved deterministically (an explicit
-    gene token) are skipped — only the inference cases reach the agent.
+    LibraryPreparation.
     """
     libprep_by_output = {
         out_id: m
@@ -1366,11 +1381,12 @@ def build_target_gene_curation(data: dict, database: nmdc.Database) -> list[dict
         lib_name = (exp.get("library_name") or "").strip()
         ps_id = ps_name_to_id.get(lib_name)
         libprep = libprep_by_output.get(ps_id) if ps_id else None
-        if libprep is None or libprep.target_gene:  # skip unmatched / already resolved
+        if libprep is None:  # skip unmatched (no library record was built)
             continue
         entry = by_design.setdefault(exp.get("design_description", ""), {
             "design_description": exp.get("design_description", ""),
             "example_library_name": lib_name,
+            "target_gene": str(libprep.target_gene) if libprep.target_gene else None,
             "library_preparation_ids": [],
         })
         if libprep.id not in entry["library_preparation_ids"]:
@@ -1384,11 +1400,12 @@ def build_target_gene_curation(data: dict, database: nmdc.Database) -> list[dict
 
 def build_curation_inputs_sidecar(data: dict, database: nmdc.Database) -> dict:
     """Inputs file the curation agent reads when filling gaps the pipeline leaves
-    for evidence-based resolution (env-triad, and amplicon ``target_gene``).
+    for evidence-based resolution (env-triad, and amplicon
+    ``description``/``target_gene``).
 
     Bundles BioProject context plus the full raw NCBI attributes dict per
     biosample (keyed by NMDC biosample id) for env-triad inference per
-    nmdc-env-triad.md, and a ``target_gene_curation`` list of unset amplicon
+    nmdc-env-triad.md, and an ``amplicon_curation`` list of amplicon
     LibraryPreparations grouped by SRA design for nmdc-target-gene.md.
     """
     project = data.get("bioproject", {})
@@ -1420,7 +1437,7 @@ def build_curation_inputs_sidecar(data: dict, database: nmdc.Database) -> dict:
             "publications": project.get("publications", []),
         },
         "biosamples": biosamples_out,
-        "target_gene_curation": build_target_gene_curation(data, database),
+        "amplicon_curation": build_amplicon_curation(data, database),
     }
 
 
@@ -1616,17 +1633,25 @@ def main():
         print("  Run /ncbi-to-nmdc to fill gaps via the nmdc-env-triad skill, ")
         print(f"  using the curation inputs sidecar and updating {report_path} in place.")
 
-    tg_rows = inputs_sidecar.get("target_gene_curation", [])
-    tg_libs = sum(r["count"] for r in tg_rows)
-    if tg_rows:
-        print(
-            f"\n⚠ TARGET_GENE CURATION NEEDED: {tg_libs} amplicon LibraryPreparation(s) "
-            f"across {len(tg_rows)} SRA design(s) have target_gene unset."
+    amp_rows = inputs_sidecar.get("amplicon_curation", [])
+    amp_libs = sum(r["count"] for r in amp_rows)
+    if amp_rows:
+        needs_gene = sum(r["count"] for r in amp_rows if not r["target_gene"])
+        gene_note = (
+            f"; {needs_gene} still need target_gene resolved" if needs_gene else ""
         )
-        for r in tg_rows:
-            print(f"    {r['count']:>5} × {r['example_library_name']}: {r['design_description']}")
+        print(
+            f"\n⚠ AMPLICON CURATION NEEDED: {amp_libs} amplicon LibraryPreparation(s) "
+            f"across {len(amp_rows)} SRA design(s) need a description{gene_note}."
+        )
+        for r in amp_rows:
+            tg = r["target_gene"] or "unset"
+            print(
+                f"    {r['count']:>5} × {r['example_library_name']} "
+                f"[target_gene={tg}]: {r['design_description']}"
+            )
         print("  Run /ncbi-to-nmdc to resolve via the nmdc-target-gene skill, using the")
-        print(f"  'target_gene_curation' section of {inputs_path} and patching the output.")
+        print(f"  'amplicon_curation' section of {inputs_path} and patching the output.")
 
     # Runtime endpoint validation (referential integrity + uniqueness on top of
     # schema). Runs against the same env as instrument resolution so instrument_used
