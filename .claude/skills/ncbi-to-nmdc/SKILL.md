@@ -55,7 +55,13 @@ Run the script without `--fetch-only`:
 uv run nmdc-ingest-ncbi <ACCESSION>
 ```
 
-The script always emits `ENVO:00000000` sentinels for the env triad (preserving the raw submitter string in `has_raw_value` when one was provided, or empty + `name="(not provided)"` when the source had nothing) and only forwards taxon information that NCBI itself supplied. Resolving sentinels and disambiguating hosts is the next two steps' job.
+**If this project already has a committed per-biosample env-triad crosswalk, pass it now** so the env-triad resolves deterministically at build time instead of leaving thousands of sentinels for Step 3 to hand-curate (or worse, re-derive). MicroFlora Danica has one — always run PRJNA1071982 as:
+
+```bash
+uv run nmdc-ingest-ncbi PRJNA1071982 --env-triad-crosswalk examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv
+```
+
+Without a crosswalk, the script emits `ENVO:00000000` sentinels for every env-triad slot (preserving the raw submitter string in `has_raw_value` when one was provided, or empty + `name="(not provided)"` when the source had nothing); with one, matched biosamples arrive `resolved_at_pipeline`. Either way it only forwards taxon information that NCBI itself supplied. Resolving remaining sentinels and disambiguating hosts is the next two steps' job.
 
 The script also writes two sidecar files alongside the NMDC JSON:
 
@@ -66,9 +72,9 @@ The script also writes two sidecar files alongside the NMDC JSON:
 
 Read `nmdc-curation-rules` and `nmdc-env-triad`. Apply the per-placeholder workflow to every `ENVO:00000000` sentinel in the generated JSON, choosing the resolution branch (§1a, when `has_raw_value` is non-empty) or the inference branch (§1b, when the value was genuinely missing). Update the curation-report row for each (biosample, slot) per the outcome you reach. Validate every committed CURIE per § Validate every committed CURIE.
 
-**First check the regime.** If many biosamples share the *same* unresolved source term (a repeated `isolation_source`, a habitat/land-cover code, a project vocabulary), don't resolve them one at a time — read `nmdc-ontology-mapping`, build a validated SSSOM mapping set once, and apply it across the shared term. Resolve the remaining long-tail per-record with `nmdc-env-triad`. Record which regime you chose in the run notes.
+**First: is this a lot of sentinels a known crosswalk already covers?** If you're staring at thousands of env-triad sentinels and the project has a committed crosswalk (Step 0's `DECISIONS.md` will say so; MicroFlora Danica is the case in point), **stop — do not curate or map them by hand.** Re-run Step 2 with `--env-triad-crosswalk <TSV>` (for MFD, `examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv`) so matched biosamples arrive `resolved_at_pipeline`. Hand-building a mapping from the coarse NCBI `isolation_source` when a richer authoritative crosswalk exists just produces a worse duplicate — reuse beats rebuild.
 
-**A per-biosample crosswalk can pre-resolve the env-triad.** If Step 2 was run with `--env-triad-crosswalk <TSV>` (or `$NMDC_ENV_TRIAD_CROSSWALK_TSV`), matched biosamples arrive `resolved_at_pipeline` with no env-triad sentinels — nothing to curate by hand for those. This is how MicroFlora Danica (PRJNA1071982) is resolved: point the flag at `examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv` (keyed by `fieldsample_barcode` = the sample name). Without the flag, every env-triad slot is a sentinel and this Step 3 pass handles all of them. This manual pass always applies to the remaining sentinels (unmatched biosamples, other sources).
+**Then check the regime** (only for sentinels *not* covered by an existing crosswalk). If many remaining biosamples share the *same* unresolved source term (a repeated `isolation_source`, a habitat/land-cover code, a project vocabulary) and no authoritative mapping exists yet, don't resolve them one at a time — read `nmdc-ontology-mapping`, which decides whether to build a validated SSSOM mapping set, then apply it across the shared term. Resolve the genuinely long-tail remainder per-record with `nmdc-env-triad`. Record which regime you chose (or that an existing crosswalk was reused) in the run notes.
 
 ### Step 4: Resolve host / `samp_taxon` if needed
 

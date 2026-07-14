@@ -12,6 +12,17 @@ same source term are resolved by **one** curated decision instead of one at a ti
 Read `nmdc-curation-rules` first — no CURIE from memory, evidence for every commit, omit
 rather than guess. Those rules govern every row you write here.
 
+## Step 0 — Reuse before build
+
+**Before deciding anything, check whether an authoritative mapping already exists** for this
+source vocabulary — a committed crosswalk under `examples/<project>/`, a `data/` lookup, or a
+published mapping set. If one does, **apply it, do not author a new one.** Re-deriving a
+mapping (e.g. from the coarse NCBI `isolation_source`) when a richer curated crosswalk exists
+just yields a worse duplicate that drifts from the validated original. For the env-triad
+specifically, an existing per-biosample crosswalk is applied by the ingest via
+`--env-triad-crosswalk`, not by this skill. Only proceed to Step 1 for vocabularies with **no**
+existing mapping.
+
 ## Step 1 — Decide the regime (do this before writing any rows)
 
 A mapping table is only worth building when the source terms form a **closed, recurring**
