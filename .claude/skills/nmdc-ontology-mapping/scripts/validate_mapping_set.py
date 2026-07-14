@@ -80,7 +80,11 @@ def main() -> None:
             failures.append(f"{obj}: no such term in ontology")
             continue
         meta = dict(adapter.entity_metadata_map(obj) or {})
-        if meta.get("owl:deprecated") in (True, "true", "True"):
+        # oaklib returns owl:deprecated as a list (e.g. [True]); normalize before the test.
+        dep = meta.get("owl:deprecated")
+        if isinstance(dep, (list, tuple)):
+            dep = dep[0] if dep else None
+        if str(dep).strip().lower() == "true":
             failures.append(f"{obj}: deprecated/obsolete term")
         if stated and label and stated.strip().lower() != label.strip().lower():
             failures.append(f"{obj}: object_label {stated!r} != official {label!r}")

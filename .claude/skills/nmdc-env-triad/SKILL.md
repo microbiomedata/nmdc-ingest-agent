@@ -106,7 +106,7 @@ As you process each slot, update its row in place. Required fields per row:
 - `candidates_considered`: list of `{curie, label, reason_rejected}` for runoak hits you considered but rejected — useful for the curator to see what was tried.
 - `validator`: dict with `info_ok`, `anchor_ok`, `valueset_ok` (true / false / null).
 
-The curation report is the deliverable to the curator. Step 7 in `ncbi-to-nmdc` summarizes it.
+The curation report is the deliverable to the curator. Step 8 in `ncbi-to-nmdc` summarizes it.
 
 ## Soil package
 

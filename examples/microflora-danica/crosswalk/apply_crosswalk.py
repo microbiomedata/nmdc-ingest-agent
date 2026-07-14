@@ -209,8 +209,9 @@ def annotate_biosample(bs: dict, crosswalk: dict, gee: dict,
 @click.argument("biosamples", type=click.Path(exists=True, dir_okay=False))
 @click.option("--out", default="-", help="Output TSV (default: stdout)")
 @click.option("--data-dir", default=None, type=click.Path(exists=True, file_okay=False),
-              help="Directory containing crosswalk + GEE + map TSVs "
-                   "(default: same directory as this script)")
+              help="Directory containing the crosswalk + GEE TSVs (default: this script's "
+                   "dir). The reusable land-cover maps load from data/land-cover/ regardless; "
+                   "override them with --corine-map/--worldcover-map.")
 @click.option("--crosswalk", default=DEFAULT_CROSSWALK, show_default=True)
 @click.option("--gee", default=DEFAULT_GEE, show_default=True)
 @click.option("--corine-map", default=DEFAULT_CORINE_MAP, show_default=True)

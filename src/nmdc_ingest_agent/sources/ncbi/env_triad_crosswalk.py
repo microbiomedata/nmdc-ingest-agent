@@ -86,7 +86,9 @@ class CrosswalkEnvTriadResolver:
         if path is None:
             for var in _ENV_VARS:
                 override = os.environ.get(var, "").strip()
-                if override:
+                # Fall through to the next var if a set path does not exist, so a
+                # stale canonical var does not mask a valid legacy one.
+                if override and Path(override).exists():
                     path = Path(override)
                     break
         if path is None or not Path(path).exists():

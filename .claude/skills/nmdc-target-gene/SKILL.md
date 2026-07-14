@@ -136,6 +136,6 @@ design:
   single-gene design, or **leave it absent** for an operon (the `description` carries
   the target).
 
-Re-validate the file against the schema afterward (see `ncbi-to-nmdc` § Step 6),
+Re-validate the file against the schema afterward (see `ncbi-to-nmdc` § Step 7),
 then note in the run report, per design, the description set and whether `target_gene`
 was set (and to what) or deliberately omitted (operon), with counts.
