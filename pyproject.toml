@@ -24,6 +24,10 @@ classifiers = [
 ]
 dependencies = [
     "linkml-runtime>=1.9.4,<1.10",
+    # linkml.validator.validate_file powers the skill's offline Step-7a validation
+    # (stricter than a json_loader load). Already present transitively via nmdc-schema;
+    # declared explicitly because a skill script imports it directly.
+    "linkml>=1.9,<1.10",
     "lxml",
     "nmdc-api-utilities>=0.6.1,<1",
     # 11.21.0 adds the LibraryPreparation INSDC slots (library_strategy/source/

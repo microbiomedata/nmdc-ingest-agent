@@ -1,8 +1,10 @@
 """Runtime validation against the NMDC ``/metadata/json:validate`` endpoint.
 
-The pipeline's local check (``linkml json_loader.load(target_class=nmdc.Database)``)
-is schema-only. The NMDC runtime endpoint is the *authoritative* validator: on top
-of per-collection schema validation it also enforces **referential integrity**
+The pipeline's local check (``linkml.validator.validate_file`` against nmdc-schema, in
+the ncbi-to-nmdc skill's ``validate_local.py``) is schema-only — it enforces per-slot
+constraints but not cross-record references. The NMDC runtime endpoint is the
+*authoritative* validator: on top of per-collection schema validation it also enforces
+**referential integrity** (every ``has_input`` / ``has_output`` / ``associated_studies`` / ``instrument_used``
 (every ``has_input`` / ``has_output`` / ``associated_studies`` / ``instrument_used``
 / ``was_generated_by`` / ``in_manifest`` reference must resolve in the payload or
 the runtime DB), **biosample-name-uniqueness-per-study**, and **id-uniqueness**.

@@ -86,7 +86,7 @@ The script stores SRA `instrument_model` strings verbatim and assigns an instrum
 
 Validate in two passes. Run this step **after** the env-triad (Step 3) and amplicon `description`/`target_gene` (Step 5) curation so the validated artifact is the *final* one.
 
-**7a — Local linkml load (fast, offline first pass).** Schema-only; catches structural and enum problems without a network round-trip:
+**7a — Local `linkml validate` (fast, offline first pass).** Runs the LinkML validation framework against the installed nmdc-schema — no network. Stricter than a plain load: it enforces jsonschema `pattern`/range/enum constraints (e.g. a malformed identifier CURIE) that an object load silently passes. Exits non-zero on any error:
 
 ```bash
 uv run python .claude/skills/ncbi-to-nmdc/scripts/validate_local.py results/ncbi_<ACCESSION>_nmdc.json
