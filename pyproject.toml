@@ -38,6 +38,10 @@ ontology = [
     # For resolving ENVO, NCBITaxon etc. via the skill workflow.
     "oaklib",
     "click",
+    # SSSOM mapping sets authored by the nmdc-ontology-mapping skill (sssom validate /
+    # parse). Already present transitively via oaklib; pinned explicitly because the
+    # skill's validator depends on it directly.
+    "sssom",
 ]
 dev = [
     "pytest",

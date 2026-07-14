@@ -35,6 +35,7 @@ or as a skill's assets, never as its own skill.
 | `nmdc-taxon-resolution` | resolve organism names to NCBITaxon CURIEs (samp_taxon, host) |
 | `nmdc-target-gene` | curate amplicon LibraryPreparation description + target_gene |
 | `nmdc-schema-reference` | look up NMDC LinkML slot ranges / value-type wrappers / enums via SchemaView |
+| `nmdc-ontology-mapping` | decide whether a source vocabulary warrants a mapping, and author a validated SSSOM mapping set when it does |
 
 ## Conventions
 

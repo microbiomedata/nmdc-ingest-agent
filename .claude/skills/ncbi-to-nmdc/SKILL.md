@@ -62,6 +62,8 @@ The script also writes two sidecar files alongside the NMDC JSON:
 
 Read `nmdc-curation-rules` and `nmdc-env-triad`. Apply the per-placeholder workflow to every `ENVO:00000000` sentinel in the generated JSON, choosing the resolution branch (§1a, when `has_raw_value` is non-empty) or the inference branch (§1b, when the value was genuinely missing). Update the curation-report row for each (biosample, slot) per the outcome you reach. Validate every committed CURIE per § Validate every committed CURIE.
 
+**First check the regime.** If many biosamples share the *same* unresolved source term (a repeated `isolation_source`, a habitat/land-cover code, a project vocabulary), don't resolve them one at a time — read `nmdc-ontology-mapping`, build a validated SSSOM mapping set once, and apply it across the shared term. Resolve the remaining long-tail per-record with `nmdc-env-triad`. Record which regime you chose in the run notes.
+
 **MicroFlora Danica biosamples are already resolved.** For MFD BioProjects (e.g. PRJNA1071982), the pipeline resolves the env-triad in code from the v2 MFDO crosswalk (`src/nmdc_ingest_agent/sources/ncbi/mfd.py`, keyed on `samp_name`/`MFDID`), so those rows arrive `resolved_at_pipeline` with no env-triad sentinels — there is nothing to curate by hand here. See `.claude/skills/mfd-project-vocabulary.md`. This Step 3 manual pass applies only to remaining sentinels (non-MFD biosamples, other sources, or an MFD biosample missing from the crosswalk's annotated file).
 
 ### Step 4: Resolve host / `samp_taxon` if needed

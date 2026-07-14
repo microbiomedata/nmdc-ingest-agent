@@ -2,11 +2,14 @@
 
 Implements the join recipe documented in JOIN_RECIPE.md.
 
-Inputs (all in --data-dir unless overridden):
-  mfdo_nmdc_crosswalk.tsv       per-leaf NMDC slot mappings (284 rows, total join)
-  mfd_gee_landcover.tsv         per-coordinate ESA WorldCover + CORINE land cover
-  corine_envo_map.tsv           CORINE class -> ENVO ELS (preferred for EU coordinates)
-  worldcover_envo_map.tsv       WorldCover class -> ENVO ELS (global fallback)
+Inputs:
+  mfdo_nmdc_crosswalk.tsv       per-leaf NMDC slot mappings (284 rows, total join)  [--data-dir]
+  mfd_gee_landcover.tsv         per-coordinate ESA WorldCover + CORINE land cover   [--data-dir]
+  corine_envo_map.tsv           CORINE class -> ENVO ELS (EU)      [data/land-cover/, reusable, not MFD-specific]
+  worldcover_envo_map.tsv       WorldCover class -> ENVO ELS       [data/land-cover/, reusable, not MFD-specific]
+The two land-cover maps are reusable across projects, so they live in the repo's
+data/land-cover/ rather than beside this MFD-specific script; --corine-map / --worldcover-map
+still accept an explicit path to override them.
 
 Biosample input TSV columns (from mfd_db_to_tsv.py or the cmc-aau db xlsx):
   fieldsample_barcode  mfd_sampletype  mfd_areatype
@@ -35,6 +38,27 @@ DEFAULT_CROSSWALK = "mfdo_nmdc_crosswalk.tsv"
 DEFAULT_GEE = "mfd_gee_landcover.tsv"
 DEFAULT_CORINE_MAP = "corine_envo_map.tsv"
 DEFAULT_WORLDCOVER_MAP = "worldcover_envo_map.tsv"
+
+
+def _repo_root() -> Path:
+    """Walk up from this file to the repo root (the dir holding pyproject.toml)."""
+    here = Path(__file__).resolve()
+    for parent in (here, *here.parents):
+        if (parent / "pyproject.toml").exists():
+            return parent
+    return here.parent
+
+
+# The land-cover maps are reusable (not MFD-specific), so they live in data/land-cover/.
+LAND_COVER_DIR = _repo_root() / "data" / "land-cover"
+
+
+def _resolve_land_cover(name: str) -> Path:
+    """Bare map names resolve under data/land-cover/; an explicit path is honored as-is."""
+    p = Path(name)
+    if p.is_absolute() or p.parent != Path("."):
+        return p
+    return LAND_COVER_DIR / name
 
 _PROVENANCE_SUFFIXES = ("_provenance",)
 _INTERNAL_COLS = frozenset(("row_type", "n_samples", "Natura2000", "EUNIS", "EMPO",
@@ -129,8 +153,8 @@ def load_tables(data_dir: Path,
         click.echo(f"Warning: {gee_path} not found; GEE ELS refinement disabled", err=True)
         gee = {}
 
-    corine_map = _load_els_map(data_dir / corine_map_name, "corine_label")
-    worldcover_map = _load_els_map(data_dir / worldcover_map_name, "worldcover_label")
+    corine_map = _load_els_map(_resolve_land_cover(corine_map_name), "corine_label")
+    worldcover_map = _load_els_map(_resolve_land_cover(worldcover_map_name), "worldcover_label")
 
     click.echo(
         f"Loaded: {len(crosswalk)} crosswalk rows, {len(gee)} GEE coordinates, "

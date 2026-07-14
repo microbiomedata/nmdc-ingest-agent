@@ -1684,6 +1684,7 @@ dev = [
 ontology = [
     { name = "click" },
     { name = "oaklib" },
+    { name = "sssom" },
 ]
 
 [package.metadata]
@@ -1697,6 +1698,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "requests" },
     { name = "ruff", marker = "extra == 'dev'" },
+    { name = "sssom", marker = "extra == 'ontology'" },
 ]
 provides-extras = ["ontology", "dev"]
 
