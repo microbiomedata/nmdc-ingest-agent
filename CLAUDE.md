@@ -36,6 +36,7 @@ or as a skill's assets, never as its own skill.
 | `nmdc-target-gene` | curate amplicon LibraryPreparation description + target_gene |
 | `nmdc-schema-reference` | look up NMDC LinkML slot ranges / value-type wrappers / enums via SchemaView |
 | `nmdc-ontology-mapping` | decide whether a source vocabulary warrants a mapping, and author a validated SSSOM mapping set when it does |
+| `ingest-run-notes` | write a human-readable `runs/<source>_<ACC>/RUN_NOTES.md` summarizing a run so a curator can steer the next one |
 
 ## Conventions
 

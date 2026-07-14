@@ -1,0 +1,8 @@
+# Term overrides as an SSSOM mapping set (see the nmdc-ontology-mapping skill).
+# curie_map:
+#   ENVO: http://purl.obolibrary.org/obo/ENVO_
+#   skos: http://www.w3.org/2004/02/skos/core#
+#   semapv: https://w3id.org/semapv/vocab/
+# mapping_set_id: https://w3id.org/nmdc/overrides/PLACEHOLDER
+# license: https://creativecommons.org/publicdomain/zero/1.0/
+subject_id	subject_label	predicate_id	object_id	object_label	mapping_justification

@@ -30,6 +30,10 @@ The user provides an NCBI BioProject accession as the argument (e.g. `/ncbi-to-n
 
 ## Workflow
 
+### Step 0: Read prior decisions
+
+If `runs/ncbi_<ACCESSION>/DECISIONS.md` exists from an earlier run, read it first — it holds the human's steering directives for this run. Also apply any `runs/ncbi_<ACCESSION>/overrides.tsv` term overrides during curation. Skip this step on a first-ever run (no `runs/` dir yet).
+
 ### Step 1: Fetch and review intermediate data
 
 Run the helper script in fetch-only mode to see the raw NCBI data:
@@ -114,6 +118,21 @@ Report to the user:
 - Any host / taxon fields left unset and flagged for PI follow-up
 - The three output file paths: NMDC JSON, curation inputs sidecar, curation report
 - If the run did not use `--mint-real-ids`, remind the user that IDs are placeholders (shoulder `99`) and that the ingest-ready output requires re-running with `--mint-real-ids` (set `NMDC_RUNTIME_CLIENT_ID` and `NMDC_RUNTIME_CLIENT_SECRET` first)
+
+### Step 9: Write run notes
+
+Read `ingest-run-notes` and emit `runs/ncbi_<ACCESSION>/RUN_NOTES.md` so the human can review this run and steer the next one:
+
+```bash
+uv run python -m nmdc_ingest_agent.run_notes \
+    --deliverable results/ncbi_<ACCESSION>_nmdc.json \
+    --curation-report results/ncbi_<ACCESSION>_nmdc_curation_report.json \
+    --out-dir runs/ncbi_<ACCESSION> \
+    --source ncbi --accession <ACCESSION> --env <ENV> \
+    --command "uv run nmdc-ingest-ncbi <ACCESSION>" --mint-mode <placeholder|real>
+```
+
+Then fill the **Exclusions** and **Validation** placeholder sections it leaves (see that skill), and phrase each ambiguous case as a question for the PI. This step never overwrites a human-edited `DECISIONS.md`.
 
 ## Output
 
