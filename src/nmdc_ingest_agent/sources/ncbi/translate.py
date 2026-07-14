@@ -28,7 +28,7 @@ from linkml_runtime.dumpers import json_dumper
 
 from nmdc_ingest_agent import GIT_URL as INGEST_AGENT_GIT_URL, __version__ as INGEST_AGENT_VERSION
 from nmdc_ingest_agent.instruments import InstrumentResolver
-from nmdc_ingest_agent.sources.ncbi.mfd import MfdEnvTriadResolver
+from nmdc_ingest_agent.sources.ncbi.env_triad_crosswalk import CrosswalkEnvTriadResolver
 from nmdc_ingest_agent.minting import (
     Minter,
     PlaceholderMinter,
@@ -575,7 +575,7 @@ def build_biosample(
     study_id: str,
     biosample_id: str,
     now: datetime,
-    mfd_resolver: Optional[MfdEnvTriadResolver] = None,
+    crosswalk_resolver: Optional[CrosswalkEnvTriadResolver] = None,
 ) -> nmdc.Biosample:
     accession = sample_data["accession"]
     attrs = sample_data["attributes"]
@@ -627,11 +627,11 @@ def build_biosample(
     env_local = _parse_envo_term(raw_local)
     env_medium = _parse_envo_term(raw_medium)
 
-    # MicroFlora Danica biosamples carry no usable env-triad in NCBI; resolve
-    # them from the v2 MFDO crosswalk by barcode. Only matched slots override the
-    # sentinel; non-MFD samples and unmatched slots keep the placeholder above.
-    if mfd_resolver is not None:
-        resolved = mfd_resolver.resolve(sample_data)
+    # Some sources (e.g. MicroFlora Danica) carry no usable env-triad in NCBI but
+    # ship a per-biosample crosswalk TSV; resolve those by join key. Only matched
+    # slots override the sentinel; unmatched samples/slots keep the placeholder above.
+    if crosswalk_resolver is not None:
+        resolved = crosswalk_resolver.resolve(sample_data)
         if resolved:
             if "env_broad_scale" in resolved:
                 env_broad = resolved["env_broad_scale"]
@@ -1082,7 +1082,7 @@ def build_nmdc_database(
     data: dict,
     minter: Minter,
     resolver: InstrumentResolver,
-    mfd_resolver: Optional[MfdEnvTriadResolver] = None,
+    crosswalk_resolver: Optional[CrosswalkEnvTriadResolver] = None,
 ) -> nmdc.Database:
     project = data["bioproject"]
     raw_biosamples = data["biosamples"]
@@ -1117,7 +1117,7 @@ def build_nmdc_database(
     biosample_acc_to_name: dict[str, str] = {}
     nmdc_biosamples: list[nmdc.Biosample] = []
     for sample, biosample_id in zip(biosamples, biosample_ids):
-        bs = build_biosample(sample, study_id, biosample_id, now, mfd_resolver)
+        bs = build_biosample(sample, study_id, biosample_id, now, crosswalk_resolver)
         nmdc_biosamples.append(bs)
         biosample_acc_to_id[sample["accession"]] = bs.id
         # Name downstream material-processing records after the biosample's
@@ -1525,6 +1525,20 @@ def main():
         ),
     )
     parser.add_argument(
+        "--env-triad-crosswalk",
+        default=None,
+        metavar="TSV",
+        help=(
+            "Path to a per-biosample env-triad crosswalk TSV (keyed by "
+            "'fieldsample_barcode', triad cells as 'label [CURIE]'). Matched biosamples "
+            "get env_broad/local/medium committed at pipeline time. Defaults to "
+            "$NMDC_ENV_TRIAD_CROSSWALK_TSV (or legacy $NMDC_MFD_CROSSWALK_TSV). Without "
+            "one, all env-triad slots emit the ENVO:00000000 sentinel for curation. For "
+            "MicroFlora Danica, point this at examples/microflora-danica/crosswalk/"
+            "mfd_biosamples_annotated.tsv."
+        ),
+    )
+    parser.add_argument(
         "--validate",
         action="store_true",
         help=(
@@ -1571,14 +1585,20 @@ def main():
     print(f"\nFetching NMDC instrument_set ({env}) to resolve instrument_used...")
     resolver = InstrumentResolver.from_api(env)
 
-    # MicroFlora Danica env-triad is resolved deterministically from the v2 MFDO
-    # crosswalk when its data file is present; absent for non-MFD BioProjects.
-    mfd_resolver = MfdEnvTriadResolver.from_tsv()
-    if mfd_resolver is not None:
-        print("  Loaded MFD env-triad crosswalk (v2); MFD biosamples resolved at pipeline.")
+    # Env-triad may be resolved deterministically from a per-biosample crosswalk TSV
+    # supplied via --env-triad-crosswalk or $NMDC_ENV_TRIAD_CROSSWALK_TSV (no built-in
+    # default; MicroFlora Danica points it at its annotated crosswalk). Absent -> every
+    # env-triad slot emits the ENVO:00000000 sentinel for curation.
+    crosswalk_path = Path(args.env_triad_crosswalk) if args.env_triad_crosswalk else None
+    crosswalk_resolver = CrosswalkEnvTriadResolver.from_tsv(crosswalk_path)
+    if crosswalk_resolver is not None:
+        print("  Loaded env-triad crosswalk; matched biosamples resolved at pipeline.")
+    else:
+        print("  No env-triad crosswalk configured; env-triad slots left as sentinels "
+              "for curation (pass --env-triad-crosswalk to resolve deterministically).")
 
     print("\nBuilding NMDC Database...")
-    database = build_nmdc_database(data, minter, resolver, mfd_resolver)
+    database = build_nmdc_database(data, minter, resolver, crosswalk_resolver)
 
     print(f"  Study: {database.study_set[0].id}")
     print(f"  Biosamples: {len(database.biosample_set)}")
