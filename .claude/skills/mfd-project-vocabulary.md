@@ -93,7 +93,7 @@ The SRA library descriptor (`library_strategy`, `library_source`,
 `library_selection`, `lib_layout`) is likewise passed through from the SRA
 `LIBRARY_DESCRIPTOR`. Primer *names* (`8F`/`1391R`/`2490R`) are **not** mapped to
 `pcr_primers`, which requires DNA sequences (`FWD:…;REV:…`). See
-`.claude/skills/ncbi-to-nmdc.md` § Scope.
+`.claude/skills/ncbi-to-nmdc/SKILL.md` § Scope.
 
 ## Maintaining the crosswalk
 
