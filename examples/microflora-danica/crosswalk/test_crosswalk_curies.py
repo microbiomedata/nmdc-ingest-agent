@@ -12,7 +12,7 @@ Covers:
   values GEE refinement can substitute into env_local_scale)
 
 Requires the `ontology` extra (oaklib + ENVO). Run:
-    uv run --extra ontology python3 -m pytest data/mfdo-crosswalk-v2/test_crosswalk_curies.py -v
+    uv run --extra ontology python3 -m pytest examples/microflora-danica/crosswalk/test_crosswalk_curies.py -v
 
 oaklib downloads and caches the ENVO sqlite on first run. The test skips
 cleanly if oaklib is not installed.

@@ -80,7 +80,7 @@ format across BioProjects, so read for meaning rather than matching a pattern:
   *"8F and 1391R"*, *"3NDF and 21R"*.
 
 MFD designs follow the shape *"amplicon sequencing using **\<primers\>** to amplify
-**\<target\>**"* (see `mfd-project-vocabulary.md`), but other projects phrase it
+**\<target\>**"* (see [`references/worked-examples.md`](references/worked-examples.md)), but other projects phrase it
 differently — extract the same two facts however the design is worded. If a design
 genuinely names no target or no primers, omit `description` rather than inventing
 text (omit-rather-than-guess).

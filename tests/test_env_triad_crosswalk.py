@@ -135,14 +135,8 @@ def test_resolve_unknown_key_returns_none(crosswalk_tsv):
 # --- Parity: the real MFD crosswalk resolves MFD00001 via sample_name -----------
 
 def _mfd_annotated_tsv() -> Path | None:
-    for rel in (
-        "examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv",  # after commit 7
-        "data/mfdo-crosswalk-v2/mfd_biosamples_annotated.tsv",                 # before commit 7
-    ):
-        p = _repo_root() / rel
-        if p.exists():
-            return p
-    return None
+    p = _repo_root() / "examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv"
+    return p if p.exists() else None
 
 
 def test_mfd_parity_first_barcode():
