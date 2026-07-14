@@ -1,17 +1,17 @@
 ---
 name: ncbi-to-nmdc
-description: Translate an NCBI BioProject (with BioSamples + SRA runs) into an NMDC-schema-compliant Database JSON file, then hand off curation to the nmdc-env-triad, nmdc-taxon-resolution, and nmdc-schema-reference skills.
+description: "Use this skill to translate an NCBI BioProject (BioSamples plus SRA runs) into an NMDC-schema Database JSON, then hand curation to the nmdc-env-triad, nmdc-taxon-resolution, nmdc-target-gene and nmdc-schema-reference skills, validate, and emit run notes via the ingest-run-notes skill. Trigger on a BioProject accession like PRJNA1452545, on the /ncbi-to-nmdc command, or on requests to ingest, translate, or convert an NCBI project or BioSample into NMDC."
 ---
 
 # NCBI BioProject → NMDC JSON Translation
 
 Given a BioProject accession (e.g. `PRJNA1452545`), fetch linked BioSample and SRA data from NCBI and produce an NMDC-schema-compliant `nmdc.Database` JSON file. This skill owns the source-specific transport (fetch, generate, validate, report). Curation steps that are not NCBI-specific are handled by sibling skills:
 
-- `.claude/skills/nmdc-curation-rules.md` — evidence-first rules every commit must satisfy (cross-skill)
-- `.claude/skills/nmdc-env-triad.md` — ENVO term selection / inference for `env_broad_scale` / `env_local_scale` / `env_medium`
-- `.claude/skills/nmdc-taxon-resolution.md` — NCBITaxon resolution for host / `samp_taxon`
-- `.claude/skills/nmdc-target-gene.md` — amplicon `LibraryPreparation` curation: `description` (from the design text) on every amplicon library, plus `TargetGeneEnum` `target_gene` selection where the pipeline left it unset
-- `.claude/skills/nmdc-schema-reference.md` — LinkML slot ranges, value-type wrappers, enum traps
+- `nmdc-curation-rules` — evidence-first rules every commit must satisfy (cross-skill)
+- `nmdc-env-triad` — ENVO term selection / inference for `env_broad_scale` / `env_local_scale` / `env_medium`
+- `nmdc-taxon-resolution` — NCBITaxon resolution for host / `samp_taxon`
+- `nmdc-target-gene` — amplicon `LibraryPreparation` curation: `description` (from the design text) on every amplicon library, plus `TargetGeneEnum` `target_gene` selection where the pipeline left it unset
+- `nmdc-schema-reference` — LinkML slot ranges, value-type wrappers, enum traps
 
 ## Prerequisites
 
@@ -60,17 +60,17 @@ The script also writes two sidecar files alongside the NMDC JSON:
 
 ### Step 3: Resolve env-triad sentinels
 
-Read `.claude/skills/nmdc-curation-rules.md` and `.claude/skills/nmdc-env-triad.md`. Apply the per-placeholder workflow to every `ENVO:00000000` sentinel in the generated JSON, choosing the resolution branch (§1a, when `has_raw_value` is non-empty) or the inference branch (§1b, when the value was genuinely missing). Update the curation-report row for each (biosample, slot) per the outcome you reach. Validate every committed CURIE per § Validate every committed CURIE.
+Read `nmdc-curation-rules` and `nmdc-env-triad`. Apply the per-placeholder workflow to every `ENVO:00000000` sentinel in the generated JSON, choosing the resolution branch (§1a, when `has_raw_value` is non-empty) or the inference branch (§1b, when the value was genuinely missing). Update the curation-report row for each (biosample, slot) per the outcome you reach. Validate every committed CURIE per § Validate every committed CURIE.
 
 **MicroFlora Danica biosamples are already resolved.** For MFD BioProjects (e.g. PRJNA1071982), the pipeline resolves the env-triad in code from the v2 MFDO crosswalk (`src/nmdc_ingest_agent/sources/ncbi/mfd.py`, keyed on `samp_name`/`MFDID`), so those rows arrive `resolved_at_pipeline` with no env-triad sentinels — there is nothing to curate by hand here. See `.claude/skills/mfd-project-vocabulary.md`. This Step 3 manual pass applies only to remaining sentinels (non-MFD biosamples, other sources, or an MFD biosample missing from the crosswalk's annotated file).
 
 ### Step 4: Resolve host / `samp_taxon` if needed
 
-If the BioProject implies a host organism (e.g. host-associated samples, rhizosphere studies that name the plant) or a `samp_taxon` value needs lifting from free text, read `.claude/skills/nmdc-taxon-resolution.md` and follow its lookup + disambiguation pattern. Apply the unambiguous-intent rule: leave host fields unset and flag for PI follow-up rather than guessing.
+If the BioProject implies a host organism (e.g. host-associated samples, rhizosphere studies that name the plant) or a `samp_taxon` value needs lifting from free text, read `nmdc-taxon-resolution` and follow its lookup + disambiguation pattern. Apply the unambiguous-intent rule: leave host fields unset and flag for PI follow-up rather than guessing.
 
 ### Step 5: Curate amplicon `description` + `target_gene`
 
-The pipeline carries the SRA library descriptor but does not parse the free-text `DESIGN_DESCRIPTION`; every amplicon library is listed in the `amplicon_curation` section of the curation-inputs sidecar (grouped by distinct design, with the design text and the pipeline's current `target_gene`). Read `.claude/skills/nmdc-target-gene.md` and, per design: (1) set `LibraryPreparation.description` on **every** amplicon library, restating the target + primers from the design text in the skill's fixed template; (2) for `target_gene`, commit a single `TargetGeneEnum` value for a single-gene design, leave the pipeline's value as-is when already set, or **leave it unset** for a whole-operon amplicon (the slot is single-valued with no whole-operon value — the operon's target lives in `description`). Patch the listed `LibraryPreparation` records in the generated JSON accordingly. For MFD both operon designs (bacterial `8F`/`2490R`, eukaryotic `3NDF`/`21R`) get a description and **no `target_gene`** — see [nmdc-schema #3238](https://github.com/microbiomedata/nmdc-schema/pull/3238).
+The pipeline carries the SRA library descriptor but does not parse the free-text `DESIGN_DESCRIPTION`; every amplicon library is listed in the `amplicon_curation` section of the curation-inputs sidecar (grouped by distinct design, with the design text and the pipeline's current `target_gene`). Read `nmdc-target-gene` and, per design: (1) set `LibraryPreparation.description` on **every** amplicon library, restating the target + primers from the design text in the skill's fixed template; (2) for `target_gene`, commit a single `TargetGeneEnum` value for a single-gene design, leave the pipeline's value as-is when already set, or **leave it unset** for a whole-operon amplicon (the slot is single-valued with no whole-operon value — the operon's target lives in `description`). Patch the listed `LibraryPreparation` records in the generated JSON accordingly. For MFD both operon designs (bacterial `8F`/`2490R`, eukaryotic `3NDF`/`21R`) get a description and **no `target_gene`** — see [nmdc-schema #3238](https://github.com/microbiomedata/nmdc-schema/pull/3238).
 
 ### Step 6: Verify instrument records
 
@@ -94,7 +94,7 @@ print('Validation passed!')
 "
 ```
 
-When a validation failure points at a non-trivial slot value (nested wrappers, enum ranges, range/scalar confusion), read `.claude/skills/nmdc-schema-reference.md` before guessing at the fix.
+When a validation failure points at a non-trivial slot value (nested wrappers, enum ranges, range/scalar confusion), read `nmdc-schema-reference` before guessing at the fix.
 
 **7b — Runtime endpoint (authoritative).** The NMDC runtime `POST /metadata/json:validate` enforces, on top of per-collection schema validation, **referential integrity** (every `has_input` / `has_output` / `associated_studies` / `instrument_used` / `was_generated_by` / `in_manifest` reference must resolve in the payload or the runtime DB), **biosample-name-uniqueness-per-study**, and **id-uniqueness**:
 
@@ -116,7 +116,7 @@ Report to the user:
 - Study name and accession
 - Number of Biosamples, LibraryPreparations (`material_processing_set`), ProcessedSamples, DataGenerations, DataObjects
 - **Per-slot curation summary** computed from `results/ncbi_<ACCESSION>_nmdc_curation_report.json`. For each of `env_broad_scale`, `env_local_scale`, `env_medium`, count outcomes: `predicted`, `resolved_from_raw`, `resolved_at_pipeline`, `left_sentinel`, `validator_rejected`. The `left_sentinel` count is the curator-follow-up backlog.
-- For soil-package biosamples, whether the MIxS soil-package valueset constraint was enforced (see `nmdc-env-triad.md` § Soil package). If `nmdc-submission-schema` was not importable, surface this explicitly as a known gap in the report — never silent fall-back.
+- For soil-package biosamples, whether the MIxS soil-package valueset constraint was enforced (see `nmdc-env-triad` § Soil package). If `nmdc-submission-schema` was not importable, surface this explicitly as a known gap in the report — never silent fall-back.
 - Any host / taxon fields left unset and flagged for PI follow-up
 - The three output file paths: NMDC JSON, curation inputs sidecar, curation report
 - If the run did not use `--mint-real-ids`, remind the user that IDs are placeholders (shoulder `99`) and that the ingest-ready output requires re-running with `--mint-real-ids` (set `NMDC_RUNTIME_CLIENT_ID` and `NMDC_RUNTIME_CLIENT_SECRET` first)

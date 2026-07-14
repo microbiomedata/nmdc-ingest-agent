@@ -821,7 +821,7 @@ def _extract_target_gene(design_description: str) -> Optional[str]:
     Anything that needs inference is deliberately **not** guessed here and is
     left ``None`` for the ``nmdc-target-gene`` curation skill to resolve (it
     reasons over the design text + primer names with the running agent's model;
-    see ``build_curation_inputs_sidecar`` / ``.claude/skills/nmdc-target-gene.md``).
+    see ``build_curation_inputs_sidecar`` / ``.claude/skills/nmdc-target-gene/SKILL.md``).
     That covers an "rRNA operon" (a bacterial operon spans 16S *and* 23S, so it
     cannot be reduced to one gene by a rule), a design naming more than one gene,
     and shotgun WGS (which names none)."""
@@ -1404,9 +1404,9 @@ def build_curation_inputs_sidecar(data: dict, database: nmdc.Database) -> dict:
     ``description``/``target_gene``).
 
     Bundles BioProject context plus the full raw NCBI attributes dict per
-    biosample (keyed by NMDC biosample id) for env-triad inference per
-    nmdc-env-triad.md, and an ``amplicon_curation`` list of amplicon
-    LibraryPreparations grouped by SRA design for nmdc-target-gene.md.
+    biosample (keyed by NMDC biosample id) for env-triad inference per the
+    nmdc-env-triad skill, and an ``amplicon_curation`` list of amplicon
+    LibraryPreparations grouped by SRA design for the nmdc-target-gene skill.
     """
     project = data.get("bioproject", {})
     raw_biosamples = {bs["accession"]: bs for bs in data.get("biosamples", [])}

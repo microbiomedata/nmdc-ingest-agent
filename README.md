@@ -15,7 +15,7 @@ Every generated JSON artifact is validated against the NMDC LinkML schema, along
 
 | Source | Skill | Module |
 |---|---|---|
-| NCBI BioProject | [`.claude/skills/ncbi-to-nmdc.md`](.claude/skills/ncbi-to-nmdc.md) | [`src/nmdc_ingest_agent/sources/ncbi/`](src/nmdc_ingest_agent/sources/ncbi/) |
+| NCBI BioProject | [`.claude/skills/ncbi-to-nmdc/`](.claude/skills/ncbi-to-nmdc/SKILL.md) | [`src/nmdc_ingest_agent/sources/ncbi/`](src/nmdc_ingest_agent/sources/ncbi/) |
 
 More sources (GOLD, NEON, EMSL, JGI …) will be added as separate subpackages under `src/nmdc_ingest_agent/sources/`.
 
@@ -73,10 +73,10 @@ claude
 
 ### Using the skills from anywhere
 
-The skills in `.claude/skills/` are loaded automatically when you run `claude` inside this repo. To use them from any working directory, copy them into your user-level skills directory:
+The skills in `.claude/skills/` are loaded automatically when you run `claude` inside this repo. Each skill is a directory containing a `SKILL.md` (plus any `references/`, `scripts/`, `assets/`). To use them from any working directory, copy the skill directories into your user-level skills directory:
 
 ```bash
-cp .claude/skills/*.md ~/.claude/skills/
+cp -r .claude/skills/*/ ~/.claude/skills/
 ```
 
 The skill steps invoke `uv run nmdc-ingest-ncbi` and `uv run --extra ontology runoak`, which expect to be executed from inside a `uv sync`'d checkout of this repo. To run the console script outside a checkout, install the package globally (`uv pip install nmdc-ingest-agent` into an active environment) and drop the `uv run` prefix.

@@ -1,6 +1,6 @@
 ---
 name: nmdc-schema-reference
-description: Look up NMDC LinkML slot ranges, value-type wrappers (QuantityValue, ControlledIdentifiedTermValue, etc.), and enums via SchemaView before shaping any non-trivial slot value.
+description: "Use this skill to look up NMDC LinkML slot ranges, value-type wrappers (QuantityValue, ControlledIdentifiedTermValue vs ControlledTermValue) and enum allowed-values via SchemaView before shaping any non-trivial NMDC slot value or diagnosing a validation failure. Other NMDC skills defer here for the canonical value shape."
 ---
 
 # NMDC LinkML schema reference

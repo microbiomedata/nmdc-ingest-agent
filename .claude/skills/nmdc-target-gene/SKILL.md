@@ -1,6 +1,6 @@
 ---
 name: nmdc-target-gene
-description: Curate amplicon LibraryPreparation records the NCBI pipeline could not finish — write a description from the SRA DESIGN_DESCRIPTION (target + primers) for every amplicon library, and select a TargetGeneEnum target_gene value for single-gene amplicons while leaving whole-operon amplicons unset.
+description: "Use this skill to curate amplicon LibraryPreparation records an NCBI ingest left unfinished: write a description (target plus primers) from the SRA DESIGN_DESCRIPTION on every amplicon library, and select a TargetGeneEnum target_gene for single-gene amplicons while leaving whole-operon amplicons unset. Trigger when the run notes or the amplicon_curation sidecar flag amplicon libraries needing a description or target_gene."
 ---
 
 # Amplicon LibraryPreparation curation (description + target_gene)
@@ -40,7 +40,7 @@ hardcoded mapping and no LLM API call in the pipeline. Use whatever model you ar
 running; the biology guidance below makes the decision reproducible across models.
 
 Before committing (or deliberately omitting) any value, **read
-`.claude/skills/nmdc-curation-rules.md`** — its evidence-first / omit-rather-than-guess
+`nmdc-curation-rules`** — its evidence-first / omit-rather-than-guess
 rules govern every commit here.
 
 ## Inputs
@@ -148,6 +148,6 @@ design:
   single-gene design, or **leave it absent** for an operon (the `description` carries
   the target).
 
-Re-validate the file against the schema afterward (see `ncbi-to-nmdc.md` § Step 6),
+Re-validate the file against the schema afterward (see `ncbi-to-nmdc` § Step 6),
 then note in the run report, per design, the description set and whether `target_gene`
 was set (and to what) or deliberately omitted (operon), with counts.

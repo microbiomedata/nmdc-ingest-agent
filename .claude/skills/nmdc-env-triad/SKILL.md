@@ -1,13 +1,13 @@
 ---
 name: nmdc-env-triad
-description: Resolve MIxS env_broad_scale, env_local_scale, and env_medium values to ENVO CURIEs constrained to the correct anchor classes (and the MIxS soil package valueset where applicable) using runoak.
+description: "Use this skill to resolve MIxS env_broad_scale, env_local_scale, and env_medium to ENVO CURIEs via runoak, constrained to the correct anchor classes and the MIxS soil-package valueset. Trigger when an ingest leaves ENVO:00000000 sentinels on biosample env-triad slots, when free-text environment strings need lifting to ENVO, or when land-cover coordinates can refine env_local_scale. Not for taxon or non-environment slots."
 ---
 
 # NMDC env triad curation
 
 Resolve or predict ENVO CURIEs for the MIxS env triad (`env_broad_scale`, `env_local_scale`, `env_medium`). A source skill (e.g. `ncbi-to-nmdc`) hands off here once the deterministic pipeline has emitted `ENVO:00000000` sentinels — either with the submitter's original free text in `has_raw_value` (resolution branch, §1a) or with a genuinely missing value (inference branch, §1b).
 
-Before committing any value, **read `.claude/skills/nmdc-curation-rules.md`** — its evidence-first / no-tautology / omit-rather-than-guess rules govern every commit you make in this skill.
+Before committing any value, **read `nmdc-curation-rules`** — its evidence-first / no-tautology / omit-rather-than-guess rules govern every commit you make in this skill.
 
 ## Runoak setup
 
@@ -65,15 +65,15 @@ Then run **§2 Validate every committed CURIE** before flipping the curation-rep
 2. Search ENVO: `uv run --extra ontology runoak -i sqlite:obo:envo search "<raw value>"`
 3. Filter hits to descendants of the correct anchor class. For each candidate run `uv run --extra ontology runoak -i sqlite:obo:envo ancestors -p i <CURIE>` and confirm the slot's anchor class (from the table above) appears in the ancestor list. Reject candidates that do not.
 4. Pick the closest match; record its CURIE and label.
-5. If no good match exists, leave the `ENVO:00000000` placeholder in place. Per `nmdc-curation-rules.md` Rule 4, write `outcome: "left_sentinel"` to the report — do not guess.
+5. If no good match exists, leave the `ENVO:00000000` placeholder in place. Per `nmdc-curation-rules` Rule 4, write `outcome: "left_sentinel"` to the report — do not guess.
 
-Edit the output JSON to replace each resolved sentinel with the correct CURIE and the **ENVO-official label** (use `runoak info <curie>`). Per `nmdc-curation-rules.md` Rule 5, do **not** copy the raw submitter string into `term.name` — the official label belongs there; the raw string stays in `has_raw_value`.
+Edit the output JSON to replace each resolved sentinel with the correct CURIE and the **ENVO-official label** (use `runoak info <curie>`). Per `nmdc-curation-rules` Rule 5, do **not** copy the raw submitter string into `term.name` — the official label belongs there; the raw string stays in `has_raw_value`.
 
 Set the report row to `outcome: "resolved_from_raw"`, evidence sourced to `biosample.env_<slot>.has_raw_value`.
 
 ### §1b Inference (missing → prediction)
 
-When `has_raw_value` is empty and `name` is `"(not provided)"`, the source pipeline had nothing to lift. Predict from context, refusing if evidence is thin (per `nmdc-curation-rules.md` Rule 4).
+When `has_raw_value` is empty and `name` is `"(not provided)"`, the source pipeline had nothing to lift. Predict from context, refusing if evidence is thin (per `nmdc-curation-rules` Rule 4).
 
 **Inputs to gather** — from the curation inputs sidecar at `results/ncbi_<ACC>_nmdc_curation_inputs.json`, keyed by NMDC biosample id:
 
@@ -81,7 +81,7 @@ When `has_raw_value` is empty and `name` is `"(not provided)"`, the source pipel
 - **Per-sample structured slots already on the NMDC biosample**: `geo_loc_name`, `lat_lon`, `depth`, `elev`, `samp_taxon_id`, `collection_date`, `habitat`, `host_name`, `samp_name`.
 - **Per-sample raw NCBI attributes from the sidecar's `attributes` dict** (anything not on the NMDC biosample): `isol_growth_condt`, `ecosystem`, `ecosystem_type`, `ecosystem_subtype`, `specific_ecosystem`, sample-title text from `ncbi_title`.
 - **Study-level context from the sidecar's `study` block**: `title`, `description`, any abstracts.
-- **Cross-biosample consensus** (gated, ranking signal only): if ≥3 sibling biosamples in the same study have already-resolved (non-sentinel) values that agree on a CURIE for this slot, treat that as a *prior* — but still require per-sample anchor evidence per `nmdc-curation-rules.md` Rule 1. Consensus alone never commits a value. Mixed-environment studies (soil cores + adjacent water; host-associated + bulk soil) commonly break consensus assumptions; if you use consensus and it disagrees with the per-sample evidence, do not commit.
+- **Cross-biosample consensus** (gated, ranking signal only): if ≥3 sibling biosamples in the same study have already-resolved (non-sentinel) values that agree on a CURIE for this slot, treat that as a *prior* — but still require per-sample anchor evidence per `nmdc-curation-rules` Rule 1. Consensus alone never commits a value. Mixed-environment studies (soil cores + adjacent water; host-associated + bulk soil) commonly break consensus assumptions; if you use consensus and it disagrees with the per-sample evidence, do not commit.
 
 **Prediction workflow:**
 
@@ -118,7 +118,7 @@ On any failure: revert the slot to sentinel, set `outcome: "validator_rejected"`
 
 ## Slot value shape
 
-The triad slots range over `ControlledIdentifiedTermValue`, which wraps an `OntologyClass` (`id`: CURIE, `name`: official label). For nested-value-type details and the contrast with `ControlledTermValue` (used when only free text is available), see `.claude/skills/nmdc-schema-reference.md`.
+The triad slots range over `ControlledIdentifiedTermValue`, which wraps an `OntologyClass` (`id`: CURIE, `name`: official label). For nested-value-type details and the contrast with `ControlledTermValue` (used when only free text is available), see `nmdc-schema-reference`.
 
 ## Writing the curation report
 
@@ -126,13 +126,13 @@ The source pipeline (`nmdc-ingest-ncbi`) writes a skeleton at `results/ncbi_<ACC
 
 As you process each slot, update its row in place. Required fields per row:
 
-- `outcome`: one of the values defined in `nmdc-curation-rules.md` § Recording outcomes.
+- `outcome`: one of the values defined in `nmdc-curation-rules` § Recording outcomes.
 - `committed_curie`, `committed_label`: set when committing; null when leaving sentinel or rejecting.
-- `evidence`: list of `{source, quote_or_paraphrase}` rows per `nmdc-curation-rules.md` Rule 1. Required for every commit; can be empty for `left_sentinel`.
+- `evidence`: list of `{source, quote_or_paraphrase}` rows per `nmdc-curation-rules` Rule 1. Required for every commit; can be empty for `left_sentinel`.
 - `candidates_considered`: list of `{curie, label, reason_rejected}` for runoak hits you considered but rejected — useful for the curator to see what was tried.
 - `validator`: dict with `info_ok`, `anchor_ok`, `valueset_ok` (true / false / null).
 
-The curation report is the deliverable to the curator. Step 7 in `ncbi-to-nmdc.md` summarizes it.
+The curation report is the deliverable to the curator. Step 7 in `ncbi-to-nmdc` summarizes it.
 
 ## Soil package
 
