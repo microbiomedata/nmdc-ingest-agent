@@ -73,35 +73,9 @@ Set the report row to `outcome: "resolved_from_raw"`, evidence sourced to `biosa
 
 ### §1b Inference (missing → prediction)
 
-When `has_raw_value` is empty and `name` is `"(not provided)"`, the source pipeline had nothing to lift. Predict from context, refusing if evidence is thin (per `nmdc-curation-rules` Rule 4).
+When `has_raw_value` is empty and `name` is `"(not provided)"`, the source pipeline had nothing to lift. Predict from context, refusing if evidence is thin (per `nmdc-curation-rules` Rule 4). This branch gathers per-sample / study / consensus signals, generates and filters `runoak` candidates against the anchor class, and applies refuse thresholds before committing.
 
-**Inputs to gather** — from the curation inputs sidecar at `results/ncbi_<ACC>_nmdc_curation_inputs.json`, keyed by NMDC biosample id:
-
-- **MIxS package** (`biosamples.<id>.package`, also exposed on the NMDC biosample's `env_package.has_raw_value`) — picks the package valueset and constrains candidates. E.g. `MIMS.me.soil.6.0` → soil branch; `MIMS.me.water.6.0` → water branch; built-environment, host-associated, plant-associated, and others as defined.
-- **Per-sample structured slots already on the NMDC biosample**: `geo_loc_name`, `lat_lon`, `depth`, `elev`, `samp_taxon_id`, `collection_date`, `habitat`, `host_name`, `samp_name`.
-- **Per-sample raw NCBI attributes from the sidecar's `attributes` dict** (anything not on the NMDC biosample): `isol_growth_condt`, `ecosystem`, `ecosystem_type`, `ecosystem_subtype`, `specific_ecosystem`, sample-title text from `ncbi_title`.
-- **Study-level context from the sidecar's `study` block**: `title`, `description`, any abstracts.
-- **Cross-biosample consensus** (gated, ranking signal only): if ≥3 sibling biosamples in the same study have already-resolved (non-sentinel) values that agree on a CURIE for this slot, treat that as a *prior* — but still require per-sample anchor evidence per `nmdc-curation-rules` Rule 1. Consensus alone never commits a value. Mixed-environment studies (soil cores + adjacent water; host-associated + bulk soil) commonly break consensus assumptions; if you use consensus and it disagrees with the per-sample evidence, do not commit.
-
-**Prediction workflow:**
-
-1. Pick the **anchor class** for the slot (table above).
-2. Pick the **package valueset** if the MIxS package is known. If `nmdc-submission-schema` is importable (see § Soil package check below), intersect the runoak ancestor-descendants of the anchor class with the package's allowed list. If not, fall back to anchor-class descendants and surface the gap per the existing soil-package rule.
-3. Generate candidate ENVO terms by searching `runoak` with phrases drawn from the gathered inputs. Examples:
-   - `geo_loc_name="USA: Oregon"` + `attributes.habitat="Rhizosphere soil"` → search "rhizosphere", "rhizosphere soil", "forest" (per geographic context).
-   - `attributes.specific_ecosystem="Soil"` + `attributes.ecosystem_subtype="Rhizosphere"` → "rhizosphere" first.
-   - `BioProject.description` mentioning "montane forest soil" → search "temperate coniferous forest biome".
-4. Filter candidates: must be a descendant of the slot's anchor class (`runoak ancestors -p i <CURIE>`), and (when applicable) inside the package valueset.
-5. Rank by per-sample anchor strength > study-level evidence > sibling-consensus tiebreaker.
-6. Apply the **refuse thresholds** below. If they fire, leave sentinel; write `outcome: "left_sentinel"` to the report.
-7. Otherwise commit, run § Validate every committed CURIE, write the report row with `outcome: "predicted"`, and include evidence rows + candidates considered.
-
-**Refuse thresholds** (the agent must check before committing a prediction):
-
-- No package known AND no per-sample text-bearing slot → leave sentinel.
-- Package known but per-sample slots are all empty/sentinel AND siblings disagree → leave sentinel.
-- Package known + at least one concrete per-sample slot from this list (`geo_loc_name`, `habitat`, `attributes.isol_growth_condt`, `attributes.ecosystem*`, NCBI sample title containing material/feature words, depth+elev+samp_taxon together) → commit a prediction with cited evidence.
-- For `env_medium` specifically: require evidence of the actual sampled material. Pure geographic info alone is not enough (it speaks to biome / feature, not material). Soil package + depth strongly supports a soil-material descendant; water package + lat_lon over ocean supports a water-material descendant.
+For the full inputs list, prediction workflow, and refuse thresholds, see [`references/inference.md`](references/inference.md).
 
 ## §2 Validate every committed CURIE
 
@@ -136,15 +110,6 @@ The curation report is the deliverable to the curator. Step 7 in `ncbi-to-nmdc` 
 
 ## Soil package
 
-For **soil** biosamples (MIxS `soil` or `MIMS.me.soil.*` package), the submission schema further restricts each slot to a package-specific value set (a small curated list of ENVO terms).
+For **soil** biosamples (MIxS `soil` or `MIMS.me.soil.*` package), the submission schema further restricts each slot to a package-specific value set. Check whether `nmdc-submission-schema` is importable; if present, prefer matches inside the soil valueset, and if absent (the current default), fall back to anchor-class descendants **and** tell the source skill's report step that the valueset constraint was not enforced — silent fall-back is a bug.
 
-Before resolving any sentinel on a soil-package biosample, check whether `nmdc-submission-schema` is importable in the active environment:
-
-```bash
-uv run python -c "import nmdc_submission_schema" 2>&1 || echo "MISSING"
-```
-
-- **If present**: pull the allowed values from the soil package and prefer matches inside that valueset.
-- **If absent (current default)**: fall back to the anchor-class descendants above. **You must explicitly tell the source skill's report step** that the soil-package valueset constraint was not enforced, so the run summary calls it out as a known gap. Every soil-package run without `nmdc-submission-schema` should produce a "valueset constraint not enforced" line in the report — silent fall-back is a bug.
-
-> **Future seam.** This subsection will be promoted to its own `nmdc-soil-curation.md` the first time a second package's guidance lands here (water, sediment, host-associated, built-environment). Until then, additions for non-soil packages should live alongside this section in matching subsections so the future split stays mechanical.
+For the importability check and the exact report-gap wording, see [`references/soil-package.md`](references/soil-package.md).

@@ -89,13 +89,7 @@ Then write the description in this fixed template so phrasing is consistent:
 
 > `Amplicon library preparation targeting <target> using <primers> primers`
 
-Worked examples (the three MFD designs):
-
-| `design_description` | `description` |
-|---|---|
-| amplicon sequencing using 8F and 1391R to amplify bacterial 16S rRNA genes | Amplicon library preparation targeting bacterial 16S rRNA genes using 8F and 1391R primers |
-| amplicon sequencing using 8F and 2490R to amplify bacterial rRNA operons | Amplicon library preparation targeting bacterial rRNA operons using 8F and 2490R primers |
-| amplicon sequencing using 3NDF and 21R to amplify eukaryotic rRNA operons | Amplicon library preparation targeting eukaryotic rRNA operons using 3NDF and 21R primers |
+For concrete `design_description` → `description` worked examples, see [`references/worked-examples.md`](references/worked-examples.md).
 
 ## How to decide target_gene
 
@@ -127,14 +121,8 @@ whole-operon amplicon — leave it unset** (omit-rather-than-guess). Do **not** 
 `16S_rRNA`/`18S_rRNA`/`23S_rRNA`/`28S_rRNA` for an operon just because the operon
 contains that gene.
 
-### MFD expected outcome
-
-For PRJNA1071982 the two operon designs are left **unset**: the bacterial operon
-(`8F`/`2490R`, "bacterial rRNA operons") and the eukaryotic operon (`3NDF`/`21R`,
-"eukaryotic rRNA operons"). Both get a `description` (naming target + primers) and
-**no `target_gene`**. Single-gene amplicons (e.g. an `npumi_16SrRNA_*` design naming
-"bacterial 16S rRNA genes") arrive with `target_gene` already set by the pipeline —
-leave it and just add the description.
+A concrete per-project outcome (the MFD operon-vs-single-gene split) is in
+[`references/worked-examples.md`](references/worked-examples.md).
 
 ## Patch the output
 
