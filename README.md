@@ -7,7 +7,7 @@ AI-agent-assisted workflows for translating external metadata sources into NMDC-
 A different approach to ingesting external metadata into NMDC. Rather than writing bespoke Dagster-orchestrated ETL pipelines in [nmdc-runtime](https://github.com/microbiomedata/nmdc-runtime), this repo pairs:
 
 - **Python helper/harness methods** that do the deterministic, mechanical work — calling external APIs (e.g. NCBI E-utilities), traversing source-side links (e.g. BioProject → BioSample / SRA), assembling the `nmdc.Database` object, and running schema + deterministic integrity checks on the result.
-- **Claude Code skills** (checked-in Markdown files at `.claude/skills/`) that guide an AI agent through the project-specific harmonization a curator has historically done: parsing and normalizing free-text field values, inferring implicit values from project-level descriptions, and mapping to the right ontology or database fields (e.g. ENVO terms for the MIxS env triad, NCBITaxon for host taxa). Ambiguous cases are flagged for human follow-up rather than silently guessed. Skills are composable — per-source skills (e.g. `ncbi-to-nmdc`) hand off to shared curation skills (`nmdc-env-triad`, `nmdc-taxon-resolution`, `nmdc-schema-reference`) so curation logic stays reusable across sources.
+- **Claude Code skills** (checked-in skill directories at `.claude/skills/<name>/SKILL.md`) that guide an AI agent through the harmonization a curator has historically done: parsing and normalizing free-text field values, inferring implicit values from study-level descriptions, and mapping to the right ontology or database fields (e.g. ENVO terms for the MIxS env triad, NCBITaxon for host taxa). Ambiguous cases are flagged for human follow-up rather than silently guessed. Skills are **general-purpose and composable** — a per-source skill (`ncbi-to-nmdc`) hands off to shared curation skills (`nmdc-curation-rules`, `nmdc-env-triad`, `nmdc-taxon-resolution`, `nmdc-target-gene`, `nmdc-schema-reference`), builds validated SSSOM mappings via `nmdc-ontology-mapping`, and emits a human-readable summary via `ingest-run-notes`. Project-specific material (e.g. MicroFlora Danica) lives under `examples/`, never as its own skill.
 
 Every generated JSON artifact is validated against the NMDC LinkML schema, alongside additional deterministic checks, before being considered complete.
 
@@ -59,9 +59,13 @@ uv run nmdc-ingest-ncbi PRJNA1452545
 
 # Mint real persistent IDs via the NMDC Runtime API
 uv run nmdc-ingest-ncbi PRJNA1452545 --mint-real-ids
+
+# Resolve env-triad deterministically from a per-biosample crosswalk (e.g. MicroFlora Danica)
+uv run nmdc-ingest-ncbi PRJNA1071982 \
+    --env-triad-crosswalk examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv
 ```
 
-Output lands in `results/ncbi_<ACCESSION>_nmdc.json` relative to your current working directory. The translator creates the `results/` directory if it does not exist.
+Output lands in `results/ncbi_<ACCESSION>_nmdc.json` relative to your current working directory (the translator creates `results/` if needed). A run-notes summary for a curator lands in `runs/ncbi_<ACCESSION>/RUN_NOTES.md` (see the `ingest-run-notes` skill).
 
 For the full semantic workflow (ontology resolution, validation, curator review), use the Claude Code skill:
 
