@@ -7,7 +7,7 @@
 - **Run date:** 2026-06-30
 - **Env:** dev
 - **Mint mode:** placeholder
-- **Command:** uv run nmdc-ingest-ncbi PRJNA1071982
+- **Command:** uv run nmdc-ingest-ncbi PRJNA1071982 --env-triad-crosswalk examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv
 
 ## Record counts
 
