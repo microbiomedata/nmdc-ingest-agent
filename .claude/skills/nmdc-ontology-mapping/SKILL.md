@@ -57,8 +57,9 @@ Per row, the load-bearing columns and how to fill them:
   pair is the hallucination guard — the validator rejects a mismatch.
 - `mapping_justification` — a `semapv:` value (`semapv:ManualMappingCuration`,
   `semapv:LexicalMatching`, …).
-- `confidence` (0–1), `subject_source`, `object_source`, `author_id` (e.g. `orcid:…` or an
-  agent id), `mapping_date`, `comment`.
+- `confidence` (0–1), `subject_source`, `object_source`, `author_id` (the **ORCID of the
+  human curator** accountable for the set — never the agent; record the generating agent in
+  the set-level `mapping_tool` / `mapping_tool_version` header slots), `mapping_date`, `comment`.
 
 Sort rows by impact (most-affected records first) so the highest-leverage mappings are
 reviewed first. Full column reference and the ENVO anchor-per-slot table:

@@ -18,6 +18,8 @@ A `#`-commented YAML metadata header (prefixes + set metadata), then the mapping
 #   CORINE: https://w3id.org/nmdc/vocab/corine/
 # mapping_set_id: https://w3id.org/nmdc/mappings/<name>
 # license: https://creativecommons.org/publicdomain/zero/1.0/
+# mapping_tool: nmdc-ingest-agent
+# mapping_tool_version: <agent or tool version>
 subject_id  subject_label  predicate_id  object_id  object_label  mapping_justification  ...
 ```
 
@@ -37,9 +39,15 @@ declared in `curie_map`, or the set fails to parse. Start from
 | `mapping_justification` | a `semapv:` value — `ManualMappingCuration`, `LexicalMatching`, `CompositeMatching`, … |
 | `confidence` | 0–1 float |
 | `subject_source` / `object_source` | e.g. `CORINE` / `ENVO` |
-| `author_id` | `orcid:…` for a human, or an agent id |
+| `author_id` | ORCID(s) of the **human curator** accountable for the mapping — SSSOM expects ORCIDs, so an agent never goes here (record the generating agent/tool in the set-level `mapping_tool`) |
 | `mapping_date` | ISO `YYYY-MM-DD` |
 | `comment` | free text |
+
+**Author vs. tool.** `author_id` records the ORCID(s) of the human curator accountable for the
+set — agents have no ORCID and never appear here. When an agent generates the rows, record it
+in the set-level `mapping_tool` / `mapping_tool_version` header slots (SSSOM's provenance slot
+for *"the tool or algorithm that was used to generate the mapping"*); the curator who reviews
+and commits the set is the `author_id`.
 
 `object_id` + `object_label` together are the hallucination guard (Chris Mungall's
 id+label rule): `validate_mapping_set.py` rejects a row whose stated label disagrees with the
