@@ -6,19 +6,14 @@ a "mapping" with one row per record is just the curation report with extra cerem
 
 ## Step 0 — reuse before build (do this first)
 
-The regime decision below is about whether to **build** a mapping. Before any of it, ask
-whether one **already exists**:
-
-- A committed project crosswalk (`examples/<project>/crosswalk/…`), a reusable `data/` lookup
-  (e.g. `data/land-cover/`), or a published mapping set covering this vocabulary?
-- For the env-triad, a per-biosample crosswalk the ingest applies via `--env-triad-crosswalk`?
-
-If yes, **apply it — do not author a new set.** Building a fresh mapping when an authoritative
-one exists produces a worse duplicate that drifts from the validated original. The classic trap
-is MicroFlora Danica: its env-triad crosswalk (built from the full 5-level habitat ontology plus
-GEE land-cover) already exists, so an agent seeing MFD's coarse `isolation_source` sentinels
-must reuse that crosswalk, **not** re-derive a coarser mapping from `isolation_source`. Only
-reach Step 1 (below) for a vocabulary with no existing mapping.
+The operational gate is **Step 0 of `SKILL.md`** — if an authoritative mapping already exists
+(a committed `examples/<project>/crosswalk/…`, a reusable `data/` lookup, or, for the env-triad,
+a per-biosample crosswalk the ingest applies via `--env-triad-crosswalk`), apply it and stop; do
+not author a new set. Kept here only for the worked signal of *why*: the classic trap is
+MicroFlora Danica — its env-triad crosswalk (built from the full 5-level habitat ontology plus
+GEE land-cover) already exists, so an agent seeing MFD's coarse `isolation_source` sentinels must
+reuse that crosswalk, **not** re-derive a coarser mapping from `isolation_source`. Only reach
+Step 1 (below) for a vocabulary with no existing mapping.
 
 ## How to measure
 
