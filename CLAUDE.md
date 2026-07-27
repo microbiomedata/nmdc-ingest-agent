@@ -62,5 +62,4 @@ src/nmdc_ingest_agent/       deterministic tools (instruments, minting, validati
 data/                        reusable computable data (ontology maps)
 examples/<project>/          per-project reference records + project-specific assets
 results/                     generated deliverables (gitignored)
-docs/skills-refactor-plan.md the refactor design doc
 ```
