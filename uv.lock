@@ -1669,6 +1669,7 @@ name = "nmdc-ingest-agent"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "linkml" },
     { name = "linkml-runtime" },
     { name = "lxml" },
     { name = "nmdc-api-utilities" },
@@ -1684,11 +1685,13 @@ dev = [
 ontology = [
     { name = "click" },
     { name = "oaklib" },
+    { name = "sssom" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "click", marker = "extra == 'ontology'" },
+    { name = "linkml", specifier = ">=1.9,<1.10" },
     { name = "linkml-runtime", specifier = ">=1.9.4,<1.10" },
     { name = "lxml" },
     { name = "nmdc-api-utilities", specifier = ">=0.6.1,<1" },
@@ -1697,6 +1700,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "requests" },
     { name = "ruff", marker = "extra == 'dev'" },
+    { name = "sssom", marker = "extra == 'ontology'" },
 ]
 provides-extras = ["ontology", "dev"]
 

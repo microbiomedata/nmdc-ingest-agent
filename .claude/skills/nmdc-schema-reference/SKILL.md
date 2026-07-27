@@ -1,6 +1,6 @@
 ---
 name: nmdc-schema-reference
-description: Look up NMDC LinkML slot ranges, value-type wrappers (QuantityValue, ControlledIdentifiedTermValue, etc.), and enums via SchemaView before shaping any non-trivial slot value.
+description: "Use this skill to look up NMDC LinkML slot ranges, value-type wrappers (QuantityValue, ControlledIdentifiedTermValue vs ControlledTermValue) and enum allowed-values via SchemaView before shaping any non-trivial NMDC slot value or diagnosing a validation failure. Other NMDC skills defer here for the canonical value shape."
 ---
 
 # NMDC LinkML schema reference
@@ -17,19 +17,15 @@ Use this skill when shaping a slot value whose range is not a plain string — n
 
 Two ways, in order of preference:
 
-1. **Local package (authoritative for the installed version)** — `nmdc-schema` is a project dependency, so the Python classes are importable and introspectable via `linkml_runtime`:
+1. **Local package (authoritative for the installed version)** — `nmdc-schema` is a project dependency, so the Python classes are introspectable via `linkml_runtime`. Use the bundled helper:
 
-   ```python
-   from nmdc_schema import nmdc
-   from linkml_runtime.utils.schemaview import SchemaView
-   import nmdc_schema
-
-   # Inspect a slot's range, required flag, pattern, etc.
-   sv = SchemaView(nmdc_schema.get_nmdc_schema_definition())
-   print(sv.induced_slot("depth", "Biosample"))
-
-   # Or just look at a class's expected shape
-   help(nmdc.QuantityValue)
+   ```bash
+   # a slot's range, required flag, pattern, multivalued, ...
+   uv run python .claude/skills/nmdc-schema-reference/scripts/inspect_slot.py depth Biosample
+   # or the slots of a class
+   uv run python .claude/skills/nmdc-schema-reference/scripts/inspect_slot.py --class QuantityValue
    ```
+
+   It wraps `SchemaView(nmdc_schema.get_nmdc_schema_definition()).induced_slot(...)`; for a class's expected shape, `help(nmdc.QuantityValue)` in a REPL also works.
 
 2. **Published docs (useful for browsing and cross-referencing)** — https://microbiomedata.github.io/nmdc-schema/. Handy for skimming class hierarchies and allowed enum values, but may be ahead of or behind the installed version — treat the local package as source of truth when they disagree.

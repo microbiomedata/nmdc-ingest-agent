@@ -21,7 +21,7 @@ All IDs use the shoulder `99` and are placeholders; they must be re-minted via t
 ## Quirks worth knowing
 
 - **BioSample discovery path.** BioSamples are discovered via two routes: (1) walking SRA experiments and (2) calling E-utils `elink` directly on the BioProject. The `elink` route catches BioSamples that exist in the BioProject but have no SRA runs yet.
-- **env triad.** The script leaves `env_broad_scale` / `env_local_scale` / `env_medium` as free-text placeholders with a sentinel ENVO CURIE. The skill workflow uses `runoak` to resolve each one to the correct ENVO term within the appropriate MIxS anchor subtree.
+- **env triad.** The script leaves `env_broad_scale` / `env_local_scale` / `env_medium` as free-text placeholders with a sentinel ENVO CURIE, which the skill workflow resolves via `runoak`. When a source ships a per-biosample crosswalk TSV (keyed by `fieldsample_barcode`, triad cells as `label [CURIE]`), pass `--env-triad-crosswalk <TSV>` (or set `$NMDC_ENV_TRIAD_CROSSWALK_TSV`) and matched biosamples are resolved deterministically at build time. MicroFlora Danica uses this with `examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv`.
 - **Instrument.** SRA's `instrument_model` strings are stored verbatim on the generated record with a placeholder `nmdc:inst-99-*` ID. Real Instrument records are resolved at ingest time against the NMDC Runtime.
 - **Host / samp_taxon.** Not inferred automatically. The skill flags ambiguous cases for PI follow-up rather than guessing.
 
@@ -31,6 +31,8 @@ All IDs use the shoulder `99` and are placeholders; they must be re-minted via t
 nmdc-ingest-ncbi PRJNA1452545 --fetch-only   # dump raw NCBI data for review
 nmdc-ingest-ncbi PRJNA1452545                # produce NMDC JSON
 nmdc-ingest-ncbi PRJNA1452545 --validate     # produce, then runtime-validate the JSON
+# resolve env-triad deterministically from a per-biosample crosswalk TSV:
+nmdc-ingest-ncbi PRJNA1071982 --env-triad-crosswalk examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv
 ```
 
 ### Runtime validation (`--validate`)

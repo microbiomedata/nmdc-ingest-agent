@@ -12,7 +12,7 @@ Covers:
   values GEE refinement can substitute into env_local_scale)
 
 Requires the `ontology` extra (oaklib + ENVO). Run:
-    uv run --extra ontology python3 -m pytest data/mfdo-crosswalk-v2/test_crosswalk_curies.py -v
+    uv run --extra ontology python3 -m pytest examples/microflora-danica/crosswalk/test_crosswalk_curies.py -v
 
 oaklib downloads and caches the ENVO sqlite on first run. The test skips
 cleanly if oaklib is not installed.
@@ -29,6 +29,19 @@ from oaklib import get_adapter  # noqa: E402
 
 HERE = Path(__file__).parent
 SUBCLASS = ["rdfs:subClassOf"]
+
+
+def _repo_root() -> Path:
+    here = Path(__file__).resolve()
+    for parent in (here, *here.parents):
+        if (parent / "pyproject.toml").exists():
+            return parent
+    return here.parent
+
+
+# Land-cover maps are reusable (not MFD-specific) and live in data/land-cover/;
+# the MFD crosswalk itself stays beside this test (HERE).
+LAND_COVER = _repo_root() / "data" / "land-cover"
 
 # ENVO anchor classes per triad slot (see build_ontology_crosswalk.py / README ELS allow-list).
 EBS_ANCHOR = "ENVO:00000428"   # biome
@@ -68,7 +81,7 @@ def _all_label_curie_cells():
             if cur:
                 yield f"crosswalk {col} ({_row_label(row)})", lbl, cur
     for map_file in ("corine_envo_map.tsv", "worldcover_envo_map.tsv"):
-        with (HERE / map_file).open(newline="", encoding="utf-8") as f:
+        with (LAND_COVER / map_file).open(newline="", encoding="utf-8") as f:
             for row in csv.DictReader(f, delimiter="\t"):
                 lbl, cur = _label_curie(row.get("env_local_scale", ""))
                 if cur:
@@ -138,7 +151,7 @@ def test_env_medium_under_material(allowed):
 def test_landcover_map_verified_els_in_allowlist(allowed, map_file, label_col):
     """Every ols_verified=yes ELS term in a land-cover map must be allow-list valid,
     since GEE refinement substitutes these into env_local_scale."""
-    path = HERE / map_file
+    path = LAND_COVER / map_file
     bad = []
     with path.open(newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f, delimiter="\t"):
@@ -159,7 +172,7 @@ def test_no_curies_in_notes(map_file):
     CURIE-free so a wrong CURIE can't sit there unverified.
     """
     bad = []
-    with (HERE / map_file).open(newline="", encoding="utf-8") as f:
+    with (LAND_COVER / map_file).open(newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f, delimiter="\t"):
             if re.search(r"ENVO:\d+", row.get("notes") or ""):
                 bad.append(f"{row.get('notes')!r}")

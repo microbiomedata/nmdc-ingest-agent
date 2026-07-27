@@ -5,6 +5,36 @@ Maps all 279 Microflora Danica (MFD) habitat ontology leaves to nmdc-schema Bios
 **End-to-end result (2025-05-28 db, 10,875 biosamples):**
 100% env-triad coverage: `env_broad_scale`, `env_local_scale`, and `env_medium` populated for every sample. GEE-based ELS refinement applied (CORINE preferred over WorldCover). Zero wrong or biome-level ELS CURIEs in output. See [Running the pipeline](#running-the-pipeline).
 
+## Using this crosswalk in an ingest
+
+The per-biosample deliverable `mfd_biosamples_annotated.tsv` is what the NCBI ingest consumes
+to resolve MFD env-triad slots deterministically. It is **opt-in** — pass the flag:
+
+```bash
+uv run nmdc-ingest-ncbi PRJNA1071982 \
+    --env-triad-crosswalk examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv
+```
+
+`CrosswalkEnvTriadResolver` (`src/nmdc_ingest_agent/sources/ncbi/env_triad_crosswalk.py`) joins
+each biosample's `sample_name` to the `fieldsample_barcode` column and commits the triad
+(`outcome: "resolved_at_pipeline"`). Without the flag, MFD env-triad slots are `ENVO:00000000`
+sentinels like any other source. To use the mapping outside the pipeline, join by barcode:
+
+```python
+import csv, pathlib
+
+path = pathlib.Path("examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv")
+with path.open(newline="") as f:
+    by_barcode = {r["fieldsample_barcode"]: r for r in csv.DictReader(f, delimiter="\t")}
+
+row = by_barcode["MFD00001"]
+# row["env_broad_scale"] == "temperate broadleaf forest biome [ENVO:01000202]"
+```
+
+Each triad cell is a combined `"<label> [<CURIE>]"` string. For the MFD amplicon
+`target_gene` / `description` conventions (operons left unset), see the `nmdc-target-gene`
+skill's `references/worked-examples.md`.
+
 ## Files
 
 ### Crosswalk
@@ -20,15 +50,27 @@ Maps all 279 Microflora Danica (MFD) habitat ontology leaves to nmdc-schema Bios
 - **`JOIN_RECIPE.md`**: full documentation of the join recipe that `apply_crosswalk.py` implements.
 - **`mfd_gee_landcover.tsv`**: per-coordinate ESA WorldCover + CORINE land cover (pre-computed; no generation script committed yet).
 
-### Land-cover to EnvO mappings
+### Land-cover to EnvO mappings (moved — reusable, not MFD-specific)
 
-- **`corine_envo_map.tsv`**: all 44 CORINE Level-3 classes mapped to ENVO ELS terms. Entries are `ols_verified=yes` (anchor-class checked), `fails_anchor:*`, or `no anchor-valid ELS`. Used by `apply_crosswalk.py` for GEE ELS refinement.
-- **`worldcover_envo_map.tsv`**: all 11 ESA WorldCover 2020 classes. Same convention. Used as fallback when CORINE label is absent (non-EU coordinates).
+The CORINE and ESA WorldCover → ENVO ELS lookup tables are reusable across projects, so
+they now live at **`data/land-cover/`** (`corine_envo_map.tsv`, `worldcover_envo_map.tsv`)
+rather than here. `apply_crosswalk.py` reads them from there via `--corine-map` /
+`--worldcover-map` (default: `data/land-cover/`).
 
-### Tools (outputs not committed; regenerated on demand)
+### Tools (moved to the nmdc-ontology-mapping skill)
 
-- **`generate_els_allowlist.py`**: generates the ELS allow-list from ENVO via oaklib and batch-verifies the CURIEs in the mapping TSVs (sets their `ols_verified` column). Writes `els_allowlist.tsv` locally; that file is not committed because it is derived from ENVO in one command and goes stale with each ENVO release. Run with `uv run --extra ontology python3 generate_els_allowlist.py --help`.
-- **`search_envo_candidates.py`**: queries OLS4 LLM embeddings (primary) or lexical search (fallback) for ENVO ELS candidates for each row in a land-cover mapping TSV. Works with any TSV that has `*_code` and `*_label` columns. Its candidate output is a curation aid, not committed.
+The vocabulary-agnostic mapping tools now live in
+`.claude/skills/nmdc-ontology-mapping/scripts/` (they work on any `*_code`/`*_label` TSV,
+not just MFD's):
+
+- **`generate_els_allowlist.py`**: generates the ELS allow-list from ENVO via oaklib and
+  batch-verifies the CURIEs in the land-cover map TSVs (sets their `ols_verified` column).
+  Writes `els_allowlist.tsv` locally (not committed; goes stale each ENVO release).
+- **`search_envo_candidates.py`**: queries OLS4 for ENVO ELS candidates for each row of a
+  land-cover mapping TSV. A curation aid; its output is not committed.
+
+MFD-specific build tools (`build_ontology_crosswalk.py`, `apply_crosswalk.py`,
+`mfd_db_to_tsv.py`) stay here in this project folder.
 
 ## Running the pipeline
 

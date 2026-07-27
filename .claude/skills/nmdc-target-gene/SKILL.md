@@ -1,6 +1,6 @@
 ---
 name: nmdc-target-gene
-description: Curate amplicon LibraryPreparation records the NCBI pipeline could not finish — write a description from the SRA DESIGN_DESCRIPTION (target + primers) for every amplicon library, and select a TargetGeneEnum target_gene value for single-gene amplicons while leaving whole-operon amplicons unset.
+description: "Use this skill to curate amplicon LibraryPreparation records an NCBI ingest left unfinished: write a description (target plus primers) from the SRA DESIGN_DESCRIPTION on every amplicon library, and select a TargetGeneEnum target_gene for single-gene amplicons while leaving whole-operon amplicons unset. Trigger when the run notes or the amplicon_curation sidecar flag amplicon libraries needing a description or target_gene."
 ---
 
 # Amplicon LibraryPreparation curation (description + target_gene)
@@ -40,7 +40,7 @@ hardcoded mapping and no LLM API call in the pipeline. Use whatever model you ar
 running; the biology guidance below makes the decision reproducible across models.
 
 Before committing (or deliberately omitting) any value, **read
-`.claude/skills/nmdc-curation-rules.md`** — its evidence-first / omit-rather-than-guess
+`nmdc-curation-rules`** — its evidence-first / omit-rather-than-guess
 rules govern every commit here.
 
 ## Inputs
@@ -80,7 +80,7 @@ format across BioProjects, so read for meaning rather than matching a pattern:
   *"8F and 1391R"*, *"3NDF and 21R"*.
 
 MFD designs follow the shape *"amplicon sequencing using **\<primers\>** to amplify
-**\<target\>**"* (see `mfd-project-vocabulary.md`), but other projects phrase it
+**\<target\>**"* (see [`references/worked-examples.md`](references/worked-examples.md)), but other projects phrase it
 differently — extract the same two facts however the design is worded. If a design
 genuinely names no target or no primers, omit `description` rather than inventing
 text (omit-rather-than-guess).
@@ -89,13 +89,7 @@ Then write the description in this fixed template so phrasing is consistent:
 
 > `Amplicon library preparation targeting <target> using <primers> primers`
 
-Worked examples (the three MFD designs):
-
-| `design_description` | `description` |
-|---|---|
-| amplicon sequencing using 8F and 1391R to amplify bacterial 16S rRNA genes | Amplicon library preparation targeting bacterial 16S rRNA genes using 8F and 1391R primers |
-| amplicon sequencing using 8F and 2490R to amplify bacterial rRNA operons | Amplicon library preparation targeting bacterial rRNA operons using 8F and 2490R primers |
-| amplicon sequencing using 3NDF and 21R to amplify eukaryotic rRNA operons | Amplicon library preparation targeting eukaryotic rRNA operons using 3NDF and 21R primers |
+For concrete `design_description` → `description` worked examples, see [`references/worked-examples.md`](references/worked-examples.md).
 
 ## How to decide target_gene
 
@@ -127,14 +121,8 @@ whole-operon amplicon — leave it unset** (omit-rather-than-guess). Do **not** 
 `16S_rRNA`/`18S_rRNA`/`23S_rRNA`/`28S_rRNA` for an operon just because the operon
 contains that gene.
 
-### MFD expected outcome
-
-For PRJNA1071982 the two operon designs are left **unset**: the bacterial operon
-(`8F`/`2490R`, "bacterial rRNA operons") and the eukaryotic operon (`3NDF`/`21R`,
-"eukaryotic rRNA operons"). Both get a `description` (naming target + primers) and
-**no `target_gene`**. Single-gene amplicons (e.g. an `npumi_16SrRNA_*` design naming
-"bacterial 16S rRNA genes") arrive with `target_gene` already set by the pipeline —
-leave it and just add the description.
+A concrete per-project outcome (the MFD operon-vs-single-gene split) is in
+[`references/worked-examples.md`](references/worked-examples.md).
 
 ## Patch the output
 
@@ -148,6 +136,6 @@ design:
   single-gene design, or **leave it absent** for an operon (the `description` carries
   the target).
 
-Re-validate the file against the schema afterward (see `ncbi-to-nmdc.md` § Step 6),
+Re-validate the file against the schema afterward (see `ncbi-to-nmdc` § Step 7),
 then note in the run report, per design, the description set and whether `target_gene`
 was set (and to what) or deliberately omitted (operon), with counts.
