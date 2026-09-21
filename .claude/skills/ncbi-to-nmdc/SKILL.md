@@ -63,16 +63,19 @@ uv run nmdc-ingest-ncbi PRJNA1071982 --env-triad-crosswalk examples/microflora-d
 
 Without a crosswalk, the script emits `ENVO:00000000` sentinels for every env-triad slot (preserving the raw submitter string in `has_raw_value` when one was provided, or empty + `name="(not provided)"` when the source had nothing); with one, matched biosamples arrive `resolved_at_pipeline`. Either way it only forwards taxon information that NCBI itself supplied. Resolving remaining sentinels and disambiguating hosts is the next two steps' job.
 
-The script also writes two sidecar files alongside the NMDC JSON:
+The script also writes three sidecar files alongside the NMDC JSON:
 
 - `results/ncbi_<ACCESSION>_nmdc_curation_inputs.json` — BioProject context + full NCBI attributes per biosample (the inputs the env-triad skill reads when filling gaps).
 - `results/ncbi_<ACCESSION>_nmdc_curation_report.json` — skeleton with one row per (biosample, slot), all initialized to `outcome: "left_sentinel"`. The agent updates this in place.
+- `results/ncbi_<ACCESSION>_nmdc_term_validation_report.json` — the ontology-term QC pass (linkml-term-validator) over every real CURIE the pipeline committed: existence / obsolescence, label concordance, MIxS anchor class, NMDC value set. Its per-term verdicts are already folded into the curation report's `validator` flags for `resolved_at_pipeline` rows, so a submitter-supplied `ENVO:00002006` labelled "brine" (the PRJNA1414893 case) arrives flagged `label_ok: false` before you curate anything. If the pass could not run (extra missing, ENVO not downloadable), the report says so (`status` ≠ `ok`) and the run continues — it never blocks the ingest.
 
 ### Step 3: Resolve env-triad sentinels
 
 Read `nmdc-curation-rules` and `nmdc-env-triad`. Apply the per-placeholder workflow to every `ENVO:00000000` sentinel in the generated JSON, choosing the resolution branch (§1a, when `has_raw_value` is non-empty) or the inference branch (§1b, when the value was genuinely missing). Update the curation-report row for each (biosample, slot) per the outcome you reach. Validate every committed CURIE per § Validate every committed CURIE.
 
 **First: is this a lot of sentinels a known crosswalk already covers?** If you're staring at thousands of env-triad sentinels and the project has a committed crosswalk (Step 0's `DECISIONS.md` will say so; MicroFlora Danica is the case in point), **stop — do not curate or map them by hand.** Re-run Step 2 with `--env-triad-crosswalk <TSV>` (for MFD, `examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv`) so matched biosamples arrive `resolved_at_pipeline`. Hand-building a mapping from the coarse NCBI `isolation_source` when a richer authoritative crosswalk exists just produces a worse duplicate — reuse beats rebuild.
+
+**Also act on the term-validation findings for terms the pipeline committed.** Read the `*_term_validation_report.json` `findings` (or the `validator` flags in the curation report): a `label_ok: false` row means the deliverable carries the submitter's label on a valid CURIE — replace `term.name` with the ontology label per `nmdc-env-triad` §2 and keep the submitter string in `has_raw_value`; `info_ok: false` (missing or obsolete CURIE) and `anchor_ok: false` / `valueset_ok: false` are handled per `nmdc-curation-rules` Rule 7 (revert to sentinel + `validator_rejected`, or re-resolve).
 
 **Then check the regime** (only for sentinels *not* covered by an existing crosswalk). If many remaining biosamples share the *same* unresolved source term (a repeated `isolation_source`, a habitat/land-cover code, a project vocabulary) and no authoritative mapping exists yet, don't resolve them one at a time — read `nmdc-ontology-mapping`, which decides whether to build a validated SSSOM mapping set, then apply it across the shared term. Resolve the genuinely long-tail remainder per-record with `nmdc-env-triad`. Record which regime you chose (or that an existing crosswalk was reused) in the run notes.
 
@@ -114,13 +117,26 @@ print('Runtime validation passed (All Okay!).')
 - The deliverable carries **no** top-level `@type: Database`: the pipeline serializes with `json_dumper.to_dict` to match the canonical nmdc-runtime ETL (`RuntimeApiUserClient.{validate,submit}_metadata`), which omits it. (The endpoint also ignores unknown / `@`-prefixed top-level keys, so a stray `@type` would validate too — but our output simply doesn't include one.)
 - On failure the error carries the endpoint's **per-collection `detail`**; fix the flagged records and re-run 7b. A network error or HTTP 5xx (a very large deliverable — tens of thousands of records — can 502 the endpoint) reports a friendly message; in that case the local 7a pass is the fallback.
 
+**7c — Ontology term QC (linkml-term-validator).** Neither 7a nor 7b looks *inside* an ontology: a `ControlledIdentifiedTermValue` with a non-existent CURIE, an obsolete term, a wrong label, or an ocean biome in a soil sample's `env_broad_scale` passes both. Re-run the term QC on the **final** deliverable and fold its verdicts into the curation report:
+
+```bash
+uv run nmdc-ingest-validate-terms results/ncbi_<ACCESSION>_nmdc.json \
+    --curation-report results/ncbi_<ACCESSION>_nmdc_curation_report.json
+```
+
+- Exit 0 = clean (warnings allowed), 1 = error-level findings (missing / obsolete CURIE, label mismatch), 2 = could not run (extra not installed, ontology service unreachable) — 2 is not a data failure; say so in the run notes rather than pretending the terms were checked.
+- Each curation-report row whose `committed_curie` was validated gets `validator.{info_ok,label_ok,anchor_ok,valueset_ok}`; rows where you committed a *different* CURIE than the deliverable carries are left alone, so keep the JSON and the report in sync before running it.
+- Fix every error-level finding per `nmdc-curation-rules` Rule 7 and re-run until exit 0. Anchor / value-set warnings are advisory (the NMDC value sets are curated but incomplete): reconsider the term, and if you keep it, say why in the report row's `evidence`.
+- NCBITaxon terms are **unchecked** by default (see `nmdc-taxon-resolution` for the per-term `runoak` check); pass `--adapter NCBITaxon=sqlite:obo:ncbitaxon` (multi-GB download, shared with that skill's `runoak` cache) or `--adapter NCBITaxon=ols:ncbitaxon` to include them.
+
 ### Step 8: Report summary
 
 Report to the user:
 - Study name and accession
 - Number of Biosamples, LibraryPreparations (`material_processing_set`), ProcessedSamples, DataGenerations, DataObjects
 - **Per-slot curation summary** computed from `results/ncbi_<ACCESSION>_nmdc_curation_report.json`. For each of `env_broad_scale`, `env_local_scale`, `env_medium`, count outcomes: `predicted`, `resolved_from_raw`, `resolved_at_pipeline`, `left_sentinel`, `validator_rejected`. The `left_sentinel` count is the curator-follow-up backlog.
-- For soil-package biosamples, whether the MIxS soil-package valueset constraint was enforced (see `nmdc-env-triad` § Soil package). If `nmdc-submission-schema` was not importable, surface this explicitly as a known gap in the report — never silent fall-back.
+- **Ontology term QC summary** from `results/ncbi_<ACCESSION>_nmdc_term_validation_report.json` (`summary`): terms checked, errors, warnings by level, prefixes left unchecked (NCBITaxon by default), sentinels skipped — or its `status` / `reason` if the pass could not run. Name every remaining error-level finding.
+- For soil / water / sediment / plant-associated packages, the NMDC value-set check ran automatically (`valueset_ok`); for every other package the report says no NMDC value set exists (see `nmdc-env-triad` § Package value sets) — surface that explicitly as a known gap, never as a silent pass.
 - Any host / taxon fields left unset and flagged for PI follow-up
 - The three output file paths: NMDC JSON, curation inputs sidecar, curation report
 - If the run did not use `--mint-real-ids`, remind the user that IDs are placeholders (shoulder `99`) and that the ingest-ready output requires re-running with `--mint-real-ids` (set `NMDC_RUNTIME_CLIENT_ID` and `NMDC_RUNTIME_CLIENT_SECRET` first)
@@ -133,6 +149,7 @@ Read `ingest-run-notes` and emit `runs/ncbi_<ACCESSION>/RUN_NOTES.md` so the hum
 uv run python -m nmdc_ingest_agent.run_notes \
     --deliverable results/ncbi_<ACCESSION>_nmdc.json \
     --curation-report results/ncbi_<ACCESSION>_nmdc_curation_report.json \
+    --term-validation-report results/ncbi_<ACCESSION>_nmdc_term_validation_report.json \
     --out-dir runs/ncbi_<ACCESSION> \
     --source ncbi --accession <ACCESSION> --env <ENV> \
     --command "uv run nmdc-ingest-ncbi <ACCESSION>" --mint-mode <placeholder|real>

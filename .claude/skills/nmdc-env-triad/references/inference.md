@@ -15,12 +15,12 @@ Anchor classes and the `runoak` invocation pattern are in the skill body (`SKILL
 **Prediction workflow:**
 
 1. Pick the **anchor class** for the slot (the anchor-class table in `SKILL.md` § Slot anchor classes).
-2. Pick the **package valueset** if the MIxS package is known. If `nmdc-submission-schema` is importable (see [`soil-package.md`](soil-package.md)), intersect the runoak ancestor-descendants of the anchor class with the package's allowed list. If not, fall back to anchor-class descendants and surface the gap per the soil-package rule.
+2. Pick the **package value set** if the MIxS package is one of soil / water / sediment / plant-associated (see [`soil-package.md`](soil-package.md) for where the vendored sets live), and intersect the runoak ancestor-descendants of the anchor class with it. For any other package fall back to anchor-class descendants and surface the "no NMDC value set" gap per that reference.
 3. Generate candidate ENVO terms by searching `runoak` with phrases drawn from the gathered inputs. Examples:
    - `geo_loc_name="USA: Oregon"` + `attributes.habitat="Rhizosphere soil"` → search "rhizosphere", "rhizosphere soil", "forest" (per geographic context).
    - `attributes.specific_ecosystem="Soil"` + `attributes.ecosystem_subtype="Rhizosphere"` → "rhizosphere" first.
    - `BioProject.description` mentioning "montane forest soil" → search "temperate coniferous forest biome".
-4. Filter candidates: must be a descendant of the slot's anchor class (`runoak ancestors -p i <CURIE>`), and (when applicable) inside the package valueset.
+4. Filter candidates: must satisfy the slot's anchor rule (`runoak ancestors -p i <CURIE>`; `SKILL.md` §2 step 2), and (when applicable) inside the package value set.
 5. Rank by per-sample anchor strength > study-level evidence > sibling-consensus tiebreaker.
 6. Apply the **refuse thresholds** below. If they fire, leave sentinel; write `outcome: "left_sentinel"` to the report.
 7. Otherwise commit, run `SKILL.md` § Validate every committed CURIE, write the report row with `outcome: "predicted"`, and include evidence rows + candidates considered.

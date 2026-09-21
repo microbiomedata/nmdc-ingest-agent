@@ -1,14 +1,27 @@
-# Soil package valueset
+# Package value sets (soil, water, sediment, plant-associated)
 
-For **soil** biosamples (MIxS `soil` or `MIMS.me.soil.*` package), the submission schema further restricts each env-triad slot to a package-specific value set (a small curated list of ENVO terms).
+The NMDC submission schema restricts each env-triad slot to a curated value set for four MIxS packages — `SoilInterface`, `WaterInterface`, `SedimentInterface`, `PlantAssociatedInterface` (`EnvBroadScaleSoilEnum`, `EnvMediumWaterEnum`, …). Every other interface (hydrocarbon reservoirs, air, built environment, host-associated, biofilm, wastewater, miscellaneous) accepts any string, so there is nothing to enforce there and the honest report line is "no NMDC value set for `<interface>`".
 
-Before resolving any sentinel on a soil-package biosample, check whether `nmdc-submission-schema` is importable in the active environment:
+The value sets are **vendored** in `src/nmdc_ingest_agent/validators/env_triad_valuesets.tsv` (columns `interface`, `slot`, `enum`, `curie`, `label`; header comments record the `nmdc-submission-schema` version and generation date). You never need to import `nmdc-submission-schema` in the agent environment — its `rdflib<7` pin would downgrade the whole project. To list the allowed terms for a package + slot while curating:
 
 ```bash
-uv run python -c "import nmdc_submission_schema" 2>&1 || echo "MISSING"
+# soil-package env_medium candidates (label + CURIE)
+grep -P "^SoilInterface\tenv_medium\t" src/nmdc_ingest_agent/validators/env_triad_valuesets.tsv | cut -f4,5
 ```
 
-- **If present**: pull the allowed values from the soil package and prefer matches inside that valueset.
-- **If absent (current default)**: fall back to the anchor-class descendants (`SKILL.md` § Slot anchor classes). **You must explicitly tell the source skill's report step** that the soil-package valueset constraint was not enforced, so the run summary calls it out as a known gap. Every soil-package run without `nmdc-submission-schema` should produce a "valueset constraint not enforced" line in the report — silent fall-back is a bug.
+The batch validator (`nmdc-ingest-validate-terms`, `SKILL.md` §2) infers the interface from the biosample's `env_package.has_raw_value` (e.g. `MIMS.me.soil.6.0` → `SoilInterface`) and writes `valueset_ok` per row: `true` / `false` for the four packages, `null` with a "no NMDC value set" note otherwise.
 
-> **Future seam.** This reference will grow into its own `nmdc-soil-curation` skill the first time a second package's guidance lands (water, sediment, host-associated, built-environment). Until then, additions for non-soil packages should live alongside this section in matching subsections so the future split stays mechanical.
+## Using the value sets while resolving
+
+- **Package with a value set**: intersect the anchor-class descendants (`SKILL.md` § Slot anchor classes) with the value set and prefer candidates inside it. A scientifically correct term *outside* the set is allowed — the sets are curated but incomplete — but commit it knowingly: `valueset_ok` will come back `false` (warning), and the report row's `evidence` should say why the term is right anyway.
+- **Package without a value set (or no package)**: resolve against the anchor class alone, **and tell the source skill's report step** so the run summary says "no NMDC value set for `<interface or package>`; value-set constraint not applicable" rather than implying the term was checked against one.
+
+## Keeping the vendored sets current
+
+When `nmdc-submission-schema` publishes a new release, regenerate the TSV in a throwaway overlay (the schema package never enters the project environment) and commit the diff:
+
+```bash
+uv run --with "nmdc-submission-schema>=11.24" python -m nmdc_ingest_agent.validators.generate_valuesets
+```
+
+> **Future seam.** This reference will grow into its own per-package curation skill the first time package-specific *guidance* (beyond the value sets) lands for water, sediment, host-associated or built-environment samples. Until then, additions for other packages live alongside this section so the future split stays mechanical.

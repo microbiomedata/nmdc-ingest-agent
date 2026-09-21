@@ -31,7 +31,7 @@ A "committed" value is one the agent writes into the output JSON or the curation
 
 6. **No CURIE fabrication.** Every committed CURIE must come from a `runoak` lookup in this run. Do not pull CURIEs from memory, from prior conversations, or from the NMDC published docs. Cross-biosample consensus (Rule 6 in `nmdc-env-triad`) is a *ranking* signal that elevates an already-runoak-found candidate; it never substitutes for a fresh lookup.
 
-7. **Validate before commit.** For ontology-bearing slots (env triad, taxon, etc.), the slot-specific skill (`nmdc-env-triad`, `nmdc-taxon-resolution`) names the validators that must pass before a commit. Validator failure means revert to sentinel and write `outcome: "validator_rejected"` to the report — never silently downgrade.
+7. **Validate before commit.** For ontology-bearing slots (env triad, taxon, etc.), the slot-specific skill (`nmdc-env-triad`, `nmdc-taxon-resolution`) names the validators that must pass before a commit, and the batch validator `nmdc-ingest-validate-terms` (linkml-term-validator: CURIE exists / not obsolete, canonical label, anchor class, NMDC value set) writes its verdicts into each report row's `validator` dict — run it on the final deliverable. Validator failure means revert to sentinel and write `outcome: "validator_rejected"` to the report — never silently downgrade.
 
 8. **One reason per commit, terse.** The `quote_or_paraphrase` field is ≤12 words. If you cannot say it in 12 words, the evidence is too thin or you are reaching for a justification rather than reading one. Refuse.
 

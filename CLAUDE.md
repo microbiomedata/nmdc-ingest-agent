@@ -13,6 +13,8 @@ uv sync --extra ontology                       # provisions .venv from uv.lock (
 uv run nmdc-ingest-ncbi PRJNA1452545 --fetch-only   # inspect raw NCBI data
 uv run nmdc-ingest-ncbi PRJNA1452545                # produce NMDC JSON (placeholder IDs)
 uv run nmdc-ingest-ncbi PRJNA1452545 --mint-real-ids   # real IDs via NMDC Runtime API
+uv run nmdc-ingest-validate-terms results/ncbi_PRJNA1452545_nmdc.json \
+    --curation-report results/ncbi_PRJNA1452545_nmdc_curation_report.json   # ontology-term QC (re-run after curation)
 uv run pytest -q                               # tests
 ```
 
@@ -46,10 +48,15 @@ or as a skill's assets, never as its own skill.
   than guess; a left sentinel is a valid, honest outcome. See `nmdc-curation-rules`.
 - **Validation in the loop.** Generated JSON is validated against the NMDC LinkML schema
   (offline) and the runtime `/metadata/json:validate` endpoint (referential integrity).
+  Every ontology term is additionally QC'd with linkml-term-validator
+  (`nmdc-ingest-validate-terms`: CURIE exists / not obsolete, canonical label, MIxS anchor
+  class, NMDC value set); the verdicts land in the curation report's per-row `validator`
+  flags (`info_ok` / `label_ok` / `anchor_ok` / `valueset_ok`, `null` = not checked).
   Fix failures and re-validate; don't silently downgrade.
 - **Tool placement.** Multi-purpose, source-agnostic tools live at `src/nmdc_ingest_agent/`
-  (`instruments.py`, `minting.py`, `validation.py`). Source-specific code lives under
-  `sources/<source>/`. Single-skill helpers live in that skill's `scripts/`.
+  (`instruments.py`, `minting.py`, `validation.py`, `validators/` for ontology-term QC).
+  Source-specific code lives under `sources/<source>/`. Single-skill helpers live in that
+  skill's `scripts/`.
 - **ID + label together.** Ontology-valued slots carry both the CURIE and its official label
   (`ControlledIdentifiedTermValue`), which makes hallucinated terms far harder to slip
   through — validate both.
@@ -58,6 +65,7 @@ or as a skill's assets, never as its own skill.
 
 ```
 src/nmdc_ingest_agent/       deterministic tools (instruments, minting, validation) + sources/ncbi/
+src/nmdc_ingest_agent/validators/   ontology-term QC: projection schema, OAK config, vendored NMDC value sets
 .claude/skills/<name>/       skills (SKILL.md + references/ scripts/ assets/)
 data/                        reusable computable data (ontology maps)
 examples/<project>/          per-project reference records + project-specific assets
