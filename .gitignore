@@ -19,6 +19,9 @@ venv/
 .vscode/
 *.swp
 
+# Claude Code — local per-machine settings/credentials (project settings.json IS tracked)
+.claude/settings.local.json
+
 # OS
 .DS_Store
 Thumbs.db
@@ -30,3 +33,10 @@ Thumbs.db
 
 # Run outputs — don't check in generated JSON from translator runs
 results/
+submissions/
+deletes/
+
+# Cached upstream metadata pulled by the ingest tooling (regenerable, can be large)
+data/mfd_metadata_cache/
+
+# Human-readable run notes are committed (runs/<source>_<ACC>/), but keep the dir tracked when empty

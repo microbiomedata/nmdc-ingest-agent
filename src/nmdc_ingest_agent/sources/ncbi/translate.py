@@ -13,6 +13,7 @@ Or as a module:
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -25,15 +26,20 @@ from lxml import etree
 from nmdc_schema import nmdc
 from linkml_runtime.dumpers import json_dumper
 
+from nmdc_ingest_agent import GIT_URL as INGEST_AGENT_GIT_URL, __version__ as INGEST_AGENT_VERSION
+from nmdc_ingest_agent.instruments import InstrumentResolver
+from nmdc_ingest_agent.sources.ncbi.env_triad_crosswalk import CrosswalkEnvTriadResolver
 from nmdc_ingest_agent.minting import (
     Minter,
     PlaceholderMinter,
     runtime_minter_from_env,
 )
+from nmdc_ingest_agent.validation import RuntimeValidationError, validate_runtime
 
 EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 RATE_LIMIT_DELAY = 0.35
 BATCH_SIZE = 200
+MAX_HTTP_ATTEMPTS = 6
 
 
 def _is_missing(value: str) -> bool:
@@ -48,11 +54,34 @@ def _is_missing(value: str) -> bool:
 # ---------------------------------------------------------------------------
 
 def _eutils_get(endpoint: str, params: dict) -> bytes:
-    time.sleep(RATE_LIMIT_DELAY)
+    """GET an E-utils endpoint, retrying transient network failures.
+
+    NCBI intermittently drops connections mid-response (``ChunkedEncodingError:
+    Response ended prematurely``) or returns transient 5xx, which previously
+    killed an entire multi-thousand-record run. Retry up to ``MAX_HTTP_ATTEMPTS``
+    times with linear backoff. Reading ``resp.content`` is inside the try because
+    that is where the premature-EOF error surfaces."""
     url = f"{EUTILS_BASE}/{endpoint}"
-    resp = requests.get(url, params=params, timeout=60)
-    resp.raise_for_status()
-    return resp.content
+    last_error: Optional[Exception] = None
+    for attempt in range(1, MAX_HTTP_ATTEMPTS + 1):
+        time.sleep(RATE_LIMIT_DELAY)
+        try:
+            resp = requests.get(url, params=params, timeout=120)
+            resp.raise_for_status()
+            return resp.content
+        except requests.exceptions.RequestException as e:
+            last_error = e
+            if attempt < MAX_HTTP_ATTEMPTS:
+                wait = 2.0 * attempt
+                print(
+                    f"  WARNING: NCBI {endpoint} request failed on attempt "
+                    f"{attempt}/{MAX_HTTP_ATTEMPTS} ({e.__class__.__name__}); "
+                    f"retrying in {wait:.0f}s"
+                )
+                time.sleep(wait)
+                continue
+            break
+    raise last_error
 
 
 def esearch(db: str, term: str, batch: int = 9999) -> List[str]:
@@ -221,6 +250,13 @@ def fetch_sra_experiments(bioproject_accession: str) -> List[dict]:
                 ln = lib_desc.find("LIBRARY_NAME")
                 library_name = ln.text if ln is not None and ln.text else ""
 
+            # Free-text DESIGN_DESCRIPTION; MFD encodes the protocol DOI and the
+            # amplicon target gene here (see _extract_protocol_url / _extract_target_gene).
+            design_el = exp.find(".//DESIGN/DESIGN_DESCRIPTION") if exp is not None else None
+            design_description = (
+                design_el.text if design_el is not None and design_el.text else ""
+            )
+
             biosample_accession = ""
             if sample is not None:
                 for xref in sample.findall(".//EXTERNAL_ID"):
@@ -261,6 +297,7 @@ def fetch_sra_experiments(bioproject_accession: str) -> List[dict]:
                 "library_selection": library_selection,
                 "library_layout": library_layout,
                 "library_name": library_name,
+                "design_description": design_description,
                 "runs": runs,
             })
 
@@ -494,6 +531,8 @@ def _build_provenance_metadata(now: datetime) -> nmdc.ProvenanceMetadata:
         add_date=now,
         mod_date=now,
         source_system_of_record=nmdc.SourceSystemEnum.NCBI.text,
+        git_url=INGEST_AGENT_GIT_URL,
+        version=INGEST_AGENT_VERSION,
         type="nmdc:ProvenanceMetadata",
     )
 
@@ -524,7 +563,7 @@ def build_study(project_data: dict, study_id: str, now: datetime) -> nmdc.Study:
         title=project_data["title"],
         description=project_data["description"],
         study_category=nmdc.StudyCategoryEnum.research_study.text,
-        insdc_bioproject_identifiers=[f"insdc.sra:{accession}"],
+        insdc_bioproject_identifiers=[f"bioproject:{accession}"],
         associated_dois=associated_dois or None,
         type="nmdc:Study",
         provenance_metadata=_build_provenance_metadata(now),
@@ -532,7 +571,11 @@ def build_study(project_data: dict, study_id: str, now: datetime) -> nmdc.Study:
 
 
 def build_biosample(
-    sample_data: dict, study_id: str, biosample_id: str, now: datetime
+    sample_data: dict,
+    study_id: str,
+    biosample_id: str,
+    now: datetime,
+    crosswalk_resolver: Optional[CrosswalkEnvTriadResolver] = None,
 ) -> nmdc.Biosample:
     accession = sample_data["accession"]
     attrs = sample_data["attributes"]
@@ -583,6 +626,19 @@ def build_biosample(
     env_broad = _parse_envo_term(raw_broad)
     env_local = _parse_envo_term(raw_local)
     env_medium = _parse_envo_term(raw_medium)
+
+    # Some sources (e.g. MicroFlora Danica) carry no usable env-triad in NCBI but
+    # ship a per-biosample crosswalk TSV; resolve those by join key. Only matched
+    # slots override the sentinel; unmatched samples/slots keep the placeholder above.
+    if crosswalk_resolver is not None:
+        resolved = crosswalk_resolver.resolve(sample_data)
+        if resolved:
+            if "env_broad_scale" in resolved:
+                env_broad = resolved["env_broad_scale"]
+            if "env_local_scale" in resolved:
+                env_local = resolved["env_local_scale"]
+            if "env_medium" in resolved:
+                env_medium = resolved["env_medium"]
 
     lat_lon = None
     raw_latlon = attrs.get("lat_lon", "")
@@ -678,83 +734,269 @@ def build_biosample(
     return biosample
 
 
-def _infer_analyte_category(library_source: str, library_strategy: str) -> str:
-    source_lower = library_source.lower() if library_source else ""
-    strategy_lower = library_strategy.lower() if library_strategy else ""
-    if "metatranscriptomic" in source_lower or strategy_lower == "rna-seq":
-        return "metatranscriptome"
-    if "metagenomic" in source_lower or strategy_lower in ("wgs", "wcs"):
+def _resolve_analyte_category(library_source: str, library_strategy: str) -> str:
+    """Map an SRA ``LIBRARY_SOURCE`` / ``LIBRARY_STRATEGY`` pair to an NMDC
+    ``analyte_category`` (a ``NucleotideSequencingEnum`` permissible value).
+
+    Only the combinations NMDC can map unambiguously are accepted; any other
+    pair raises ``ValueError`` so the caller can exclude the experiment rather
+    than silently mislabel it. The previous implementation defaulted unmatched
+    pairs to ``metagenome`` and, worse, ordered its checks so that AMPLICON +
+    METAGENOMIC experiments matched the metagenome branch first — mislabeling
+    all amplicon data as metagenome (issue #46). It also emitted ``metabarcode``,
+    which is not a permissible ``analyte_category`` value.
+
+    Mappings (case-insensitive on both inputs):
+      - AMPLICON + METAGENOMIC      -> amplicon_sequencing_assay
+      - WGS + METAGENOMIC           -> metagenome
+      - RNA-Seq + METATRANSCRIPTOMIC -> metatranscriptome
+    """
+    source = (library_source or "").strip().upper()
+    strategy = (library_strategy or "").strip().upper()
+    if strategy == "AMPLICON" and source == "METAGENOMIC":
+        return "amplicon_sequencing_assay"
+    if strategy == "WGS" and source == "METAGENOMIC":
         return "metagenome"
-    if strategy_lower == "amplicon":
-        return "metabarcode"
-    return "metagenome"
+    if strategy == "RNA-SEQ" and source == "METATRANSCRIPTOMIC":
+        return "metatranscriptome"
+    raise ValueError(
+        f"No analyte_category mapping for SRA library_source="
+        f"{library_source!r} / library_strategy={library_strategy!r}"
+    )
 
 
-def build_sequencing_records(
-    experiment: dict,
+def _enum_value_texts(enum_cls) -> set:
+    """Permissible-value texts of a generated LinkML enum (excludes the
+    MissingRequiredField sentinel). Used so the valid value sets come from the
+    schema enumeration rather than being hardcoded."""
+    return {
+        v.text
+        for v in vars(enum_cls).values()
+        if getattr(v, "text", None) and v.text != "MissingRequiredField"
+    }
+
+
+_LIB_LAYOUT_VALUES = _enum_value_texts(nmdc.LibLayoutEnum)
+
+
+def _lib_layout(library_layout: str) -> Optional[str]:
+    """Map an SRA LIBRARY_LAYOUT tag (PAIRED/SINGLE) to a LibLayoutEnum value."""
+    v = (library_layout or "").strip().lower()
+    return v if v in _LIB_LAYOUT_VALUES else None
+
+
+# A DOI embedded in the SRA DESIGN_DESCRIPTION free text — MFD's WGS designs read
+# "Miniaturized metagenome DNA preps see https://doi.org/10.1101/2023.09.04.556179".
+_DESIGN_DOI_RE = re.compile(
+    r"(?:https?://(?:dx\.)?doi\.org/|\bdoi:\s*)(10\.\d{4,}/\S+)", re.IGNORECASE
+)
+
+
+def _extract_protocol_url(design_description: str) -> Optional[str]:
+    """Return a protocol DOI URL parsed from the SRA DESIGN_DESCRIPTION, if any.
+
+    The submitter records the library-prep protocol as a DOI in the free-text
+    design description; we surface it as a ``protocol_link`` rather than
+    hardcoding a project-specific URL. None when no DOI is present (e.g. MFD's
+    amplicon designs, which describe primers but cite no DOI)."""
+    if not design_description:
+        return None
+    m = _DESIGN_DOI_RE.search(design_description)
+    if not m:
+        return None
+    bare = m.group(1).rstrip(".,;)")
+    return f"https://doi.org/{bare}"
+
+
+# Explicit rRNA-gene tokens in the DESIGN_DESCRIPTION; "<n>S" maps to "<n>S_rRNA".
+_GENE_TOKEN_RE = re.compile(r"\b(16S|18S|23S|28S)\b", re.IGNORECASE)
+_TARGET_GENE_VALUES = _enum_value_texts(nmdc.TargetGeneEnum)
+
+
+def _extract_target_gene(design_description: str) -> Optional[str]:
+    """Resolve ``target_gene`` from the SRA DESIGN_DESCRIPTION *only when it is
+    unambiguous* — i.e. the design names exactly one explicit rRNA gene token
+    ("...amplify bacterial 16S rRNA genes" -> ``16S_rRNA``).
+
+    Anything that needs inference is deliberately **not** guessed here and is
+    left ``None`` for the ``nmdc-target-gene`` curation skill to resolve (it
+    reasons over the design text + primer names with the running agent's model;
+    see ``build_curation_inputs_sidecar`` / ``.claude/skills/nmdc-target-gene/SKILL.md``).
+    That covers an "rRNA operon" (a bacterial operon spans 16S *and* 23S, so it
+    cannot be reduced to one gene by a rule), a design naming more than one gene,
+    and shotgun WGS (which names none)."""
+    if not design_description:
+        return None
+    found = {
+        f"{m.group(1).upper()}_rRNA" for m in _GENE_TOKEN_RE.finditer(design_description)
+    } & _TARGET_GENE_VALUES
+    return next(iter(found)) if len(found) == 1 else None
+
+
+def _library_key(experiment: dict) -> tuple:
+    """Identity of the *unique library* an SRA experiment represents.
+
+    Multiple SRA experiments can describe the same physical library (e.g. one
+    library re-sequenced across runs/lanes under distinct experiment
+    accessions). They share the SRA library name *and* descriptor, so we key on
+    ``(biosample, library_name, strategy, source, selection, layout)`` and build
+    one LibraryPreparation chain per key rather than per experiment.
+
+    The descriptor is part of the key so two genuinely different preps that
+    happen to reuse one library-name string (e.g. a WGS and an amplicon library
+    both named after the sample) are not merged. When the SRA record has no
+    library name we cannot dedup, so we fall back to the experiment accession to
+    keep each experiment its own library."""
+    lib = (experiment.get("library_name") or "").strip()
+    lib_or_exp = lib or f"__exp__{experiment['experiment_accession']}"
+    return (
+        experiment["biosample_accession"],
+        lib_or_exp,
+        experiment.get("library_strategy", ""),
+        experiment.get("library_source", ""),
+        experiment.get("library_selection", ""),
+        experiment.get("library_layout", ""),
+    )
+
+
+def build_library_records(
+    library_experiments: List[dict],
     study_id: str,
     biosample_id: str,
-    nucleotide_sequencing_id: str,
-    data_object_ids: List[str],
-    instrument_id: Optional[str],
+    biosample_name: str,
+    bioproject_accession: str,
+    run_units: List[dict],
+    library_preparation_id: str,
+    library_output_id: str,
+    manifest_ids: List[str],
     now: datetime,
 ) -> dict:
-    """Build NucleotideSequencing (DataGeneration) and DataObject records for
-    one SRA experiment. The DataGeneration consumes the Biosample directly;
-    Extraction/LibraryPreparation/ProcessedSample records are intentionally
-    out of scope for NCBI-sourced ingest."""
+    """Build the material-processing chain + per-run sequencing records for one
+    *unique library* (a group of SRA experiments sharing a ``_library_key``).
 
-    exp_acc = experiment["experiment_accession"]
+    The chain is **Biosample -> LibraryPreparation -> ProcessedSample ->
+    NucleotideSequencing -> DataObject(s)**. We deliberately do **not** create an
+    Extraction record: NCBI/SRA gives enough information to assert the library
+    prep, but not the nucleic-acid extraction (it is most likely 1:1 with the
+    Biosample, but that cannot be confirmed). So the LibraryPreparation consumes
+    the Biosample directly (``has_input = [biosample]``) and emits the sequencing
+    library ProcessedSample, which the per-run NucleotideSequencing consumes.
 
-    runs = experiment.get("runs", [])
-    if len(data_object_ids) != len(runs):
-        raise ValueError(
-            f"build_sequencing_records: expected {len(runs)} DataObject IDs "
-            f"for experiment {exp_acc}, got {len(data_object_ids)}"
-        )
+    One NucleotideSequencing + one DataObject is emitted **per SRA run** across
+    all of the library's experiments. ``run_units`` is one dict per run —
+    ``{run_acc, exp_acc, instrument_model, instrument_id, ns_id, do_id}`` — already
+    minted by the caller. Runs of this library that share an instrument (so they
+    share biosample + library name + instrument) are poolable replicates: each
+    such group of >1 run is bound by a Manifest via ``DataObject.in_manifest``.
+    ``manifest_ids`` supplies one minted id per such group, consumed in
+    instrument-sorted order.
 
-    source_upper = (experiment.get("library_source") or "").upper()
-    if "TRANSCRIPTOMIC" in source_upper:
-        data_object_type = "Metatranscriptome Raw Reads"
-    else:
-        data_object_type = "Metagenome Raw Reads"
+    Record names follow the MFD example-data conventions; the LibraryPreparation
+    carries the SRA descriptor (strategy/source/selection/layout) and the library
+    ProcessedSample is named after the SRA library name."""
 
+    rep = library_experiments[0]
+
+    # Eligibility (in build_nmdc_database) has already verified this pair maps.
+    analyte_category = _resolve_analyte_category(
+        rep.get("library_source", ""), rep.get("library_strategy", "")
+    )
+    # protocol DOI and amplicon target gene are parsed from the SRA
+    # DESIGN_DESCRIPTION (not hardcoded); both None when the design names neither.
+    design_description = rep.get("design_description", "")
+    target_gene = _extract_target_gene(design_description)
+    protocol_url = _extract_protocol_url(design_description)
+
+    # --- LibraryPreparation: Biosample -> sequencing-library ProcessedSample ----
+    protocol_link = (
+        nmdc.Protocol(url=protocol_url, type="nmdc:Protocol") if protocol_url else None
+    )
+    # NOTE: ``description`` is deliberately *not* set here. For amplicon libraries
+    # it restates the target + primers parsed from the free-text DESIGN_DESCRIPTION
+    # — a natural-language judgment task delegated to the ``nmdc-target-gene``
+    # curation skill (same design text, same records, same pass as target_gene),
+    # rather than a brittle pipeline-side regex. See build_amplicon_curation.
+    library_preparation = nmdc.LibraryPreparation(
+        id=library_preparation_id,
+        name=f"Library preparation process for {biosample_name}",
+        has_input=[biosample_id],
+        has_output=[library_output_id],
+        library_strategy=(rep.get("library_strategy") or None),
+        library_source=(rep.get("library_source") or None),
+        library_selection=(rep.get("library_selection") or None),
+        lib_layout=_lib_layout(rep.get("library_layout", "")),
+        target_gene=target_gene,
+        protocol_link=protocol_link,
+        type="nmdc:LibraryPreparation",
+    )
+    library_name = (rep.get("library_name") or "").strip()
+    library_output = nmdc.ProcessedSample(
+        id=library_output_id,
+        name=library_name or f"Sequencing library for {biosample_name}",
+        description=f"Library for sequencing for {biosample_name}",
+        type="nmdc:ProcessedSample",
+    )
+
+    # --- Manifests: group this library's runs by instrument; >1 run = poolable
+    #     replicates sharing (biosample, library name, instrument) -------------
+    runs_by_instrument: dict[str, list] = {}
+    for ru in run_units:
+        runs_by_instrument.setdefault(ru["instrument_model"], []).append(ru)
+    manifest_id_iter = iter(manifest_ids)
+    do_manifest: dict[str, str] = {}
+    manifests = []
+    label = library_name or biosample_name
+    for instrument in sorted(runs_by_instrument):
+        group = runs_by_instrument[instrument]
+        if len(group) > 1:
+            mid = next(manifest_id_iter)
+            manifests.append(nmdc.Manifest(
+                id=mid,
+                name=f"Sequencing runs for {label} on {instrument}",
+                manifest_category=nmdc.ManifestCategoryEnum.poolable_replicates.text,
+                type="nmdc:Manifest",
+            ))
+            for ru in group:
+                do_manifest[ru["do_id"]] = mid
+
+    # --- Per-run NucleotideSequencing + DataObject -----------------------------
+    nuc_seqs = []
     data_objects = []
-    for run, do_id in zip(runs, data_object_ids):
-        run_acc = run["accession"]
+    for ru in run_units:
+        run_acc, exp_acc = ru["run_acc"], ru["exp_acc"]
+        ns_id, do_id = ru["ns_id"], ru["do_id"]
+        mid = do_manifest.get(do_id)
         data_objects.append(nmdc.DataObject(
             id=do_id,
-            name=run_acc,
-            description=f"SRA run {run_acc} for experiment {exp_acc}",
-            url=f"https://www.ncbi.nlm.nih.gov/sra/{run_acc}",
+            name=f"Data file for run accession {run_acc}",
+            description=f"Data file for run accession {run_acc}",
             data_category=nmdc.DataCategoryEnum.instrument_data.text,
-            data_object_type=data_object_type,
+            data_object_type="SRA toolkit-accessible sequence data",
+            insdc_run_identifiers=[f"insdc.run:{run_acc}"],
+            was_generated_by=ns_id,
+            in_manifest=[mid] if mid else None,
             type="nmdc:DataObject",
         ))
-
-    analyte_category = _infer_analyte_category(
-        experiment.get("library_source", ""),
-        experiment.get("library_strategy", ""),
-    )
-
-    instrument_ids = [instrument_id] if instrument_id else []
-
-    nuc_seq = nmdc.NucleotideSequencing(
-        id=nucleotide_sequencing_id,
-        name=experiment.get("sample_title", "") or exp_acc,
-        has_input=[biosample_id],
-        has_output=list(data_object_ids),
-        associated_studies=[study_id],
-        instrument_used=instrument_ids,
-        analyte_category=analyte_category,
-        insdc_experiment_identifiers=[f"insdc.sra:{exp_acc}"],
-        type="nmdc:NucleotideSequencing",
-        provenance_metadata=_build_provenance_metadata(now),
-    )
+        nuc_seqs.append(nmdc.NucleotideSequencing(
+            id=ns_id,
+            name=f"Run {run_acc} for experiment {exp_acc} - {biosample_name}",
+            has_input=[library_output_id],
+            has_output=[do_id],
+            associated_studies=[study_id],
+            instrument_used=[ru["instrument_id"]] if ru["instrument_id"] else [],
+            analyte_category=analyte_category,
+            insdc_experiment_identifiers=[f"insdc.sra:{exp_acc}"],
+            insdc_bioproject_identifiers=[f"bioproject:{bioproject_accession}"],
+            type="nmdc:NucleotideSequencing",
+            provenance_metadata=_build_provenance_metadata(now),
+        ))
 
     return {
-        "nucleotide_sequencing": nuc_seq,
+        "nucleotide_sequencings": nuc_seqs,
         "data_objects": data_objects,
+        "material_processings": [library_preparation],
+        "processed_samples": [library_output],
+        "manifests": manifests,
     }
 
 
@@ -836,7 +1078,12 @@ def _is_mag_package(package: str) -> bool:
     return any(p.startswith(prefix) for prefix in _MAG_PACKAGE_PREFIXES)
 
 
-def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
+def build_nmdc_database(
+    data: dict,
+    minter: Minter,
+    resolver: InstrumentResolver,
+    crosswalk_resolver: Optional[CrosswalkEnvTriadResolver] = None,
+) -> nmdc.Database:
     project = data["bioproject"]
     raw_biosamples = data["biosamples"]
     experiments = data["sra_experiments"]
@@ -867,11 +1114,18 @@ def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
         minter.mint("nmdc:Biosample", len(biosamples)) if biosamples else []
     )
     biosample_acc_to_id: dict[str, str] = {}
+    biosample_acc_to_name: dict[str, str] = {}
     nmdc_biosamples: list[nmdc.Biosample] = []
     for sample, biosample_id in zip(biosamples, biosample_ids):
-        bs = build_biosample(sample, study_id, biosample_id, now)
+        bs = build_biosample(sample, study_id, biosample_id, now, crosswalk_resolver)
         nmdc_biosamples.append(bs)
         biosample_acc_to_id[sample["accession"]] = bs.id
+        # Name downstream material-processing records after the biosample's
+        # stable sample identifier (samp_name, e.g. the MFD barcode), falling
+        # back to the display name then accession when samp_name is absent.
+        biosample_acc_to_name[sample["accession"]] = (
+            bs.samp_name or bs.name or sample["accession"]
+        )
 
     kept_experiments: list[dict] = []
     skip_warnings: list[str] = []
@@ -885,49 +1139,194 @@ def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
             continue
         kept_experiments.append(exp)
 
-    ns_ids = (
-        minter.mint("nmdc:NucleotideSequencing", len(kept_experiments))
-        if kept_experiments
-        else []
-    )
+    # Resolve each distinct SRA instrument-model string to an *existing* NMDC
+    # Instrument id (instrument_set name match, else InstrumentModelEnum alias).
+    # This runs *before* minting so we never mint ids for records we won't emit.
+    model_counts: dict[str, int] = {}
+    for exp in kept_experiments:
+        model = (exp.get("instrument_model") or "").strip()
+        if model:
+            model_counts[model] = model_counts.get(model, 0) + 1
 
-    total_runs = sum(len(exp.get("runs", [])) for exp in kept_experiments)
+    model_to_instrument_id: dict[str, str] = {}
+    unresolved_models: dict[str, int] = {}
+    for model, count in model_counts.items():
+        instrument_id = resolver.resolve(model)
+        if instrument_id:
+            model_to_instrument_id[model] = instrument_id
+        else:
+            unresolved_models[model] = count
+
+    # The forthcoming `instrument_used` minimum_cardinality=1 schema constraint
+    # makes a DataGeneration record with an empty `instrument_used` invalid, so
+    # we exclude experiments without a resolvable instrument rather than emitting
+    # such records. Biosamples are kept regardless (valid standalone records).
+    # An experiment is eligible only if it has both a resolvable instrument and a
+    # mappable analyte_category (both are required on NucleotideSequencing). Each
+    # unmet condition excludes the DataGeneration with a warning rather than
+    # emitting an invalid record or crashing the run.
+    eligible_experiments: list[dict] = []
+    missing_model_count = 0
+    unmappable_analyte: dict[tuple[str, str], int] = {}
+    for exp in kept_experiments:
+        model = (exp.get("instrument_model") or "").strip()
+        if not model:
+            missing_model_count += 1
+            continue
+        if model not in model_to_instrument_id:
+            continue  # model present but unresolved (counted in unresolved_models)
+        source = exp.get("library_source", "")
+        strategy = exp.get("library_strategy", "")
+        try:
+            _resolve_analyte_category(source, strategy)
+        except ValueError:
+            key = (
+                (source or "").strip() or "(none)",
+                (strategy or "").strip() or "(none)",
+            )
+            unmappable_analyte[key] = unmappable_analyte.get(key, 0) + 1
+            continue
+        eligible_experiments.append(exp)
+
+    if model_to_instrument_id:
+        print(
+            f"  Resolved {len(model_to_instrument_id)} instrument model(s) to "
+            f"existing NMDC Instruments:"
+        )
+        for model, instrument_id in sorted(model_to_instrument_id.items()):
+            print(f"    {model!r} -> {instrument_id} ({model_counts[model]} experiment(s))")
+
+    total_unresolved = sum(unresolved_models.values())
+    total_excluded = total_unresolved + missing_model_count
+    if unresolved_models:
+        print(
+            f"  WARNING: excluded {total_unresolved} DataGeneration record(s) from "
+            f"{len(unresolved_models)} instrument model(s) that did not match any "
+            f"NMDC Instrument:"
+        )
+        for model, count in sorted(unresolved_models.items()):
+            print(f"    {model!r} ({count} experiment(s))")
+    if missing_model_count:
+        print(
+            f"  WARNING: excluded {missing_model_count} DataGeneration record(s) from "
+            f"experiment(s) with no instrument model."
+        )
+    if total_excluded:
+        print(
+            f"  Excluded {total_excluded} DataGeneration record(s) total for missing "
+            f"or unresolvable instrument information (instrument_used is required)."
+        )
+
+    total_unmappable_analyte = sum(unmappable_analyte.values())
+    if unmappable_analyte:
+        print(
+            f"  WARNING: excluded {total_unmappable_analyte} DataGeneration record(s) "
+            f"from {len(unmappable_analyte)} (library_source, library_strategy) "
+            f"combination(s) with no analyte_category mapping (analyte_category is "
+            f"required):"
+        )
+        for (src, strat), count in sorted(unmappable_analyte.items()):
+            print(f"    source={src!r} strategy={strat!r} ({count} experiment(s))")
+
+    # Group eligible experiments into *unique libraries* (one chain per library,
+    # not per experiment — several experiments can re-sequence one library; see
+    # _library_key). Runs of a library that share an instrument are poolable
+    # replicates bound by a Manifest.
+    bioproject_accession = project["accession"]
+    libraries: dict[tuple, list[dict]] = {}
+    for exp in eligible_experiments:
+        libraries.setdefault(_library_key(exp), []).append(exp)
+    library_groups = list(libraries.values())
+
+    # Per library, assemble the run units (one per run, carrying its experiment's
+    # instrument) and tally how many Manifests it needs (instrument subgroups of
+    # >1 run). Minting up front so we never mint ids for records we won't emit.
+    lib_run_units: list[list[dict]] = []
+    n_manifests = 0
+    for group in library_groups:
+        units: list[dict] = []
+        for exp in group:
+            model = (exp.get("instrument_model") or "").strip()
+            instrument_id = model_to_instrument_id[model]
+            for run in exp.get("runs", []):
+                units.append({
+                    "run_acc": run["accession"],
+                    "exp_acc": exp["experiment_accession"],
+                    "instrument_model": model,
+                    "instrument_id": instrument_id,
+                })
+        lib_run_units.append(units)
+        inst_counts: dict[str, int] = {}
+        for u in units:
+            inst_counts[u["instrument_model"]] = inst_counts.get(u["instrument_model"], 0) + 1
+        n_manifests += sum(1 for c in inst_counts.values() if c > 1)
+
+    n_libraries = len(library_groups)
+    total_runs = sum(len(units) for units in lib_run_units)
+
+    library_prep_ids = iter(
+        minter.mint("nmdc:LibraryPreparation", n_libraries) if n_libraries else []
+    )
+    # One ProcessedSample (the sequencing library) per unique library; no
+    # Extraction record / extracted-nucleic-acid ProcessedSample (NCBI does not
+    # support asserting the extraction — see build_library_records).
+    processed_sample_ids = iter(
+        minter.mint("nmdc:ProcessedSample", n_libraries) if n_libraries else []
+    )
+    ns_pool = iter(
+        minter.mint("nmdc:NucleotideSequencing", total_runs) if total_runs else []
+    )
     do_pool = iter(
         minter.mint("nmdc:DataObject", total_runs) if total_runs else []
     )
-
-    unique_models: list[str] = []
-    seen_models: set[str] = set()
-    for exp in kept_experiments:
-        model = (exp.get("instrument_model") or "").strip()
-        if model and model not in seen_models:
-            seen_models.add(model)
-            unique_models.append(model)
-    instrument_ids = (
-        minter.mint("nmdc:Instrument", len(unique_models))
-        if unique_models
-        else []
+    manifest_pool = iter(
+        minter.mint("nmdc:Manifest", n_manifests) if n_manifests else []
     )
-    model_to_instrument_id = dict(zip(unique_models, instrument_ids))
 
     all_nuc_seqs: list[nmdc.NucleotideSequencing] = []
     all_data_objects: list[nmdc.DataObject] = []
-    for exp, ns_id in zip(kept_experiments, ns_ids):
-        run_count = len(exp.get("runs", []))
-        run_do_ids = [next(do_pool) for _ in range(run_count)]
-        model = (exp.get("instrument_model") or "").strip()
-        instrument_id = model_to_instrument_id.get(model) if model else None
-        records = build_sequencing_records(
-            exp,
+    all_material_processings: list[nmdc.MaterialProcessing] = []
+    all_processed_samples: list[nmdc.ProcessedSample] = []
+    all_manifests: list[nmdc.Manifest] = []
+    for group, units in zip(library_groups, lib_run_units):
+        for u in units:
+            u["ns_id"] = next(ns_pool)
+            u["do_id"] = next(do_pool)
+        inst_counts = {}
+        for u in units:
+            inst_counts[u["instrument_model"]] = inst_counts.get(u["instrument_model"], 0) + 1
+        lib_manifest_ids = [
+            next(manifest_pool) for c in inst_counts.values() if c > 1
+        ]
+        bs_acc = group[0]["biosample_accession"]
+        records = build_library_records(
+            group,
             study_id,
-            biosample_acc_to_id[exp["biosample_accession"]],
-            ns_id,
-            run_do_ids,
-            instrument_id,
+            biosample_acc_to_id[bs_acc],
+            biosample_acc_to_name[bs_acc],
+            bioproject_accession,
+            units,
+            next(library_prep_ids),
+            next(processed_sample_ids),
+            lib_manifest_ids,
             now,
         )
-        all_nuc_seqs.append(records["nucleotide_sequencing"])
+        all_nuc_seqs.extend(records["nucleotide_sequencings"])
         all_data_objects.extend(records["data_objects"])
+        all_material_processings.extend(records["material_processings"])
+        all_processed_samples.extend(records["processed_samples"])
+        all_manifests.extend(records["manifests"])
+
+    if n_libraries != len(eligible_experiments):
+        print(
+            f"  Grouped {len(eligible_experiments)} eligible experiment(s) into "
+            f"{n_libraries} unique library/-ies (deduplicated by SRA library name)."
+        )
+    if all_manifests:
+        print(
+            f"  Created {len(all_manifests)} Manifest record(s) grouping poolable "
+            f"replicate runs (shared biosample + library name + instrument)."
+        )
 
     for w in skip_warnings:
         print(f"WARNING: {w}")
@@ -935,8 +1334,11 @@ def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
     database = nmdc.Database()
     database.study_set = [study]
     database.biosample_set = nmdc_biosamples
+    database.material_processing_set = all_material_processings
+    database.processed_sample_set = all_processed_samples
     database.data_generation_set = all_nuc_seqs
     database.data_object_set = all_data_objects
+    database.manifest_set = all_manifests
 
     return database
 
@@ -944,13 +1346,67 @@ def build_nmdc_database(data: dict, minter: Minter) -> nmdc.Database:
 _TRIAD_SLOTS = ("env_broad_scale", "env_local_scale", "env_medium")
 
 
+def build_amplicon_curation(data: dict, database: nmdc.Database) -> list[dict]:
+    """List **every** amplicon LibraryPreparation grouped by distinct SRA
+    DESIGN_DESCRIPTION, for the ``nmdc-target-gene`` skill to resolve per design
+    and patch all of the design's LibraryPreparation ids in one pass.
+
+    Two free-text→record tasks share this work-list because both read the same
+    DESIGN_DESCRIPTION and write the same records:
+
+    - ``description`` — the skill restates the design (target + primers) as prose
+      on every amplicon library. The pipeline does not parse this (no brittle
+      regex on free text); the design text is carried here because it is the only
+      place the target/primers appear (neither is kept as an output slot).
+    - ``target_gene`` — the pipeline already committed it for designs naming one
+      explicit rRNA gene; each row carries that current value (``None`` when the
+      pipeline left it unset, e.g. an rRNA operon) so the skill knows which still
+      need resolving and which to leave alone.
+
+    The join is library_name -> library ProcessedSample (named after it) ->
+    LibraryPreparation.
+    """
+    libprep_by_output = {
+        out_id: m
+        for m in database.material_processing_set
+        if m.type == "nmdc:LibraryPreparation"
+        for out_id in (m.has_output or [])
+    }
+    ps_name_to_id = {p.name: p.id for p in database.processed_sample_set}
+
+    by_design: dict[str, dict] = {}
+    for exp in data.get("sra_experiments", []):
+        if (exp.get("library_strategy") or "").upper() != "AMPLICON":
+            continue
+        lib_name = (exp.get("library_name") or "").strip()
+        ps_id = ps_name_to_id.get(lib_name)
+        libprep = libprep_by_output.get(ps_id) if ps_id else None
+        if libprep is None:  # skip unmatched (no library record was built)
+            continue
+        entry = by_design.setdefault(exp.get("design_description", ""), {
+            "design_description": exp.get("design_description", ""),
+            "example_library_name": lib_name,
+            "target_gene": str(libprep.target_gene) if libprep.target_gene else None,
+            "library_preparation_ids": [],
+        })
+        if libprep.id not in entry["library_preparation_ids"]:
+            entry["library_preparation_ids"].append(libprep.id)
+
+    rows = sorted(by_design.values(), key=lambda e: e["design_description"])
+    for e in rows:
+        e["count"] = len(e["library_preparation_ids"])
+    return rows
+
+
 def build_curation_inputs_sidecar(data: dict, database: nmdc.Database) -> dict:
-    """Inputs file the curation agent reads when filling env-triad gaps.
+    """Inputs file the curation agent reads when filling gaps the pipeline leaves
+    for evidence-based resolution (env-triad, and amplicon
+    ``description``/``target_gene``).
 
     Bundles BioProject context plus the full raw NCBI attributes dict per
-    biosample, keyed by NMDC biosample id. The NMDC schema doesn't model
-    every NCBI attribute (e.g. isol_growth_condt, ecosystem*), so the agent
-    needs this sidecar to do evidence-based inference per nmdc-env-triad.md.
+    biosample (keyed by NMDC biosample id) for env-triad inference per the
+    nmdc-env-triad skill, and an ``amplicon_curation`` list of amplicon
+    LibraryPreparations grouped by SRA design for the nmdc-target-gene skill.
     """
     project = data.get("bioproject", {})
     raw_biosamples = {bs["accession"]: bs for bs in data.get("biosamples", [])}
@@ -981,6 +1437,7 @@ def build_curation_inputs_sidecar(data: dict, database: nmdc.Database) -> dict:
             "publications": project.get("publications", []),
         },
         "biosamples": biosamples_out,
+        "amplicon_curation": build_amplicon_curation(data, database),
     }
 
 
@@ -1123,16 +1580,56 @@ def main():
             "environment. Without this flag, output uses placeholder shoulder '99'."
         ),
     )
+    parser.add_argument(
+        "--env",
+        choices=("dev", "prod"),
+        default=None,
+        help=(
+            "NMDC runtime environment for ID minting and instrument_set lookup. "
+            "Defaults to NMDC_RUNTIME_ENV, else 'dev'. dev-minted IDs are valid in "
+            "both environments, so dev is the safe default; pass 'prod' to promote."
+        ),
+    )
+    parser.add_argument(
+        "--env-triad-crosswalk",
+        default=None,
+        metavar="TSV",
+        help=(
+            "Path to a per-biosample env-triad crosswalk TSV (keyed by "
+            "'fieldsample_barcode', triad cells as 'label [CURIE]'). Matched biosamples "
+            "get env_broad/local/medium committed at pipeline time. Defaults to "
+            "$NMDC_ENV_TRIAD_CROSSWALK_TSV (or legacy $NMDC_MFD_CROSSWALK_TSV). Without "
+            "one, all env-triad slots emit the ENVO:00000000 sentinel for curation. For "
+            "MicroFlora Danica, point this at examples/microflora-danica/crosswalk/"
+            "mfd_biosamples_annotated.tsv."
+        ),
+    )
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help=(
+            "After writing the deliverable, validate it against the NMDC runtime "
+            "'/metadata/json:validate' endpoint (referential integrity + "
+            "biosample-name-uniqueness + id-uniqueness on top of schema). Uses the "
+            "same --env as instrument resolution (instrument_used refs must resolve "
+            "there). Exits non-zero on failure; the file is preserved."
+        ),
+    )
     args = parser.parse_args()
 
     accession = args.accession.strip()
     out_path = args.out or f"results/ncbi_{accession}_nmdc.json"
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
 
+    # Single source of truth for the runtime environment, used by both minting
+    # and instrument resolution. Precedence: --env flag > NMDC_RUNTIME_ENV > dev.
+    env = args.env or os.environ.get("NMDC_RUNTIME_ENV") or "dev"
+    print(f"NMDC runtime environment: {env}")
+
     minter: Minter
     if args.mint_real_ids:
         try:
-            minter = runtime_minter_from_env()
+            minter = runtime_minter_from_env(env)
         except RuntimeError as e:
             sys.exit(f"ERROR: {e}")
     else:
@@ -1148,18 +1645,46 @@ def main():
         print("Review this file, then re-run without --fetch-only to produce NMDC JSON.")
         return
 
+    # Resolve instrument_used against the live NMDC instrument_set in the same
+    # environment as minting (dev's instrument_set is ahead of prod — e.g.
+    # PromethION and Sequel IIe exist only there).
+    print(f"\nFetching NMDC instrument_set ({env}) to resolve instrument_used...")
+    resolver = InstrumentResolver.from_api(env)
+
+    # Env-triad may be resolved deterministically from a per-biosample crosswalk TSV
+    # supplied via --env-triad-crosswalk or $NMDC_ENV_TRIAD_CROSSWALK_TSV (no built-in
+    # default; MicroFlora Danica points it at its annotated crosswalk). Absent -> every
+    # env-triad slot emits the ENVO:00000000 sentinel for curation.
+    crosswalk_path = Path(args.env_triad_crosswalk) if args.env_triad_crosswalk else None
+    crosswalk_resolver = CrosswalkEnvTriadResolver.from_tsv(crosswalk_path)
+    if crosswalk_resolver is not None:
+        print("  Loaded env-triad crosswalk; matched biosamples resolved at pipeline.")
+    else:
+        print("  No env-triad crosswalk configured; env-triad slots left as sentinels "
+              "for curation (pass --env-triad-crosswalk to resolve deterministically).")
+
     print("\nBuilding NMDC Database...")
-    database = build_nmdc_database(data, minter)
+    database = build_nmdc_database(data, minter, resolver, crosswalk_resolver)
 
     print(f"  Study: {database.study_set[0].id}")
     print(f"  Biosamples: {len(database.biosample_set)}")
-    print(f"  DataGenerations: {len(database.data_generation_set)}")
+    print(f"  MaterialProcessings (LibraryPreparation): {len(database.material_processing_set)}")
+    print(f"  ProcessedSamples: {len(database.processed_sample_set)}")
+    print(f"  DataGenerations (NucleotideSequencing, one per run): {len(database.data_generation_set)}")
     print(f"  DataObjects: {len(database.data_object_set)}")
+    print(f"  Manifests: {len(database.manifest_set)}")
 
-    json_str = json_dumper.dumps(database)
+    # Serialize with json_dumper.to_dict (not .dumps) to match the canonical
+    # nmdc-runtime ETL (RuntimeApiUserClient.{validate,submit}_metadata both POST
+    # json_dumper.to_dict(database)). to_dict omits the top-level "@type": "Database"
+    # that .dumps injects, so our deliverable is byte-shaped like what the runtime
+    # produces. to_dict already yields JSON-safe primitives (datetimes serialized to
+    # strings), and local linkml validation passes target_class explicitly so it
+    # never needed the @type header.
+    database_dict = json_dumper.to_dict(database)
 
     with open(out_path, "w") as f:
-        f.write(json_str)
+        json.dump(database_dict, f, indent=2)
     print(f"\nNMDC Database JSON written to {out_path}")
 
     inputs_path = out_path.replace(".json", "_curation_inputs.json")
@@ -1202,6 +1727,38 @@ def main():
             print(f"    {slot}: {', '.join(parts) if parts else '0'}")
         print("  Run /ncbi-to-nmdc to fill gaps via the nmdc-env-triad skill, ")
         print(f"  using the curation inputs sidecar and updating {report_path} in place.")
+
+    amp_rows = inputs_sidecar.get("amplicon_curation", [])
+    amp_libs = sum(r["count"] for r in amp_rows)
+    if amp_rows:
+        needs_gene = sum(r["count"] for r in amp_rows if not r["target_gene"])
+        gene_note = (
+            f"; {needs_gene} still need target_gene resolved" if needs_gene else ""
+        )
+        print(
+            f"\n⚠ AMPLICON CURATION NEEDED: {amp_libs} amplicon LibraryPreparation(s) "
+            f"across {len(amp_rows)} SRA design(s) need a description{gene_note}."
+        )
+        for r in amp_rows:
+            tg = r["target_gene"] or "unset"
+            print(
+                f"    {r['count']:>5} × {r['example_library_name']} "
+                f"[target_gene={tg}]: {r['design_description']}"
+            )
+        print("  Run /ncbi-to-nmdc to resolve via the nmdc-target-gene skill, using the")
+        print(f"  'amplicon_curation' section of {inputs_path} and patching the output.")
+
+    # Runtime endpoint validation (referential integrity + uniqueness on top of
+    # schema). Runs against the same env as instrument resolution so instrument_used
+    # refs resolve. The file is already written, so it is preserved on failure.
+    if args.validate:
+        print(f"\nValidating {out_path} against the NMDC {env} runtime endpoint...")
+        try:
+            validate_runtime(out_path, env)
+        except RuntimeValidationError as e:
+            print(f"✗ Runtime validation FAILED:\n{e}")
+            sys.exit(1)
+        print("✓ Runtime validation passed (All Okay!).")
 
 
 if __name__ == "__main__":

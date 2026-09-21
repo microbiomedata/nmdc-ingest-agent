@@ -1,11 +1,11 @@
 ---
 name: nmdc-curation-rules
-description: Evidence-first curation rules shared across NMDC value-completion skills (env triad, taxon, future). Read this before committing any predicted or resolved value.
+description: "Use this skill before committing ANY predicted or resolved value to an NMDC record: cite a per-sample labeled source, never fabricate a CURIE from memory, omit rather than guess, keep each reason under 12 words, and validate before commit. Read whenever curating NMDC biosample or library metadata (env triad, taxon, target gene, or any curated slot), and whenever another NMDC skill says to read the curation rules."
 ---
 
 # NMDC curation rules
 
-These rules govern every value an agent commits to an NMDC record on behalf of a curator. They apply equally to slots resolved from submitter-provided text and slots predicted from inference inputs (see `nmdc-env-triad.md` § Inference path). Adapted from the NMDC metadata suggestor's evidence-first prompt rubric and tightened for agentic use.
+These rules govern every value an agent commits to an NMDC record on behalf of a curator. They apply equally to slots resolved from submitter-provided text and slots predicted from inference inputs (see `nmdc-env-triad` § Inference path). Adapted from the NMDC metadata suggestor's evidence-first prompt rubric and tightened for agentic use.
 
 A "committed" value is one the agent writes into the output JSON or the curation-report sidecar with an outcome other than `left_sentinel`. Sentinels are not commits — they are the explicit no-evidence outcome.
 
@@ -29,9 +29,9 @@ A "committed" value is one the agent writes into the output JSON or the curation
 
 5. **Exact-text constraint for `has_raw_value` echoes.** When a placeholder carries `has_raw_value` from the source, do not paraphrase that field — preserve the submitter string exactly. The ENVO-official label belongs in `term.name`; the original string stays in `has_raw_value`.
 
-6. **No CURIE fabrication.** Every committed CURIE must come from a `runoak` lookup in this run. Do not pull CURIEs from memory, from prior conversations, or from the NMDC published docs. Cross-biosample consensus (Rule 6 in `nmdc-env-triad.md`) is a *ranking* signal that elevates an already-runoak-found candidate; it never substitutes for a fresh lookup.
+6. **No CURIE fabrication.** Every committed CURIE must come from a `runoak` lookup in this run. Do not pull CURIEs from memory, from prior conversations, or from the NMDC published docs. Cross-biosample consensus (Rule 6 in `nmdc-env-triad`) is a *ranking* signal that elevates an already-runoak-found candidate; it never substitutes for a fresh lookup.
 
-7. **Validate before commit.** For ontology-bearing slots (env triad, taxon, etc.), the slot-specific skill (`nmdc-env-triad.md`, `nmdc-taxon-resolution.md`) names the validators that must pass before a commit. Validator failure means revert to sentinel and write `outcome: "validator_rejected"` to the report — never silently downgrade.
+7. **Validate before commit.** For ontology-bearing slots (env triad, taxon, etc.), the slot-specific skill (`nmdc-env-triad`, `nmdc-taxon-resolution`) names the validators that must pass before a commit. Validator failure means revert to sentinel and write `outcome: "validator_rejected"` to the report — never silently downgrade.
 
 8. **One reason per commit, terse.** The `quote_or_paraphrase` field is ≤12 words. If you cannot say it in 12 words, the evidence is too thin or you are reaching for a justification rather than reading one. Refuse.
 

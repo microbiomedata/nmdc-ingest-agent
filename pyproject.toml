@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nmdc-ingest-agent"
-version = "0.1.0"
+version = "1.0.0"
 description = "AI-agent-assisted workflows for translating external metadata sources into NMDC-schema-compliant JSON"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -24,9 +24,16 @@ classifiers = [
 ]
 dependencies = [
     "linkml-runtime>=1.9.4,<1.10",
+    # linkml.validator.validate_file powers the skill's offline Step-7a validation
+    # (stricter than a json_loader load). Already present transitively via nmdc-schema;
+    # declared explicitly because a skill script imports it directly.
+    "linkml>=1.9,<1.10",
     "lxml",
     "nmdc-api-utilities>=0.6.1,<1",
-    "nmdc-schema>=11.18.1,<12",
+    # 11.21.0 adds the LibraryPreparation INSDC slots (library_strategy/source/
+    # selection, lib_layout) and the "SRA toolkit-accessible sequence data"
+    # data-object type (microbiomedata/nmdc-schema#3214).
+    "nmdc-schema>=11.21.0,<12",
     "requests",
 ]
 
@@ -34,6 +41,11 @@ dependencies = [
 ontology = [
     # For resolving ENVO, NCBITaxon etc. via the skill workflow.
     "oaklib",
+    "click",
+    # SSSOM mapping sets authored by the nmdc-ontology-mapping skill (sssom validate /
+    # parse). Already present transitively via oaklib; pinned explicitly because the
+    # skill's validator depends on it directly.
+    "sssom",
     # For Phase 1 term QC: existence + ID/label concordance on the env triad.
     "linkml-term-validator>=0.3.0",
 ]

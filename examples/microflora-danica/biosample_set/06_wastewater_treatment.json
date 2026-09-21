@@ -1,22 +1,20 @@
 {
-  "id": "nmdc:bsm-99-0e0ee33e",
+  "id": "nmdc:bsm-99-46b144a8",
   "type": "nmdc:Biosample",
-  "name": "MFD10459",
+  "name": "MFD10595",
   "associated_studies": [
-    "nmdc:sty-99-1e6aca8f"
+    "nmdc:sty-99-e9066e1d"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "",
     "term": {
-      "id": "ENVO:01000219",
+      "id": "ENVO:01000249",
       "type": "nmdc:OntologyClass",
-      "name": "anthropogenic terrestrial biome"
+      "name": "urban biome"
     }
   },
   "env_local_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "",
     "term": {
       "id": "ENVO:00002043",
       "type": "nmdc:OntologyClass",
@@ -25,7 +23,6 @@
   },
   "env_medium": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "",
     "term": {
       "id": "ENVO:00002001",
       "type": "nmdc:OntologyClass",
@@ -34,16 +31,18 @@
   },
   "provenance_metadata": {
     "type": "nmdc:ProvenanceMetadata",
-    "add_date": "2026-05-13T18:50:56.295321+00:00",
-    "mod_date": "2026-05-13T18:50:56.295321+00:00",
+    "add_date": "2026-06-25T02:40:52.307956+00:00",
+    "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
+    "mod_date": "2026-06-25T02:40:52.307956+00:00",
+    "version": "1.0.0",
     "source_system_of_record": "NCBI"
   },
   "insdc_biosample_identifiers": [
-    "biosample:SAMN39874321"
+    "biosample:SAMN39874457"
   ],
   "collection_date": {
     "type": "nmdc:TimestampValue",
-    "has_raw_value": "2019-09-16"
+    "has_raw_value": "2019-10-28"
   },
   "env_package": {
     "type": "nmdc:TextValue",
@@ -55,10 +54,10 @@
   },
   "lat_lon": {
     "type": "nmdc:GeolocationValue",
-    "latitude": 56.2133,
-    "longitude": 10.2424
+    "latitude": 56.8105,
+    "longitude": 9.548
   },
-  "samp_name": "MFD10459",
+  "samp_name": "MFD10595",
   "samp_taxon_id": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "term": {

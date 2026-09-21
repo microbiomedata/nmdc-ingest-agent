@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import os
 import secrets
-from typing import Protocol
+from typing import Optional, Protocol
 
 
 _TYPECODE_BY_CLASS: dict[str, str] = {
@@ -24,6 +24,9 @@ _TYPECODE_BY_CLASS: dict[str, str] = {
     "nmdc:NucleotideSequencing": "dgns",
     "nmdc:DataObject": "dobj",
     "nmdc:Instrument": "inst",
+    "nmdc:LibraryPreparation": "libprp",
+    "nmdc:ProcessedSample": "procsm",
+    "nmdc:Manifest": "manif",
 }
 
 
@@ -32,7 +35,17 @@ class Minter(Protocol):
 
 
 class PlaceholderMinter:
-    """Emit ``nmdc:<typecode>-99-<random8>`` IDs. Offline use only."""
+    """Emit ``nmdc:<typecode>-99-<random>`` IDs. Offline use only.
+
+    IDs are guaranteed unique across the lifetime of the instance: a 5-byte
+    (40-bit) random blade makes collisions vanishingly unlikely, and a record of
+    every issued id rejects any that does collide. (A 4-byte blade hit the
+    birthday bound around ~12k ids of one type — e.g. one ProcessedSample per
+    library for a large BioProject — and produced duplicate ids.)
+    """
+
+    def __init__(self) -> None:
+        self._issued: set[str] = set()
 
     def mint(self, schema_class: str, count: int = 1) -> list[str]:
         try:
@@ -41,7 +54,14 @@ class PlaceholderMinter:
             raise ValueError(
                 f"PlaceholderMinter has no typecode mapping for {schema_class!r}"
             ) from exc
-        return [f"nmdc:{typecode}-99-{secrets.token_hex(4)}" for _ in range(count)]
+        out: list[str] = []
+        while len(out) < count:
+            candidate = f"nmdc:{typecode}-99-{secrets.token_hex(5)}"
+            if candidate in self._issued:
+                continue
+            self._issued.add(candidate)
+            out.append(candidate)
+        return out
 
 
 class RuntimeMinter:
@@ -59,15 +79,16 @@ class RuntimeMinter:
         return [result] if isinstance(result, str) else list(result)
 
 
-def runtime_minter_from_env() -> RuntimeMinter:
+def runtime_minter_from_env(env: Optional[str] = None) -> RuntimeMinter:
     """Build a :class:`RuntimeMinter` from environment credentials.
 
     Required:
       - ``NMDC_RUNTIME_CLIENT_ID``
       - ``NMDC_RUNTIME_CLIENT_SECRET``
 
-    Optional:
-      - ``NMDC_RUNTIME_ENV`` — ``prod`` (default) or ``dev``.
+    The runtime environment is taken from ``env`` when given, else the
+    ``NMDC_RUNTIME_ENV`` variable, else ``dev``. dev-minted IDs are valid in
+    both environments, so dev is the safe default.
     """
     client_id = os.environ.get("NMDC_RUNTIME_CLIENT_ID")
     client_secret = os.environ.get("NMDC_RUNTIME_CLIENT_SECRET")
@@ -88,7 +109,7 @@ def runtime_minter_from_env() -> RuntimeMinter:
     from nmdc_api_utilities.auth import NMDCAuth
     from nmdc_api_utilities.minter import Minter as _UpstreamMinter
 
-    env = os.environ.get("NMDC_RUNTIME_ENV", "prod")
+    env = env or os.environ.get("NMDC_RUNTIME_ENV") or "dev"
     auth = NMDCAuth(
         client_id=client_id,
         client_secret=client_secret,

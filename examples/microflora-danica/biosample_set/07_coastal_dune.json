@@ -1,31 +1,28 @@
 {
-  "id": "nmdc:bsm-99-ca7f4f52",
+  "id": "nmdc:bsm-99-61298800",
   "type": "nmdc:Biosample",
-  "name": "MFD00010",
+  "name": "MFD04287",
   "associated_studies": [
-    "nmdc:sty-99-1e6aca8f"
+    "nmdc:sty-99-e9066e1d"
   ],
   "env_broad_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000000",
+      "id": "ENVO:01000215",
       "type": "nmdc:OntologyClass",
-      "name": "(not provided)"
+      "name": "temperate shrubland biome"
     }
   },
   "env_local_scale": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "",
     "term": {
-      "id": "ENVO:00000170",
+      "id": "ENVO:00000416",
       "type": "nmdc:OntologyClass",
-      "name": "dune"
+      "name": "coastal dune"
     }
   },
   "env_medium": {
     "type": "nmdc:ControlledIdentifiedTermValue",
-    "has_raw_value": "",
     "term": {
       "id": "ENVO:00001998",
       "type": "nmdc:OntologyClass",
@@ -34,16 +31,18 @@
   },
   "provenance_metadata": {
     "type": "nmdc:ProvenanceMetadata",
-    "add_date": "2026-05-13T18:50:56.295321+00:00",
-    "mod_date": "2026-05-13T18:50:56.295321+00:00",
+    "add_date": "2026-06-25T02:40:52.307956+00:00",
+    "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
+    "mod_date": "2026-06-25T02:40:52.307956+00:00",
+    "version": "1.0.0",
     "source_system_of_record": "NCBI"
   },
   "insdc_biosample_identifiers": [
-    "biosample:SAMN39864942"
+    "biosample:SAMN39874936"
   ],
   "collection_date": {
     "type": "nmdc:TimestampValue",
-    "has_raw_value": "2019-08-01"
+    "has_raw_value": "2021-09-03"
   },
   "env_package": {
     "type": "nmdc:TextValue",
@@ -55,10 +54,10 @@
   },
   "lat_lon": {
     "type": "nmdc:GeolocationValue",
-    "latitude": 57.65409,
-    "longitude": 10.40661
+    "latitude": 56.01882,
+    "longitude": 11.97852
   },
-  "samp_name": "MFD00010",
+  "samp_name": "MFD04287",
   "samp_taxon_id": {
     "type": "nmdc:ControlledIdentifiedTermValue",
     "term": {

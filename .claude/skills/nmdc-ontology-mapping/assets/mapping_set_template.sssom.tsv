@@ -1,0 +1,14 @@
+# curie_map:
+#   ENVO: http://purl.obolibrary.org/obo/ENVO_
+#   NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_
+#   skos: http://www.w3.org/2004/02/skos/core#
+#   semapv: https://w3id.org/semapv/vocab/
+#   orcid: https://orcid.org/
+#   CORINE: https://w3id.org/nmdc/vocab/corine/
+# mapping_set_id: https://w3id.org/nmdc/mappings/TEMPLATE
+# mapping_set_title: TEMPLATE source-vocabulary to NMDC/ENVO mapping set
+# license: https://creativecommons.org/publicdomain/zero/1.0/
+# mapping_tool: nmdc-ingest-agent
+# mapping_tool_version: REPLACE-with-agent-or-tool-version
+subject_id	subject_label	predicate_id	object_id	object_label	mapping_justification	confidence	subject_source	object_source	author_id	mapping_date	comment
+CORINE:111	Continuous urban fabric	skos:broadMatch	ENVO:00000062	populated place	semapv:ManualMappingCuration	0.9	CORINE	ENVO	orcid:0000-0000-0000-0000	2026-07-13	example row for env_local_scale — replace with your own
