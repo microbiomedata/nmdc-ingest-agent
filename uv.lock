@@ -1974,7 +1974,7 @@ requires-dist = [
     { name = "click", marker = "extra == 'ontology'" },
     { name = "linkml", specifier = ">=1.9,<1.10" },
     { name = "linkml-runtime", specifier = ">=1.9.4,<1.10" },
-    { name = "linkml-term-validator", marker = "extra == 'ontology'", specifier = ">=0.3.0" },
+    { name = "linkml-term-validator", marker = "extra == 'ontology'", specifier = ">=0.4.5,<1" },
     { name = "lxml" },
     { name = "nmdc-api-utilities", specifier = ">=0.6.1,<1" },
     { name = "nmdc-schema", specifier = ">=11.21.0,<12" },

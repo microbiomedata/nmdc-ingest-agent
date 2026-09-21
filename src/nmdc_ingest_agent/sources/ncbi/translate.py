@@ -35,6 +35,12 @@ from nmdc_ingest_agent.minting import (
     runtime_minter_from_env,
 )
 from nmdc_ingest_agent.validation import RuntimeValidationError, validate_runtime
+from nmdc_ingest_agent.validators.extract import extract_observed_terms
+from nmdc_ingest_agent.validators.run import (
+    format_summary as format_term_validation_summary,
+    merge_into_curation_report,
+    run_term_validation,
+)
 
 EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 RATE_LIMIT_DELAY = 0.35
@@ -1495,69 +1501,45 @@ def summarize_curation_report(report: dict) -> dict:
     return counts
 
 
-def _run_term_validation_step(
-    *,
-    database: nmdc.Database,
+def run_term_validation_step(
+    database_dict: dict,
     out_path: str,
     report: dict,
     report_path: str,
-    report_existed: bool,
-) -> None:
-    """Auto-run term validation when the ontology extra is installed.
+) -> Optional[dict]:
+    """Ontology-term QC (linkml-term-validator) over the deliverable just written.
 
-    Writes a *_term_validation_report.json sidecar regardless, and merges
-    findings into the curation_report's per-row validator stub only when the
-    curation_report was freshly created on this run (so we never clobber a
-    curator's in-flight edits).
+    Always writes ``<out>_term_validation_report.json`` next to the deliverable
+    and folds the per-term flags (``info_ok`` / ``label_ok`` / ``anchor_ok`` /
+    ``valueset_ok``) into the curation report's rows — including a preserved,
+    curator-edited report, but only for rows whose committed CURIE is the one
+    that was validated. Optional QC must never abort an ingest: every failure
+    mode (extra not installed, ontology service unreachable, first-run ENVO
+    download failing offline) is reported as a status line and the run goes on.
+    Returns the validation report dict (None only if even that could not be built).
     """
-    try:
-        from nmdc_ingest_agent.validators.extract import extract_observed_terms
-        from nmdc_ingest_agent.validators.run import (
-            merge_into_curation_report,
-            run_term_validation,
-        )
-    except ImportError as exc:
-        print(
-            f"Term validation skipped: validators package import failed ({exc})",
-            file=sys.stderr,
-        )
-        return
-
-    observed = extract_observed_terms(database)
     validation_path = out_path.replace(".json", "_term_validation_report.json")
-    work_dir = Path(out_path).parent
+    try:
+        instance = extract_observed_terms(database_dict)
+        validation = run_term_validation(instance)
+        validation["input"] = out_path
+        with open(validation_path, "w") as f:
+            json.dump(validation, f, indent=2, default=str)
+    except Exception as exc:  # noqa: BLE001 — see docstring
+        print(f"Term validation skipped: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return None
 
-    result = run_term_validation(observed, work_dir=work_dir)
-
-    payload = {
-        "input": out_path,
-        "observed_terms": observed["observed_terms"],
-        **result,
-    }
-    with open(validation_path, "w") as f:
-        json.dump(payload, f, indent=2, default=str)
-
-    if result.get("skipped"):
-        print(
-            f"Term validation skipped: {result['reason']}",
-            file=sys.stderr,
-        )
-        print(f"Term validation report written to {validation_path}")
-        return
-
-    summary = result["summary"]
-    print(
-        f"Term validation: {summary['errors']} errors, {summary['warnings']} warnings "
-        f"({summary['checked']} terms checked)",
-        file=sys.stderr,
-    )
+    print()
+    print(format_term_validation_summary(validation))
     print(f"Term validation report written to {validation_path}")
 
-    if not report_existed:
-        merge_into_curation_report(report, result, observed)
-        with open(report_path, "w") as f:
-            json.dump(report, f, indent=2, default=str)
-        print(f"Curation report updated with validator results: {report_path}")
+    if validation.get("status") == "ok":
+        updated = merge_into_curation_report(report, validation)
+        if updated:
+            with open(report_path, "w") as f:
+                json.dump(report, f, indent=2, default=str)
+            print(f"Curation report updated: {updated} row(s) received validator flags ({report_path})")
+    return validation
 
 
 def main():
@@ -1602,6 +1584,18 @@ def main():
             "one, all env-triad slots emit the ENVO:00000000 sentinel for curation. For "
             "MicroFlora Danica, point this at examples/microflora-danica/crosswalk/"
             "mfd_biosamples_annotated.tsv."
+        ),
+    )
+    parser.add_argument(
+        "--skip-term-validation",
+        action="store_true",
+        help=(
+            "Skip the ontology-term QC pass (linkml-term-validator: CURIE existence, "
+            "label concordance, env-triad anchor class, NMDC value set) that otherwise "
+            "runs after the deliverable is written. It needs the 'ontology' extra and, "
+            "on first use, downloads ENVO (~15 MB); without the extra it is skipped "
+            "with a note. Set NMDC_TERM_VALIDATION_ADAPTERS=NCBITaxon=sqlite:obo:ncbitaxon "
+            "to also check taxon terms."
         ),
     )
     parser.add_argument(
@@ -1695,8 +1689,7 @@ def main():
         json.dump(inputs_sidecar, f, indent=2, default=str)
     print(f"Curation inputs sidecar written to {inputs_path}")
 
-    report_existed = Path(report_path).exists()
-    if report_existed:
+    if Path(report_path).exists():
         with open(report_path) as f:
             report = json.load(f)
         print(f"Curation report exists at {report_path} (preserved; not overwritten)")
@@ -1706,13 +1699,13 @@ def main():
             json.dump(report, f, indent=2, default=str)
         print(f"Curation report skeleton written to {report_path}")
 
-    _run_term_validation_step(
-        database=database,
-        out_path=out_path,
-        report=report,
-        report_path=report_path,
-        report_existed=report_existed,
-    )
+    # Ontology-term QC over the deliverable (existence / label / anchor / value
+    # set). Writes its own sidecar and fills the curation report's validator
+    # flags; never aborts the run.
+    if args.skip_term_validation:
+        print("Term validation skipped (--skip-term-validation).")
+    else:
+        run_term_validation_step(database_dict, out_path, report, report_path)
 
     if not args.mint_real_ids:
         print("\n⚠ PLACEHOLDER IDS: All IDs use shoulder '99' and are NOT real NMDC IDs.")

@@ -1,16 +1,21 @@
 id: https://w3id.org/nmdc/ingest-agent/term-validation
 name: nmdc-ingest-agent-term-validation
 description: >-
-  Projection schema used by linkml-term-validator to QC ontology-bearing slots
-  on NMDC Biosamples. The empty AnyTermBindingHook enum on ObservedTerm.term
-  triggers the binding plugin without restricting permissible values; --labels
-  then checks the rdfs:label-implementing field against the source ontology.
+  Projection schema that linkml-term-validator validates instead of the NMDC
+  schema. extract.py maps every ontology-bearing Biosample slot to one
+  ObservedTerm under the root slot of the same name; BindingValidationPlugin
+  then checks, per term, that the CURIE exists (strict), that the
+  rdfs:label-implementing `label` matches the ontology (--labels), and, for the
+  slots bound to a reachable_from enum, that the CURIE is under the MIxS anchor
+  class. Slots bound to the empty AnyTermBindingHook enum get existence + label
+  checks only.
 
 prefixes:
   linkml: https://w3id.org/linkml/
   rdfs: http://www.w3.org/2000/01/rdf-schema#
   ENVO: http://purl.obolibrary.org/obo/ENVO_
   NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_
+  PO: http://purl.obolibrary.org/obo/PO_
 
 default_range: string
 
@@ -20,21 +25,81 @@ imports:
 classes:
   TermValidationSet:
     tree_root: true
+    description: One list per validated NMDC Biosample slot.
     attributes:
-      observed_terms:
+      env_broad_scale:
         multivalued: true
         inlined_as_list: true
-        range: ObservedTerm
+        range: EnvBroadScaleTerm
+      env_local_scale:
+        multivalued: true
+        inlined_as_list: true
+        range: EnvLocalScaleTerm
+      env_medium:
+        multivalued: true
+        inlined_as_list: true
+        range: EnvMediumTerm
+      samp_taxon_id:
+        multivalued: true
+        inlined_as_list: true
+        range: TaxonTerm
+      host_taxid:
+        multivalued: true
+        inlined_as_list: true
+        range: TaxonTerm
 
   ObservedTerm:
+    description: One ontology term as committed on one Biosample slot.
     attributes:
       id:
         identifier: true
-      sample_id:
+        description: "<biosample_id>:<slot>"
+      biosample_id:
       slot:
       raw_value:
+        description: The slot's has_raw_value (submitter text), if any.
+      env_package:
+        description: The Biosample's env_package.has_raw_value (MIxS package), if any.
       term:
         range: OntologyTerm
+        required: true
+
+  EnvBroadScaleTerm:
+    is_a: ObservedTerm
+    description: MIxS env_broad_scale — must be a biome.
+    slot_usage:
+      term:
+        bindings:
+          - binds_value_of: id
+            range: BiomeEnum
+
+  EnvLocalScaleTerm:
+    is_a: ObservedTerm
+    description: >-
+      MIxS env_local_scale — no single ENVO subtree covers the NMDC value sets
+      (wetland ecosystems, vegetation layers, glaciers ... are all legitimate),
+      so the binding checks existence + label only; run.py adds the negative
+      "must not be a biome" check against BiomeEnum.
+    slot_usage:
+      term:
+        bindings:
+          - binds_value_of: id
+            range: AnyTermBindingHook
+
+  EnvMediumTerm:
+    is_a: ObservedTerm
+    description: MIxS env_medium — must be an environmental material.
+    slot_usage:
+      term:
+        bindings:
+          - binds_value_of: id
+            range: EnvironmentalMaterialEnum
+
+  TaxonTerm:
+    is_a: ObservedTerm
+    description: NCBITaxon-valued slots — existence + label only.
+    slot_usage:
+      term:
         bindings:
           - binds_value_of: id
             range: AnyTermBindingHook
@@ -43,13 +108,37 @@ classes:
     attributes:
       id:
         identifier: true
+        range: uriorcurie
       label:
+        description: >-
+          The committed OntologyClass.name. `implements: rdfs:label` is what
+          makes BindingValidationPlugin compare it to the ontology label.
         implements:
           - rdfs:label
 
 enums:
   AnyTermBindingHook:
     description: >-
-      Sentinel enum with no permissible values. Its sole purpose is to make the
-      term slot have a binding so BindingValidationPlugin engages and runs term-
-      existence + label-concordance checks. Membership validation is a no-op.
+      Deliberately empty. A binding needs an enum range for
+      BindingValidationPlugin to engage at all; with no permissible values the
+      membership check is a no-op and only existence + label checks run.
+
+  BiomeEnum:
+    description: Any proper subclass of ENVO biome (the anchor itself is too coarse to commit).
+    reachable_from:
+      source_ontology: obo:envo
+      source_nodes:
+        - ENVO:00000428
+      relationship_types:
+        - rdfs:subClassOf
+      include_self: false
+
+  EnvironmentalMaterialEnum:
+    description: Any proper subclass of ENVO environmental material.
+    reachable_from:
+      source_ontology: obo:envo
+      source_nodes:
+        - ENVO:00010483
+      relationship_types:
+        - rdfs:subClassOf
+      include_self: false

@@ -46,8 +46,9 @@ ontology = [
     # parse). Already present transitively via oaklib; pinned explicitly because the
     # skill's validator depends on it directly.
     "sssom",
-    # For Phase 1 term QC: existence + ID/label concordance on the env triad.
-    "linkml-term-validator>=0.3.0",
+    # Ontology-term QC over the ingest output (term existence, ID/label concordance,
+    # env-triad anchor-class membership) via linkml-term-validator. Pulls oaklib>=0.7.4.
+    "linkml-term-validator>=0.4.5,<1",
 ]
 dev = [
     "pytest",
