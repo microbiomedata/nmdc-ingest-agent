@@ -100,8 +100,12 @@ def main(argv: list[str] | None = None) -> int:
         env_adapters = {}
     adapters = {**env_adapters, **adapters}
 
-    database = json.loads(in_path.read_text())
-    instance = extract_observed_terms(database)
+    try:
+        database = json.loads(in_path.read_text())
+        instance = extract_observed_terms(database)
+    except (OSError, ValueError, TypeError, AttributeError) as exc:
+        print(f"ERROR: could not read an NMDC Database from {in_path}: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return EXIT_NOT_RUN
 
     validation = run_term_validation(
         instance,

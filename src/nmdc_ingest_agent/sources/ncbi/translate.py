@@ -1534,11 +1534,18 @@ def run_term_validation_step(
     print(f"Term validation report written to {validation_path}")
 
     if validation.get("status") == "ok":
-        updated = merge_into_curation_report(report, validation)
-        if updated:
-            with open(report_path, "w") as f:
-                json.dump(report, f, indent=2, default=str)
-            print(f"Curation report updated: {updated} row(s) received validator flags ({report_path})")
+        try:
+            updated = merge_into_curation_report(report, validation)
+            if updated:
+                with open(report_path, "w") as f:
+                    json.dump(report, f, indent=2, default=str)
+                print(f"Curation report updated: {updated} row(s) received validator flags ({report_path})")
+        except Exception as exc:  # noqa: BLE001 — the sidecar is written; the report merge is best-effort
+            print(
+                f"Curation report not updated with validator flags ({type(exc).__name__}: {exc}); "
+                f"re-run `nmdc-ingest-validate-terms {out_path} --curation-report {report_path}`",
+                file=sys.stderr,
+            )
     return validation
 
 

@@ -13,21 +13,23 @@ and returns one report dict with
   because optional QC could not run (PR #28 review).
 * ``terms`` — one entry per observed term with the four curation-report flags
   (``info_ok``, ``label_ok``, ``anchor_ok``, ``valueset_ok``; ``None`` = not
-  checked) and human-readable ``notes``.
+  checked, never a guess) and human-readable ``notes``.
 * ``findings`` — one entry per problem, with the severity from the issue-#8
   table (existence/obsolete/label = error, anchor/valueset = warning),
   independent of the ``Severity`` the upstream plugin assigns.
 
 :func:`merge_into_curation_report` folds the flags into the curation report
-without ever contradicting a curator's differing commit.
+without ever contradicting a curator's differing commit or hand-set flag.
 """
 
 from __future__ import annotations
 
 import importlib.metadata as _md
+import json
 import logging
 import os
 import re
+import shutil
 from pathlib import Path
 from typing import Any, Optional
 
@@ -53,6 +55,9 @@ TARGET_CLASS = "TermValidationSet"
 ADAPTERS_ENV_VAR = "NMDC_TERM_VALIDATION_ADAPTERS"
 #: Overrides the default label/enum cache location.
 CACHE_DIR_ENV_VAR = "NMDC_TERM_VALIDATION_CACHE_DIR"
+#: Marker file under the cache dir recording which ontology release each
+#: prefix's caches were built from.
+VERSION_MARKER = "ontology_versions.json"
 
 STATUS_OK = "ok"
 STATUS_SKIPPED = "skipped"
@@ -71,13 +76,13 @@ LEVEL_SEVERITY: dict[str, str] = {
     "other": "warning",
 }
 
-# Slot -> (enum in term_validation.yaml, membership required?, anchor label).
+# Slot -> (enum in term_validation.yaml, anchor CURIE, membership required?, anchor label).
 # env_local_scale has no single ENVO subtree (see term_validation.yaml), so its
 # rule is negative: the term must NOT be a biome.
-ANCHORS: dict[str, tuple[str, bool, str]] = {
-    "env_broad_scale": ("BiomeEnum", True, "biome (ENVO:00000428)"),
-    "env_medium": ("EnvironmentalMaterialEnum", True, "environmental material (ENVO:00010483)"),
-    "env_local_scale": ("BiomeEnum", False, "biome (ENVO:00000428)"),
+ANCHORS: dict[str, tuple[str, str, bool, str]] = {
+    "env_broad_scale": ("BiomeEnum", "ENVO:00000428", True, "biome (ENVO:00000428)"),
+    "env_medium": ("EnvironmentalMaterialEnum", "ENVO:00010483", True, "environmental material (ENVO:00010483)"),
+    "env_local_scale": ("BiomeEnum", "ENVO:00000428", False, "biome (ENVO:00000428)"),
 }
 
 _PATH_RE = re.compile(r"^(?P<slot>\w+)\[(?P<index>\d+)\]\.term$")
@@ -156,21 +161,22 @@ def _version(dist: str) -> Optional[str]:
         return None
 
 
-def tool_versions() -> dict[str, Optional[str]]:
+def tool_versions() -> dict[str, Any]:
     return {
         "nmdc_ingest_agent": _version("nmdc-ingest-agent"),
         "linkml_term_validator": _version("linkml-term-validator"),
         "oaklib": _version("oaklib"),
         "linkml": _version("linkml"),
+        "ontology_versions": {},
     }
 
 
 def ontology_versions(plugin: Any, prefixes: set[str]) -> dict[str, Optional[str]]:
     """Best-effort ``{prefix: release}`` (e.g. ``{"ENVO": "2025-10-20"}``) for the
-    prefixes whose adapters this run actually used, read from the adapter's
+    prefixes whose adapters are already built, read from the adapter's
     ``owl:versionInfo`` / ``owl:versionIRI``. A curator reading the report later
     needs to know which ontology snapshot judged the terms. Never raises and
-    never builds an adapter that was not already built."""
+    never builds an adapter."""
     versions: dict[str, Optional[str]] = {}
     access = getattr(plugin, "ontology", None)
     cache = getattr(access, "_adapter_cache", None) or {}
@@ -192,6 +198,40 @@ def ontology_versions(plugin: Any, prefixes: set[str]) -> dict[str, Optional[str
             logger.debug("could not read ontology version for %s", prefix, exc_info=True)
         versions[prefix] = version
     return versions
+
+
+def refresh_caches_for_versions(cache_dir: Path, versions: dict[str, Optional[str]]) -> list[str]:
+    """Drop label / enum caches built from a different ontology release.
+
+    linkml-term-validator's file caches (``<cache_dir>/<prefix>/terms.csv`` and
+    ``<cache_dir>/enums/*.csv``) are not keyed by ontology version, so after an
+    ENVO release a relabelled or re-parented term would keep validating against
+    the old snapshot. ``ontology_versions.json`` in the cache dir records the
+    release each prefix's cache was built from; when a prefix's release changes
+    its label cache and every enum closure are removed. Returns the prefixes
+    whose caches were cleared. A first run (no marker) clears nothing.
+    """
+    marker = cache_dir / VERSION_MARKER
+    previous: dict[str, Any] = {}
+    if marker.exists():
+        try:
+            previous = json.loads(marker.read_text()) or {}
+        except (ValueError, OSError):
+            previous = {}
+    cleared: list[str] = []
+    for prefix, version in versions.items():
+        if not version:
+            continue
+        old = previous.get(prefix)
+        if old and old != version:
+            shutil.rmtree(cache_dir / prefix.lower(), ignore_errors=True)
+            shutil.rmtree(cache_dir / "enums", ignore_errors=True)
+            cleared.append(prefix)
+    merged = {**previous, **{p: v for p, v in versions.items() if v}}
+    if merged != previous:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        marker.write_text(json.dumps(merged, indent=1, sort_keys=True) + "\n")
+    return cleared
 
 
 # ---------------------------------------------------------------------------
@@ -223,6 +263,10 @@ def _level_for(result: Any) -> str:
     if kind in ("binding_label_mismatch", "binding_label_invalid"):
         return "label"
     if kind == "binding_validation" and "dynamic enum" in (result.message or ""):
+        # Offline with no materialized closure, the plugin says it *cannot*
+        # validate; that is not a violation.
+        if _context_dict(result).get("validation", "").startswith("offline"):
+            return "anchor_unavailable"
         return "anchor"
     return "other"
 
@@ -238,7 +282,7 @@ def _new_term_entry(record: dict) -> dict:
         "slot": record.get("slot"),
         "term_id": term.get("id"),
         "term_label": term.get("label"),
-        "prefix": _prefix(term.get("id") or ""),
+        "prefix": _prefix(str(term.get("id") or "")),
         "checked": False,
         "ontology_label": None,
         "obsolete": None,
@@ -298,6 +342,20 @@ def _base_report(instance: dict, *, status: str, reason: Optional[str], config: 
     }
 
 
+def _base_config(schema: Path, oak_config: Path, offline: bool, lenient: bool) -> dict[str, Any]:
+    return {
+        "schema": str(schema),
+        "oak_config": str(oak_config),
+        "adapters": {},
+        "adapter_failures": {},
+        "cache_dir": None,
+        "caches_cleared_for": [],
+        "offline": offline,
+        "lenient": lenient,
+        "valuesets": None,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
@@ -319,12 +377,73 @@ def run_term_validation(
 
     ``adapters`` adds/overrides per-prefix OAK adapters on top of
     ``oak_config``; when None, ``$NMDC_TERM_VALIDATION_ADAPTERS`` is consulted.
-    ``lenient`` stops missing terms being reported (label/anchor checks still
-    run). ``offline`` forbids building OAK adapters: only the file cache is
-    consulted, and anything not cached is reported as not found.
+    An adapter that cannot be built (e.g. an opt-in NCBITaxon sqlite that fails
+    to download) only disables checks for its own prefix; the run degrades to
+    ``status: unavailable`` / ``error`` only when *no* adapter could be built.
+    ``lenient`` downgrades unresolvable CURIEs to warnings (label/anchor checks
+    still run). ``offline`` forbids building OAK adapters: only the file cache
+    is consulted, anything not cached is reported as not found, and anchor
+    checks that need an unmaterialized enum closure come back ``None``.
     ``valuesets_path=None`` disables the level-4 check.
     """
+    config = _base_config(schema, oak_config, offline, lenient)
+    try:
+        try:
+            from linkml.validator import Validator
+            from linkml_term_validator.plugins import BindingValidationPlugin
+            from linkml_term_validator.utils import OntologyServiceUnavailableError
+        except ImportError as exc:
+            return _base_report(
+                instance,
+                status=STATUS_SKIPPED,
+                reason=f"linkml-term-validator is not installed ({exc}); run `uv sync --extra ontology`",
+                config=config,
+            )
+        try:
+            return _run(
+                instance, config, Validator, BindingValidationPlugin, OntologyServiceUnavailableError,
+                schema=Path(schema), oak_config=Path(oak_config), cache_dir=cache_dir,
+                adapters=adapters, lenient=lenient, offline=offline, valuesets_path=valuesets_path,
+            )
+        except OntologyServiceUnavailableError as exc:
+            return _base_report(
+                instance,
+                status=STATUS_UNAVAILABLE,
+                reason=f"ontology service unavailable; terms could not be checked ({exc})",
+                config=config,
+            )
+    except Exception as exc:  # noqa: BLE001 — optional QC must never abort an ingest
+        logger.debug("term validation failed", exc_info=True)
+        reason = f"{type(exc).__name__}: {exc}"
+        try:
+            return _base_report(instance, status=STATUS_ERROR, reason=reason, config=config)
+        except Exception:  # noqa: BLE001 — even the projection may be malformed
+            return {
+                "status": STATUS_ERROR, "reason": reason, "tool": tool_versions(),
+                "config": config, "summary": _empty_summary(), "findings": [], "terms": [],
+            }
+
+
+def _run(
+    instance: dict,
+    config: dict,
+    Validator: Any,
+    BindingValidationPlugin: Any,
+    OntologyServiceUnavailableError: type,
+    *,
+    schema: Path,
+    oak_config: Path,
+    cache_dir: Optional[Path],
+    adapters: Optional[dict[str, str]],
+    lenient: bool,
+    offline: bool,
+    valuesets_path: Optional[Path],
+) -> dict:
+    """The guarded body of :func:`run_term_validation`."""
     cache_dir = Path(cache_dir) if cache_dir is not None else default_cache_dir()
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    config["cache_dir"] = str(cache_dir)
+
     if adapters is None:
         try:
             adapters = parse_adapter_spec(os.environ.get(ADAPTERS_ENV_VAR))
@@ -332,77 +451,87 @@ def run_term_validation(
             adapters = {}
             logger.warning("Ignoring malformed %s: %s", ADAPTERS_ENV_VAR, exc)
 
-    valuesets: Optional[ValueSets] = load_valuesets(valuesets_path) if valuesets_path else None
-    config: dict[str, Any] = {
-        "schema": str(schema),
-        "oak_config": str(oak_config),
-        "adapters": {},
-        "cache_dir": str(cache_dir),
-        "offline": offline,
-        "lenient": lenient,
-        "valuesets": (
-            {
+    # Level 4 data is optional: a missing or corrupt TSV disables the level
+    # with a note rather than failing the whole pass.
+    valuesets: Optional[ValueSets] = None
+    if valuesets_path:
+        try:
+            valuesets = load_valuesets(valuesets_path)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("value sets unavailable (%s: %s)", type(exc).__name__, exc)
+            config["valuesets"] = {"path": str(valuesets_path), "error": f"{type(exc).__name__}: {exc}"}
+        if valuesets is not None:
+            config["valuesets"] = {
                 "path": str(valuesets_path),
                 "nmdc_submission_schema_version": valuesets.schema_version,
                 "generated": valuesets.generated,
             }
-            if valuesets is not None
-            else None
-        ),
-    }
+        elif config["valuesets"] is None:
+            config["valuesets"] = {"path": str(valuesets_path), "error": "file not found"}
 
-    try:
-        from linkml.validator import Validator
-        from linkml_term_validator.plugins import BindingValidationPlugin
-        from linkml_term_validator.utils import OntologyServiceUnavailableError
-    except ImportError as exc:
-        return _base_report(
-            instance,
-            status=STATUS_SKIPPED,
-            reason=f"linkml-term-validator is not installed ({exc}); run `uv sync --extra ontology`",
-            config=config,
-        )
+    config_path, effective = effective_oak_config(oak_config, adapters, cache_dir)
+    config["adapters"] = effective
+    configured = {p for p, a in effective.items() if a}
 
-    try:
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        config_path, effective = effective_oak_config(Path(oak_config), adapters, cache_dir)
-        config["adapters"] = effective
-        configured = {p for p, a in effective.items() if a}
+    plugin = BindingValidationPlugin(
+        validate_labels=True,
+        strict=not lenient,
+        cache_dir=cache_dir,
+        oak_config_path=config_path,
+        offline=offline,
+    )
 
-        plugin = BindingValidationPlugin(
-            validate_labels=True,
-            strict=not lenient,
-            cache_dir=cache_dir,
-            oak_config_path=config_path,
-            offline=offline,
-        )
-        validator = Validator(schema=str(schema), validation_plugins=[plugin])
-        data = {k: v for k, v in instance.items() if not k.startswith("_")}
-        upstream = validator.validate(data, target_class=TARGET_CLASS)
+    # Pre-flight: build the adapter for every configured prefix that actually
+    # occurs in the data, so one failing opt-in adapter (a multi-GB NCBITaxon
+    # download, a typo'd path) disables only its own prefix instead of taking
+    # the whole run down with it. A connectivity failure is still fatal-for-
+    # the-run, as upstream intends (status "unavailable").
+    present = {_prefix(str((rec.get("term") or {}).get("id") or "")) for _s, _i, rec in iter_terms(instance)}
+    failures: dict[str, str] = {}
+    if not offline:
+        for prefix in sorted(configured & present):
+            try:
+                if plugin.ontology.get_adapter(prefix) is None:
+                    failures[prefix] = "adapter could not be built"
+            except OntologyServiceUnavailableError:
+                raise
+            except Exception as exc:  # noqa: BLE001 — adapters raise varied errors
+                failures[prefix] = f"{type(exc).__name__}: {exc}"
+        for prefix in failures:
+            plugin.ontology.oak_config[prefix] = ""  # explicit skip from here on
+            plugin.ontology._adapter_cache.pop(prefix, None)
+            configured.discard(prefix)
+        config["adapter_failures"] = failures
+        if failures and not (configured & present):
+            raise RuntimeError(
+                "no ontology adapter could be built: "
+                + "; ".join(f"{p}: {why}" for p, why in failures.items())
+            )
 
-        report = _base_report(instance, status=STATUS_OK, reason=None, config=config)
-        _normalize(
-            instance, upstream.results, plugin, configured, valuesets, report,
-            offline=offline, lenient=lenient,
-        )
-        used = {t["prefix"] for t in report["terms"] if t["checked"]}
-        report["tool"]["ontology_versions"] = ontology_versions(plugin, used)
-        return report
-    except OntologyServiceUnavailableError as exc:
-        return _base_report(
-            instance,
-            status=STATUS_UNAVAILABLE,
-            reason=f"ontology service unavailable; terms could not be checked ({exc})",
-            config=config,
-        )
-    except Exception as exc:  # noqa: BLE001 — optional QC must never abort an ingest
-        logger.debug("term validation failed", exc_info=True)
-        return _base_report(
-            instance,
-            status=STATUS_ERROR,
-            reason=f"{type(exc).__name__}: {exc}",
-            config=config,
-        )
+    # Ontology releases in play, and cache hygiene when a release changed.
+    versions = ontology_versions(plugin, configured & present) if not offline else {}
+    if versions:
+        config["caches_cleared_for"] = refresh_caches_for_versions(cache_dir, versions)
+    elif offline:
+        marker = cache_dir / VERSION_MARKER
+        if marker.exists():
+            try:
+                versions = {k: v for k, v in (json.loads(marker.read_text()) or {}).items()}
+                config["ontology_versions_source"] = "cache marker (offline)"
+            except (ValueError, OSError):
+                versions = {}
+
+    validator = Validator(schema=str(schema), validation_plugins=[plugin])
+    data = {k: v for k, v in instance.items() if not k.startswith("_")}
+    upstream = validator.validate(data, target_class=TARGET_CLASS)
+
+    report = _base_report(instance, status=STATUS_OK, reason=None, config=config)
+    _normalize(
+        instance, upstream.results, plugin, configured, valuesets, report,
+        offline=offline, lenient=lenient, adapter_failures=failures,
+    )
+    report["tool"]["ontology_versions"] = versions
+    return report
 
 
 def _check_valueset(entry: dict, valuesets: Optional[ValueSets], findings: list[dict]) -> None:
@@ -441,8 +570,10 @@ def _normalize(
     *,
     offline: bool,
     lenient: bool = False,
+    adapter_failures: Optional[dict[str, str]] = None,
 ) -> None:
     """Fold upstream results plus the Python-side checks into ``report``."""
+    adapter_failures = adapter_failures or {}
     entries: dict[tuple[str, int], dict] = {}
     for slot, index, record in iter_terms(instance):
         entries[(slot, index)] = _new_term_entry(record)
@@ -455,7 +586,7 @@ def _normalize(
     def _facts(term_id: str) -> dict[str, Any]:
         cached = facts.get(term_id)
         if cached is None:
-            cached = {"label": plugin.get_ontology_label(term_id), "obsolete": None, "in_biome": None}
+            cached = {"label": plugin.get_ontology_label(term_id), "obsolete": "?", "in_biome": "?"}
             facts[term_id] = cached
         return cached
 
@@ -470,6 +601,12 @@ def _normalize(
 
     schema_view = getattr(plugin, "schema_view", None)
     biome_enum = schema_view.get_enum("BiomeEnum") if schema_view is not None else None
+    # Offline, membership in a dynamic enum is only decidable from a
+    # materialized (.complete) closure; otherwise the answer is "unknown".
+    unmaterialized = getattr(plugin, "_offline_dynamic_enum_unmaterialized", None)
+    biome_undecidable = bool(
+        offline and biome_enum is not None and callable(unmaterialized) and unmaterialized(biome_enum)
+    )
 
     findings: list[dict] = []
     unchecked_prefixes: set[str] = set()
@@ -479,12 +616,21 @@ def _normalize(
         prefix = entry["prefix"]
         levels = upstream.get(key, {})
 
-        # Unconfigured prefix (offline mode checks every prefix from the cache):
-        # no ontology-backed check is possible, but the value-set check (level
-        # 4) needs no adapter, so it still runs below.
+        # No prefix at all: not a CURIE, nothing to look up.
+        if not prefix:
+            entry["notes"].append("not a CURIE (no prefix); ontology checks skipped")
+            _check_valueset(entry, valuesets, findings)
+            continue
+
+        # Unconfigured (or failed) prefix (offline mode checks every prefix
+        # from the cache): no ontology-backed check is possible, but the
+        # value-set check (level 4) needs no adapter, so it still runs.
         if prefix not in configured and not offline:
             unchecked_prefixes.add(prefix)
-            entry["notes"].append(f"prefix {prefix!r} not configured in oak_config; ontology checks skipped")
+            if prefix in adapter_failures:
+                entry["notes"].append(f"adapter for {prefix!r} failed ({adapter_failures[prefix]}); ontology checks skipped")
+            else:
+                entry["notes"].append(f"prefix {prefix!r} not configured in oak_config; ontology checks skipped")
             _check_valueset(entry, valuesets, findings)
             continue
         entry["checked"] = True
@@ -508,55 +654,79 @@ def _normalize(
                 findings.append(_finding("existence", entry, f"Term {term_id} not found in {where}"))
             continue
 
-        # Level 1b: obsolescence (the plugin's label check would only surface it
-        # indirectly as an "obsolete ..." label mismatch).
-        if fact["obsolete"] is None:
-            fact["obsolete"] = bool(plugin.is_obsolete(term_id))
+        # Level 1b: obsolescence. The plugin's label check would only surface
+        # it indirectly as an "obsolete ..." label mismatch. is_obsolete()
+        # answers None when it cannot tell (offline, or an adapter without
+        # obsolescence data); OBO ontologies prefix obsolete labels with
+        # "obsolete ", which is used as a fallback signal but never as proof
+        # of non-obsolescence.
+        if fact["obsolete"] == "?":
+            verdict = plugin.is_obsolete(term_id)
+            if verdict is None and str(label).lower().startswith("obsolete"):
+                verdict = True
+            fact["obsolete"] = verdict
         entry["obsolete"] = fact["obsolete"]
-        if fact["obsolete"]:
+        if fact["obsolete"] is True:
             entry["info_ok"] = False
             findings.append(_finding("obsolete", entry, f"Term {term_id} ({label}) is obsolete in the ontology"))
             continue
+        if fact["obsolete"] is None:
+            entry["notes"].append("obsolescence could not be determined (no adapter); label carries no 'obsolete' marker")
         entry["info_ok"] = True
 
         # Level 2: label concordance.
         if "label" in levels:
             entry["label_ok"] = False
-            findings.append(_finding(
-                "label", entry,
-                f"Label mismatch for {term_id}: committed {entry['term_label']!r}, ontology says {label!r}",
-            ))
+            upstream_label = levels["label"][0]
+            if getattr(upstream_label, "type", "") == "binding_label_invalid":
+                findings.append(_finding("label", entry, upstream_label.message))
+            else:
+                findings.append(_finding(
+                    "label", entry,
+                    f"Label mismatch for {term_id}: committed {entry['term_label']!r}, ontology says {label!r}",
+                ))
         else:
             entry["label_ok"] = True
 
         # Level 3: anchor class.
         anchor = ANCHORS.get(entry["slot"])
         if anchor is not None:
-            enum_name, positive, anchor_label = anchor
+            enum_name, anchor_curie, positive, anchor_label = anchor
             if positive:
-                if "anchor" in levels:
+                if "anchor_unavailable" in levels:
+                    entry["notes"].append("anchor not checkable offline (enum closure not materialized in cache)")
+                elif "anchor" in levels:
                     entry["anchor_ok"] = False
-                    findings.append(_finding(
-                        "anchor", entry,
-                        f"{term_id} ({label}) is not a subclass of {anchor_label}, "
-                        f"which {entry['slot']} requires",
-                    ))
+                    if term_id == anchor_curie:
+                        message = (f"{term_id} ({label}) is the anchor class itself; "
+                                   f"{entry['slot']} needs a more specific subclass of {anchor_label}")
+                    else:
+                        message = (f"{term_id} ({label}) is not a subclass of {anchor_label}, "
+                                   f"which {entry['slot']} requires")
+                    findings.append(_finding("anchor", entry, message))
                 else:
                     entry["anchor_ok"] = True
             else:
-                if fact["in_biome"] is None:
+                if term_id == anchor_curie:
+                    fact["in_biome"] = True
+                elif biome_undecidable:
+                    fact["in_biome"] = None
+                elif fact["in_biome"] == "?":
                     fact["in_biome"] = bool(
                         biome_enum is not None
                         and plugin.is_value_in_enum(term_id, biome_enum, schema_view)
                     )
                 in_biome = fact["in_biome"]
-                entry["anchor_ok"] = not in_biome
-                if in_biome:
-                    findings.append(_finding(
-                        "anchor", entry,
-                        f"{term_id} ({label}) is a {anchor_label}; biomes belong in "
-                        f"env_broad_scale, env_local_scale should be finer-grained",
-                    ))
+                if in_biome is None:
+                    entry["notes"].append("anchor not checkable offline (enum closure not materialized in cache)")
+                else:
+                    entry["anchor_ok"] = not in_biome
+                    if in_biome:
+                        findings.append(_finding(
+                            "anchor", entry,
+                            f"{term_id} ({label}) is a {anchor_label}; biomes belong in "
+                            f"env_broad_scale, env_local_scale should be finer-grained",
+                        ))
         elif "anchor" in levels:  # binding without ANCHORS entry: keep upstream verdict
             entry["anchor_ok"] = False
             findings.append(_finding("anchor", entry, levels["anchor"][0].message))
@@ -597,13 +767,17 @@ def _normalize(
 
 
 def merge_into_curation_report(curation_report: dict, validation: dict) -> int:
-    """Copy the four flags into ``rows[*].validator`` for rows whose committed
-    CURIE is the one that was validated. Returns the number of rows updated.
+    """Copy the validator's verdicts into ``rows[*].validator`` for rows whose
+    ``committed_curie`` is exactly the term that was validated. Returns the
+    number of rows updated.
 
-    Rows with no validated term (sentinels, unset slots) are left untouched, as
-    are rows where a curator has since committed a *different* CURIE than the
-    deliverable carried — the flags describe a specific term, never the row.
-    Nothing happens unless ``validation["status"] == "ok"``.
+    The flags describe a specific term, never the row, so: rows with no
+    validated term (sentinels, unset slots) are left alone; rows whose
+    ``committed_curie`` is missing or differs from the deliverable (a curator
+    rejected or re-committed the term) are left alone; and a ``None`` verdict
+    ("not checked") never overwrites a value a curator set by hand (e.g. an
+    NCBITaxon ``info_ok`` recorded from a ``runoak`` lookup). Nothing happens
+    unless ``validation["status"] == "ok"``.
     """
     if validation.get("status") != STATUS_OK:
         return 0
@@ -613,16 +787,22 @@ def merge_into_curation_report(curation_report: dict, validation: dict) -> int:
         term = by_key.get((row.get("biosample_id"), row.get("slot")))
         if term is None:
             continue
-        committed = row.get("committed_curie")
-        if committed and committed != term["term_id"]:
+        if row.get("committed_curie") != term["term_id"]:
             continue
         validator = row.get("validator")
         if not isinstance(validator, dict):
             validator = {}
             row["validator"] = validator
+        touched = False
         for flag in FLAGS:
-            validator[flag] = term[flag]
-        updated += 1
+            value = term.get(flag)
+            if value is None and validator.get(flag) is not None:
+                continue  # keep the curator's hand-set verdict
+            if validator.get(flag) != value or flag not in validator:
+                validator[flag] = value
+                touched = True
+        if touched:
+            updated += 1
     return updated
 
 
@@ -643,7 +823,7 @@ def format_summary(validation: dict, *, max_findings: int = 20) -> str:
         f"{summary['warnings']} warning(s)",
     ]
     if summary.get("unchecked"):
-        prefixes = ", ".join(summary.get("unchecked_prefixes") or []) or "unconfigured prefix"
+        prefixes = ", ".join(summary.get("unchecked_prefixes") or []) or "no prefix"
         parts.append(f"{summary['unchecked']} unchecked ({prefixes} not configured)")
     if summary.get("skipped_sentinels"):
         parts.append(f"{summary['skipped_sentinels']} ENVO:00000000 sentinel(s) skipped")
@@ -651,6 +831,12 @@ def format_summary(validation: dict, *, max_findings: int = 20) -> str:
     if any(versions.values()):
         parts.append("against " + ", ".join(f"{p} {v}" for p, v in versions.items() if v))
     lines.append("Term validation: " + "; ".join(parts))
+    failures = (validation.get("config") or {}).get("adapter_failures") or {}
+    for prefix, why in failures.items():
+        lines.append(f"  adapter for {prefix} failed, its terms are unchecked: {why}")
+    cleared = (validation.get("config") or {}).get("caches_cleared_for") or []
+    if cleared:
+        lines.append(f"  caches rebuilt for a new ontology release: {', '.join(cleared)}")
     by_level = {k: v for k, v in (summary.get("by_level") or {}).items() if v}
     if by_level:
         lines.append("  by level: " + ", ".join(f"{k}={v}" for k, v in by_level.items()))

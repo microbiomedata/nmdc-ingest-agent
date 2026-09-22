@@ -84,6 +84,7 @@ def summarize_term_validation(validation: dict) -> dict:
         "reason": validation.get("reason"),
         "tool": (validation.get("tool") or {}).get("linkml_term_validator"),
         "ontology_versions": {k: v for k, v in ((validation.get("tool") or {}).get("ontology_versions") or {}).items() if v},
+        "adapter_failures": dict((validation.get("config") or {}).get("adapter_failures") or {}),
         "checked": summary.get("checked", 0),
         "terms": summary.get("terms", 0),
         "errors": summary.get("errors", 0),
@@ -190,6 +191,8 @@ def _render_term_validation(tv: dict) -> list[str]:
         extras.append("against " + ", ".join(f"{p} {v}" for p, v in tv["ontology_versions"].items()))
     if tv.get("unchecked_prefixes"):
         extras.append(f"{', '.join(tv['unchecked_prefixes'])} terms unchecked (adapter not configured)")
+    for prefix, why in (tv.get("adapter_failures") or {}).items():
+        extras.append(f"{prefix} adapter failed ({why})")
     if tv.get("skipped_sentinels"):
         extras.append(f"{tv['skipped_sentinels']} ENVO:00000000 sentinel(s) skipped")
     if extras:

@@ -274,6 +274,17 @@ def test_load_valuesets_missing_file_returns_none(tmp_path):
     assert load_valuesets(tmp_path / "nope.tsv") is None
 
 
+def test_load_valuesets_rejects_wrong_shape(tmp_path):
+    bad = tmp_path / "bad.tsv"
+    bad.write_text("interface\tslot\n")
+    with pytest.raises(ValueError, match="missing columns"):
+        load_valuesets(bad)
+    empty = tmp_path / "empty.tsv"
+    empty.write_text("interface\tslot\tenum\tcurie\tlabel\ttext\n")
+    with pytest.raises(ValueError, match="no rows"):
+        load_valuesets(empty)
+
+
 def test_valuesets_tsv_header_is_parsed(tmp_path):
     tsv = tmp_path / "vs.tsv"
     tsv.write_text(
@@ -408,6 +419,75 @@ def test_obsolete_term_is_a_single_error_and_hides_its_label_symptom():
     assert [(f["level"], f["severity"]) for f in rep["findings"]] == [("obsolete", "error")]
 
 
+def test_obsolescence_unknown_uses_label_marker_or_stays_undetermined():
+    class NoObsolescencePlugin(FakePlugin):
+        def is_obsolete(self, curie):
+            self.calls["obsolete"] += 1
+            return None  # e.g. offline, or an adapter without obsolescence data
+
+    inst = {"env_medium": [term("env_medium", "b1", "ENVO:00000018", "dry river"),
+                           term("env_medium", "b2", "ENVO:00001998", "soil")], "_meta": {}}
+    rep = normalize(inst, [], NoObsolescencePlugin(LABELS))
+    t = by_key(rep)
+    assert t[("b1", "env_medium")]["obsolete"] is True and t[("b1", "env_medium")]["info_ok"] is False
+    soil = t[("b2", "env_medium")]
+    assert soil["obsolete"] is None and soil["info_ok"] is True
+    assert any("obsolescence could not be determined" in n for n in soil["notes"])
+    assert [f["level"] for f in rep["findings"]] == ["obsolete"]
+
+
+def test_anchor_class_itself_and_non_curie_ids():
+    inst = {"env_broad_scale": [term("env_broad_scale", "b1", "ENVO:00000428", "biome")],
+            "env_local_scale": [term("env_local_scale", "b1", "ENVO:00000428", "biome"),
+                                term("env_local_scale", "b2", "not-a-curie", "x")], "_meta": {}}
+    results = [upstream("binding_validation", "env_broad_scale", 0, "Value 'ENVO:00000428' not in dynamic enum 'BiomeEnum' (expanded from ontology)")]
+    rep = normalize(inst, results, FakePlugin({**LABELS, "ENVO:00000428": "biome"}))
+    t = by_key(rep)
+    broad = [f for f in rep["findings"] if f["slot"] == "env_broad_scale"][0]
+    assert "anchor class itself" in broad["message"]
+    assert t[("b1", "env_local_scale")]["anchor_ok"] is False        # the biome root counts as a biome
+    weird = t[("b2", "env_local_scale")]
+    assert not weird["checked"] and "not a CURIE" in weird["notes"][0]
+    assert rep["summary"]["unchecked_prefixes"] == [] and rep["summary"]["unchecked"] == 1
+
+
+def test_offline_anchor_verdicts_are_none_when_closure_is_not_materialized():
+    class OfflinePlugin(FakePlugin):
+        def _offline_dynamic_enum_unmaterialized(self, enum_def):
+            return True
+
+    inst = {"env_broad_scale": [term("env_broad_scale", "b1", "ENVO:00002006", "liquid water")],
+            "env_local_scale": [term("env_local_scale", "b1", "ENVO:01000202", "temperate broadleaf forest biome")], "_meta": {}}
+    diag = ValidationResult(type="binding_validation", severity=Severity.ERROR, instance={}, instantiates="X",
+                            message="Cannot validate 'ENVO:00002006' against dynamic enum 'BiomeEnum' offline: enum closure not materialized in cache",
+                            context=["path: env_broad_scale[0].term", "slot: term", "field: id", "validation: offline (enum cache not materialized)"])
+    rep = normalize(inst, [diag], OfflinePlugin(LABELS, biomes={"ENVO:01000202"}), offline=True)
+    t = by_key(rep)
+    assert t[("b1", "env_broad_scale")]["anchor_ok"] is None
+    assert t[("b1", "env_local_scale")]["anchor_ok"] is None
+    assert all("not checkable offline" in n for e in t.values() for n in e["notes"])
+    assert rep["findings"] == []
+
+
+def test_refresh_caches_for_versions(tmp_path):
+    from nmdc_ingest_agent.validators.run import VERSION_MARKER, refresh_caches_for_versions
+
+    (tmp_path / "envo").mkdir()
+    (tmp_path / "envo" / "terms.csv").write_text("curie,label\n")
+    (tmp_path / "enums").mkdir()
+    (tmp_path / "enums" / "biomeenum_x.csv").write_text("curie\n")
+    # first run: record, clear nothing
+    assert refresh_caches_for_versions(tmp_path, {"ENVO": "2025-10-20", "PO": None}) == []
+    assert json.loads((tmp_path / VERSION_MARKER).read_text()) == {"ENVO": "2025-10-20"}
+    assert (tmp_path / "envo" / "terms.csv").exists()
+    # same release: nothing happens
+    assert refresh_caches_for_versions(tmp_path, {"ENVO": "2025-10-20"}) == []
+    # new release: label cache and enum closures go, marker updated
+    assert refresh_caches_for_versions(tmp_path, {"ENVO": "2026-01-15"}) == ["ENVO"]
+    assert not (tmp_path / "envo").exists() and not (tmp_path / "enums").exists()
+    assert json.loads((tmp_path / VERSION_MARKER).read_text()) == {"ENVO": "2026-01-15"}
+
+
 def test_local_scale_negative_biome_rule():
     inst = {"env_local_scale": [term("env_local_scale", "b3", "ENVO:01000202", "temperate broadleaf forest biome", "MIMS.me.water.6.0"),
                                 term("env_local_scale", "b1", "ENVO:00000114", "agricultural field", "MIMS.me.soil.6.0")], "_meta": {}}
@@ -490,7 +570,7 @@ def test_missing_extra_is_reported_as_skipped(monkeypatch, tmp_path):
     assert "uv sync --extra ontology" in rep["reason"]
     assert rep["summary"]["terms"] == 1 and rep["summary"]["skipped_sentinels"] == 2
     assert rep["terms"] == [] and rep["findings"] == []
-    assert rep["config"]["valuesets"]["nmdc_submission_schema_version"]
+    assert rep["config"]["cache_dir"] is None  # nothing was set up before the import check
 
 
 def test_unexpected_exception_is_reported_as_error(monkeypatch, tmp_path):
@@ -522,7 +602,21 @@ def test_bogus_adapter_is_reported_as_error_not_raised(tmp_path):
     pytest.importorskip("linkml_term_validator")
     rep = run_term_validation(INST, cache_dir=tmp_path, adapters={"ENVO": "sqlite:/nonexistent/x.db"})
     assert rep["status"] == STATUS_ERROR
+    assert "no ontology adapter could be built" in rep["reason"] and "ENVO" in rep["reason"]
     assert rep["config"]["adapters"]["ENVO"] == "sqlite:/nonexistent/x.db"
+    assert "ENVO" in rep["config"]["adapter_failures"]
+
+
+def test_corrupt_valuesets_disable_level_4_only(tmp_path):
+    pytest.importorskip("linkml_term_validator")
+    bad = tmp_path / "bad.tsv"
+    bad.write_text("interface\tslot\n")  # missing columns -> KeyError inside the loader
+    rep = run_term_validation(INST, cache_dir=tmp_path / "c", offline=True, valuesets_path=bad)
+    assert rep["status"] == STATUS_OK
+    assert "error" in rep["config"]["valuesets"]
+    assert rep["terms"][0]["valueset_ok"] is None
+    rep = run_term_validation(INST, cache_dir=tmp_path / "c", offline=True, valuesets_path=tmp_path / "missing.tsv")
+    assert rep["status"] == STATUS_OK and rep["config"]["valuesets"]["error"] == "file not found"
 
 
 def test_env_var_adapters_are_read_and_malformed_ignored(monkeypatch, tmp_path):
@@ -566,24 +660,42 @@ def entry(bs, slot, curie, **flags):
     return e
 
 
-def test_merge_sets_flags_only_for_matching_committed_curie():
+def test_merge_sets_flags_only_for_exactly_matching_committed_curie():
     report = {"rows": [
         {"biosample_id": "b1", "slot": "env_medium", "committed_curie": "ENVO:00001998", "validator": {f: None for f in FLAGS}},
         {"biosample_id": "b2", "slot": "env_medium", "committed_curie": "ENVO:00000447", "validator": {f: None for f in FLAGS}},  # curator changed it
         {"biosample_id": "b3", "slot": "env_medium", "committed_curie": None, "outcome": "left_sentinel", "validator": {f: None for f in FLAGS}},
-        {"biosample_id": "b4", "slot": "env_medium", "committed_curie": None, "outcome": "predicted"},  # no validator dict at all
+        {"biosample_id": "b4", "slot": "env_medium", "committed_curie": None, "outcome": "validator_rejected"},  # rejected, JSON not yet reverted
+        {"biosample_id": "b5", "slot": "env_medium", "committed_curie": "ENVO:00001998"},  # no validator dict at all
     ]}
     validation = validation_ok([
         entry("b1", "env_medium", "ENVO:00001998", label_ok=False),
         entry("b2", "env_medium", "ENVO:00001998"),
         entry("b4", "env_medium", "ENVO:00001998", valueset_ok=True),
+        entry("b5", "env_medium", "ENVO:00001998", valueset_ok=True),
     ])
     assert merge_into_curation_report(report, validation) == 2
     rows = {r["biosample_id"]: r for r in report["rows"]}
     assert rows["b1"]["validator"] == {"info_ok": True, "label_ok": False, "anchor_ok": True, "valueset_ok": None}
     assert rows["b2"]["validator"] == {f: None for f in FLAGS}                       # untouched
     assert rows["b3"]["validator"] == {f: None for f in FLAGS}                       # sentinel untouched
-    assert rows["b4"]["validator"]["valueset_ok"] is True                             # dict created
+    assert "validator" not in rows["b4"]                                              # rejected row untouched
+    assert rows["b5"]["validator"] == {"info_ok": True, "label_ok": True, "anchor_ok": True, "valueset_ok": True}
+
+
+def test_merge_never_overwrites_a_hand_set_flag_with_none():
+    # A curator recorded a runoak NCBITaxon check by hand; the batch validator
+    # cannot check that prefix (all None) and must not erase it.
+    report = {"rows": [{"biosample_id": "b1", "slot": "samp_taxon_id", "committed_curie": "NCBITaxon:410658",
+                        "validator": {"info_ok": True, "label_ok": True, "anchor_ok": None, "valueset_ok": None}}]}
+    unchecked = entry("b1", "samp_taxon_id", "NCBITaxon:410658", checked=False,
+                      info_ok=None, label_ok=None, anchor_ok=None, valueset_ok=None)
+    assert merge_into_curation_report(report, validation_ok([unchecked])) == 0
+    assert report["rows"][0]["validator"] == {"info_ok": True, "label_ok": True, "anchor_ok": None, "valueset_ok": None}
+    # ...but a real verdict does replace it.
+    checked = entry("b1", "samp_taxon_id", "NCBITaxon:410658", label_ok=False, anchor_ok=None)
+    assert merge_into_curation_report(report, validation_ok([checked])) == 1
+    assert report["rows"][0]["validator"]["label_ok"] is False
 
 
 def test_merge_is_a_noop_unless_status_ok():
@@ -656,6 +768,11 @@ def test_cli_writes_report_merges_and_exit_codes(monkeypatch, tmp_path):
     assert cli.main([str(db_path), "--fail-on", "never"]) == cli.EXIT_NOT_RUN
     assert cli.main([str(tmp_path / "missing.json")]) == cli.EXIT_NOT_RUN
     assert cli.main([str(db_path), "--adapter", "bad"]) == cli.EXIT_NOT_RUN
+    garbage = tmp_path / "garbage.json"
+    garbage.write_text("{not json")
+    assert cli.main([str(garbage)]) == cli.EXIT_NOT_RUN
+    garbage.write_text(json.dumps({"biosample_set": [{"id": "x", "env_medium": "a string, not a value"}]}))
+    assert cli.main([str(garbage)]) == cli.EXIT_NOT_RUN
 
 
 def test_cli_default_valuesets_and_env_adapters(monkeypatch, tmp_path):
@@ -701,6 +818,11 @@ def test_pipeline_step_never_raises_and_merges(monkeypatch, tmp_path, capsys):
     v["reason"] = "dns"
     assert T.run_term_validation_step(db, str(out), report, str(report_path))["status"] == "unavailable"
     assert "Term validation unavailable: dns" in capsys.readouterr().out
+
+    v["status"] = "ok"
+    monkeypatch.setattr(T, "merge_into_curation_report", lambda *a, **k: (_ for _ in ()).throw(OSError("read-only")))
+    assert T.run_term_validation_step(db, str(out), report, str(report_path))["status"] == "ok"
+    assert "Curation report not updated with validator flags (OSError: read-only)" in capsys.readouterr().err
 
 
 def test_curation_report_skeleton_has_label_ok():
@@ -807,3 +929,30 @@ def test_end_to_end_against_cached_envo(tmp_path):
     assert cli.main([str(db_path), "--cache-dir", str(tmp_path / "cache")]) == cli.EXIT_FINDINGS
     rerun = json.loads((tmp_path / "x_nmdc_term_validation_report.json").read_text())
     assert rerun["summary"] == s
+    # the ontology release is recorded in the cache marker
+    marker = json.loads((tmp_path / "cache" / "ontology_versions.json").read_text())
+    assert marker["ENVO"] == validation["tool"]["ontology_versions"]["ENVO"]
+
+    # OFFLINE second pass on the warm cache: labels resolve from terms.csv, but
+    # anchor membership needs a materialized closure, so it comes back None
+    # instead of a false verdict; unresolvable terms are "not found in cache".
+    off = run_term_validation(extract_observed_terms(db), cache_dir=tmp_path / "cache", offline=True)
+    assert off["status"] == STATUS_OK
+    o = by_key(off)
+    assert o[(b(1), "env_broad_scale")]["info_ok"] is True and o[(b(1), "env_broad_scale")]["label_ok"] is True
+    assert o[(b(2), "env_broad_scale")]["label_ok"] is False          # brine vs liquid water, from cache
+    assert o[(b(2), "env_broad_scale")]["anchor_ok"] is None          # not decidable offline
+    assert o[(b(3), "env_local_scale")]["anchor_ok"] is None          # negative rule not decidable offline
+    assert "offline cache" in next(f["message"] for f in off["findings"] if f["level"] == "existence")
+    assert off["tool"]["ontology_versions"]["ENVO"] == marker["ENVO"]  # from the marker
+    assert off["config"]["ontology_versions_source"].startswith("cache marker")
+
+    # A failing opt-in adapter disables only its own prefix.
+    part = run_term_validation(extract_observed_terms(db), cache_dir=tmp_path / "cache",
+                               adapters={"PO": "sqlite:/nonexistent/po.db"})
+    assert part["status"] == STATUS_OK
+    assert "PO" in part["config"]["adapter_failures"]
+    leaf = by_key(part)[(b(5), "env_medium")]
+    assert leaf["checked"] is False and "adapter for 'PO' failed" in leaf["notes"][0]
+    assert by_key(part)[(b(1), "env_broad_scale")]["info_ok"] is True
+    assert "adapter for PO failed" in format_summary(part)

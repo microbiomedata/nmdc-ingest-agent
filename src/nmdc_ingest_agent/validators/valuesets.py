@@ -26,6 +26,7 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 DEFAULT_VALUESETS_PATH = PACKAGE_DIR / "env_triad_valuesets.tsv"
 
 ENV_TRIAD_SLOTS: tuple[str, ...] = ("env_broad_scale", "env_local_scale", "env_medium")
+REQUIRED_COLUMNS: frozenset[str] = frozenset({"interface", "slot", "enum", "curie", "label"})
 
 # MIxS environmental-package token (as it appears in an NCBI BioSample package
 # name such as ``MIMS.me.soil.6.0`` or ``MIMARKS.survey.water.6.0``) -> NMDC
@@ -104,7 +105,8 @@ class ValueSets:
 
 def load_valuesets(path: Path = DEFAULT_VALUESETS_PATH) -> Optional[ValueSets]:
     """Load the vendored TSV. Returns None (not an exception) if it is missing,
-    so the validator can report the level as unavailable."""
+    so the validator can report the level as unavailable; raises ValueError for
+    a file that is present but is not a value-set TSV."""
     path = Path(path)
     if not path.exists():
         return None
@@ -126,8 +128,14 @@ def _load_valuesets_cached(path_str: str) -> ValueSets:
             body.append(line)
     vs.schema_version = header_meta.get("nmdc_submission_schema_version", "")
     vs.generated = header_meta.get("generated", "")
-    for row in csv.DictReader(body, delimiter="\t"):
+    reader = csv.DictReader(body, delimiter="\t")
+    missing = REQUIRED_COLUMNS - set(reader.fieldnames or [])
+    if missing:
+        raise ValueError(f"{path_str}: not an env-triad value-set TSV (missing columns {sorted(missing)})")
+    for row in reader:
         key = (row["interface"], row["slot"])
         vs.enum_for[key] = row["enum"]
         vs.members.setdefault(row["enum"], {})[row["curie"]] = row["label"]
+    if not vs.members:
+        raise ValueError(f"{path_str}: env-triad value-set TSV has no rows")
     return vs
