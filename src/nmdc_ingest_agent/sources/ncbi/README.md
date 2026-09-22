@@ -31,6 +31,7 @@ All IDs use the shoulder `99` and are placeholders; they must be re-minted via t
 nmdc-ingest-ncbi PRJNA1452545 --fetch-only   # dump raw NCBI data for review
 nmdc-ingest-ncbi PRJNA1452545                # produce NMDC JSON
 nmdc-ingest-ncbi PRJNA1452545 --validate     # produce, then runtime-validate the JSON
+nmdc-ingest-ncbi PRJNA1452545 --skip-term-validation   # produce without the ontology-term QC pass
 # resolve env-triad deterministically from a per-biosample crosswalk TSV:
 nmdc-ingest-ncbi PRJNA1071982 --env-triad-crosswalk examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv
 ```
@@ -43,5 +44,9 @@ nmdc-ingest-ncbi PRJNA1071982 --env-triad-crosswalk examples/microflora-danica/c
 - The deliverable carries **no** top-level `@type: Database`. The pipeline serializes with `json_dumper.to_dict` (then `json.dump`) to match the canonical nmdc-runtime ETL (`RuntimeApiUserClient.{validate,submit}_metadata` both POST `json_dumper.to_dict(database)`), which omits `@type`; `json_dumper.dumps` would have injected it. (The endpoint ignores unknown / `@`-prefixed top-level keys regardless, so it isn't load-bearing either way.)
 - Placeholder `-99-` ids validate fine. Network errors or an HTTP 5xx (a very large deliverable — tens of thousands of records — can 502 the endpoint) report a friendly message; the offline linkml load is the fallback.
 - The reusable helper is `nmdc_ingest_agent.validation.validate_runtime(json_path, env)`.
+
+### Ontology term QC (automatic)
+
+After the deliverable and the curation sidecars are written, the translator runs every real CURIE on the biosamples (`env_broad_scale` / `env_local_scale` / `env_medium` / `samp_taxon_id` / `host_taxid`) through [linkml-term-validator](https://linkml.io/linkml-term-validator/) — CURIE existence and obsolescence, label concordance with the ontology, MIxS anchor class, NMDC submission-schema value set for the sample's package — and writes `results/ncbi_<ACC>_nmdc_term_validation_report.json`. Per-term verdicts are folded into the curation report's `validator` flags. The pass never aborts the run: the report's `status` is `skipped` (the `ontology` extra is not installed), `unavailable` (an ontology service could not be reached), or `error` (anything else, e.g. the first-run ENVO download failing), each with a `reason`, and the ingest continues. A failing opt-in adapter (e.g. NCBITaxon) only disables its own prefix. `ENVO:00000000` sentinels are excluded (that CURIE is a real ENVO class, "geographic feature", so the validator cannot tell the pipeline's refuse marker from a commit). See `nmdc_ingest_agent.validators` and the standalone `nmdc-ingest-validate-terms` command.
 
 For the full curator-quality workflow (ontology resolution, validation, review), use the `ncbi-to-nmdc` Claude Code skill at the repo root.

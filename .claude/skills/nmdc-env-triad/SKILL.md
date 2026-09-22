@@ -1,6 +1,6 @@
 ---
 name: nmdc-env-triad
-description: "Use this skill to resolve MIxS env_broad_scale, env_local_scale, and env_medium to ENVO CURIEs via runoak, constrained to the correct anchor classes and the MIxS soil-package valueset. Trigger when an ingest leaves ENVO:00000000 sentinels on biosample env-triad slots, when free-text environment strings need lifting to ENVO, or when land-cover coordinates can refine env_local_scale. Not for taxon or non-environment slots."
+description: "Use this skill to resolve MIxS env_broad_scale, env_local_scale, and env_medium to ENVO CURIEs via runoak, constrained to the correct anchor classes and the NMDC package value sets (soil / water / sediment / plant-associated). Trigger when an ingest leaves ENVO:00000000 sentinels on biosample env-triad slots, when free-text environment strings need lifting to ENVO, or when land-cover coordinates can refine env_local_scale. Not for taxon or non-environment slots."
 ---
 
 # NMDC env triad curation
@@ -47,7 +47,7 @@ The NMDC schema inherits MIxS env-triad semantics: each of the three slots must 
 | Slot | Anchor class | MIxS intent |
 |---|---|---|
 | `env_broad_scale` | `ENVO:00000428` (biome) | The coarse biome containing the sample |
-| `env_local_scale` | `ENVO:01000813` (astronomical body part) — practically, environmental features | Causal environmental entity at the sample's vicinity |
+| `env_local_scale` | *no single subtree* — search under `ENVO:01000813` (astronomical body part) first, but the rule is only "not a biome" (see §2) | Causal environmental entity at the sample's vicinity, finer-grained than the biome |
 | `env_medium` | `ENVO:00010483` (environmental material) | The material the sample is composed of |
 
 ## Per-placeholder workflow
@@ -63,7 +63,7 @@ Then run **§2 Validate every committed CURIE** before flipping the curation-rep
 
 1. Read the original free-text value from the placeholder's `has_raw_value` (or its `name` field when `has_raw_value` is the same string).
 2. Search ENVO: `uv run --extra ontology runoak -i sqlite:obo:envo search "<raw value>"`
-3. Filter hits to descendants of the correct anchor class. For each candidate run `uv run --extra ontology runoak -i sqlite:obo:envo ancestors -p i <CURIE>` and confirm the slot's anchor class (from the table above) appears in the ancestor list. Reject candidates that do not.
+3. Filter hits by the slot's anchor rule. For each candidate run `uv run --extra ontology runoak -i sqlite:obo:envo ancestors -p i <CURIE>`: for `env_broad_scale` / `env_medium` the anchor class from the table above must appear in the ancestor list (reject candidates where it does not); for `env_local_scale` reject candidates whose ancestors include `ENVO:00000428` (a biome belongs in `env_broad_scale`).
 4. Pick the closest match; record its CURIE and label.
 5. If no good match exists, leave the `ENVO:00000000` placeholder in place. Per `nmdc-curation-rules` Rule 4, write `outcome: "left_sentinel"` to the report — do not guess.
 
@@ -81,14 +81,30 @@ For the full inputs list, prediction workflow, and refuse thresholds, see [`refe
 
 Applies to **both** §1a and §1b commits. Run before flipping a report row off `left_sentinel`.
 
+Per term, while you are resolving it, use `runoak`:
+
 1. **Term exists, label correct, not deprecated.** `uv run --extra ontology runoak -i sqlite:obo:envo info <CURIE>`. Confirm:
    - The CURIE returns a record (not "no such term").
    - The label matches what you intend to record. The ENVO-official label goes in `term.name`.
    - The term is not deprecated/obsolete (look for `IAO:0000231 has_obsolescence_reason` or `obsolete` markers in info output).
-2. **Anchor class membership.** `uv run --extra ontology runoak -i sqlite:obo:envo ancestors -p i <CURIE>`. The slot's anchor class (`ENVO:00000428` for `env_broad_scale`, `ENVO:01000813` for `env_local_scale`, `ENVO:00010483` for `env_medium`) must appear in the ancestor list.
-3. **Package valueset (when soil + `nmdc-submission-schema` importable).** Confirm CURIE is in the soil package's allowed list for this slot.
+2. **Anchor class membership.** `uv run --extra ontology runoak -i sqlite:obo:envo ancestors -p i <CURIE>`. `ENVO:00000428` (biome) must appear for `env_broad_scale` and `ENVO:00010483` (environmental material) for `env_medium`. For `env_local_scale` the rule is negative — the term must **not** be a biome (biomes go in `env_broad_scale`); `ENVO:01000813` (astronomical body part) is the usual home but NMDC's own local-scale value sets also include wetland ecosystems, vegetation layers, glaciers and the like, so do not reject a term merely for sitting outside it.
+3. **Package value set.** Confirm the CURIE is in the NMDC value set for the sample's MIxS package and slot when one exists (soil / water / sediment / plant-associated) — see § Package value sets.
 
-On any failure: revert the slot to sentinel, set `outcome: "validator_rejected"` in the report, and populate the `validator` dict to record which check failed (`info_ok: false`, `anchor_ok: false`, or `valueset_ok: false`). Do not commit.
+Then, once you have patched the deliverable, run the **batch validator** so every committed CURIE is machine-checked at all four levels and the verdicts land in the report:
+
+```bash
+uv run nmdc-ingest-validate-terms results/ncbi_<ACC>_nmdc.json \
+    --curation-report results/ncbi_<ACC>_nmdc_curation_report.json
+```
+
+It is the same linkml-term-validator pass `nmdc-ingest-ncbi` already ran over the pipeline-committed terms; it fills `validator.{info_ok,label_ok,anchor_ok,valueset_ok}` on every row whose `committed_curie` matches the deliverable (so keep JSON and report in sync). Flag semantics — `true` / `false` / `null` (= not checked: sentinel, or a prefix such as NCBITaxon with no adapter configured):
+
+- `info_ok` — CURIE exists in the ontology and is not obsolete (error if false).
+- `label_ok` — committed `term.name` equals the ontology label, ignoring case and punctuation (error if false; the fix is to copy the official label into `term.name`, keeping the submitter string in `has_raw_value`).
+- `anchor_ok` — the anchor rule in step 2 (warning if false).
+- `valueset_ok` — step 3 (warning if false; `null` when no NMDC value set exists for the package).
+
+On any error-level failure: revert the slot to sentinel, set `outcome: "validator_rejected"` in the report, and leave the `validator` dict recording which check failed. Do not commit. A warning-level failure (`anchor_ok` / `valueset_ok`) is a prompt to reconsider; if you keep the term, justify it in the row's `evidence`.
 
 ## Slot value shape
 
@@ -104,12 +120,12 @@ As you process each slot, update its row in place. Required fields per row:
 - `committed_curie`, `committed_label`: set when committing; null when leaving sentinel or rejecting.
 - `evidence`: list of `{source, quote_or_paraphrase}` rows per `nmdc-curation-rules` Rule 1. Required for every commit; can be empty for `left_sentinel`.
 - `candidates_considered`: list of `{curie, label, reason_rejected}` for runoak hits you considered but rejected — useful for the curator to see what was tried.
-- `validator`: dict with `info_ok`, `anchor_ok`, `valueset_ok` (true / false / null).
+- `validator`: dict with `info_ok`, `label_ok`, `anchor_ok`, `valueset_ok` (true / false / null) — written by the batch validator (§2); only set them by hand when recording a `runoak` check the batch validator cannot make (e.g. an NCBITaxon term with no adapter configured).
 
 The curation report is the deliverable to the curator. Step 8 in `ncbi-to-nmdc` summarizes it.
 
-## Soil package
+## Package value sets
 
-For **soil** biosamples (MIxS `soil` or `MIMS.me.soil.*` package), the submission schema further restricts each slot to a package-specific value set. Check whether `nmdc-submission-schema` is importable; if present, prefer matches inside the soil valueset, and if absent (the current default), fall back to anchor-class descendants **and** tell the source skill's report step that the valueset constraint was not enforced — silent fall-back is a bug.
+For **soil, water, sediment and plant-associated** biosamples (MIxS `MIMS.me.soil.*`, `.water.*`, `.sediment.*`, `.plant-associated.*` and the MIMARKS/MIGS equivalents), the NMDC submission schema further restricts each env-triad slot to a curated value set. Those value sets are vendored in the repo (`src/nmdc_ingest_agent/validators/env_triad_valuesets.tsv`, stamped with the `nmdc-submission-schema` version they came from): prefer candidates inside the set, and let the batch validator (§2) record `valueset_ok`. For every other package the report must say that no NMDC value set exists — silent fall-back is a bug.
 
-For the importability check and the exact report-gap wording, see [`references/soil-package.md`](references/soil-package.md).
+For how to read the value sets and the exact report-gap wording, see [`references/soil-package.md`](references/soil-package.md).

@@ -1,0 +1,24 @@
+# Per-prefix OAK adapters for linkml-term-validator (existence, label and
+# anchor checks run only for prefixes listed here with a non-empty adapter).
+#
+# ENVO is the only default: sqlite:obo:envo is a ~15 MB download on first use,
+# cached by oaklib (~/.data/oaklib/envo.db) and reused by the curation skills'
+# `runoak` calls. NCBITaxon (samp_taxon_id / host_taxid) is deliberately NOT
+# configured: sqlite:obo:ncbitaxon is a multi-GB download and ols:ncbitaxon is
+# one HTTP round-trip per unique taxon. Opt in per run instead:
+#
+#   nmdc-ingest-validate-terms ... --adapter NCBITaxon=sqlite:obo:ncbitaxon
+#   NMDC_TERM_VALIDATION_ADAPTERS="NCBITaxon=ols:ncbitaxon" uv run nmdc-ingest-ncbi ...
+#
+# Terms whose prefix is not configured are reported as *unchecked*, never as
+# failures. An empty value explicitly skips a prefix.
+ontology_adapters:
+  ENVO: sqlite:obo:envo
+  PO:
+  NCBITaxon:
+
+# Dynamic-enum (anchor) membership is resolved lazily per value and cached under
+# the cache dir; 'greedy' would materialize the full ENVO closure of each anchor
+# (thousands of terms) up front, which is wasted work for a few hundred distinct
+# CURIEs per ingest.
+cache_strategy: progressive

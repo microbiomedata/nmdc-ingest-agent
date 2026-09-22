@@ -33,13 +33,17 @@ Most of `RUN_NOTES.md` is computed from artifacts the pipeline already wrote:
 uv run python -m nmdc_ingest_agent.run_notes \
     --deliverable results/ncbi_<ACC>_nmdc.json \
     --curation-report results/ncbi_<ACC>_nmdc_curation_report.json \
+    --term-validation-report results/ncbi_<ACC>_nmdc_term_validation_report.json \
     --out-dir runs/ncbi_<ACC> \
     --source ncbi --accession <ACC> --env <dev|prod> \
     --command "uv run nmdc-ingest-ncbi <ACC>" --mint-mode <placeholder|real>
 ```
 
 That fills: run metadata, record counts (per collection), a per-slot resolution table
-(resolved / deferred / flagged), and the deferred + flagged biosample backlogs.
+(resolved / deferred / flagged), the deferred + flagged biosample backlogs, and — from the
+term-validation report — the **ontology term QC** block of the Validation section (terms
+checked, errors/warnings by level with the offending biosample/slot/CURIE, prefixes left
+unchecked, sentinels skipped; or the reason the pass could not run).
 
 ## Then annotate the judgment sections
 
@@ -49,7 +53,8 @@ only you have — fill them in:
 - **Exclusions** — what was dropped and why (e.g. "4,617 MAG-only biosamples excluded: no SRA
   run"). Never leave a silent drop unexplained.
 - **Validation** — the local linkml load result and the runtime `json:validate` result, plus
-  any known failures (elink flakiness, a 502 on a very large payload).
+  any known failures (elink flakiness, a 502 on a very large payload). The ontology term QC
+  block above it is machine-generated; add what you did about each error-level finding.
 
 Also phrase each genuinely **ambiguous** case as a specific question for the PI (a
 mixed-environment consensus break, a primer in no database, an ambiguous host) so the human
