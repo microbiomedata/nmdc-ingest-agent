@@ -1,6 +1,6 @@
 ---
 name: nmdc-env-triad
-description: "Use this skill to resolve MIxS env_broad_scale, env_local_scale, and env_medium to ENVO CURIEs via runoak, constrained to the correct anchor classes and the MIxS soil-package valueset. Trigger when an ingest leaves ENVO:00000000 sentinels on biosample env-triad slots, when free-text environment strings need lifting to ENVO, or when land-cover coordinates can refine env_local_scale. Not for taxon or non-environment slots."
+description: "Use this skill to resolve MIxS env_broad_scale, env_local_scale, and env_medium to ENVO CURIEs via runoak, constrained to the correct anchor classes and the NMDC package value sets (soil / water / sediment / plant-associated). Trigger when an ingest leaves ENVO:00000000 sentinels on biosample env-triad slots, when free-text environment strings need lifting to ENVO, or when land-cover coordinates can refine env_local_scale. Not for taxon or non-environment slots."
 ---
 
 # NMDC env triad curation
@@ -47,7 +47,7 @@ The NMDC schema inherits MIxS env-triad semantics: each of the three slots must 
 | Slot | Anchor class | MIxS intent |
 |---|---|---|
 | `env_broad_scale` | `ENVO:00000428` (biome) | The coarse biome containing the sample |
-| `env_local_scale` | `ENVO:01000813` (astronomical body part) — practically, environmental features | Causal environmental entity at the sample's vicinity |
+| `env_local_scale` | *no single subtree* — search under `ENVO:01000813` (astronomical body part) first, but the rule is only "not a biome" (see §2) | Causal environmental entity at the sample's vicinity, finer-grained than the biome |
 | `env_medium` | `ENVO:00010483` (environmental material) | The material the sample is composed of |
 
 ## Per-placeholder workflow
@@ -63,7 +63,7 @@ Then run **§2 Validate every committed CURIE** before flipping the curation-rep
 
 1. Read the original free-text value from the placeholder's `has_raw_value` (or its `name` field when `has_raw_value` is the same string).
 2. Search ENVO: `uv run --extra ontology runoak -i sqlite:obo:envo search "<raw value>"`
-3. Filter hits to descendants of the correct anchor class. For each candidate run `uv run --extra ontology runoak -i sqlite:obo:envo ancestors -p i <CURIE>` and confirm the slot's anchor class (from the table above) appears in the ancestor list. Reject candidates that do not.
+3. Filter hits by the slot's anchor rule. For each candidate run `uv run --extra ontology runoak -i sqlite:obo:envo ancestors -p i <CURIE>`: for `env_broad_scale` / `env_medium` the anchor class from the table above must appear in the ancestor list (reject candidates where it does not); for `env_local_scale` reject candidates whose ancestors include `ENVO:00000428` (a biome belongs in `env_broad_scale`).
 4. Pick the closest match; record its CURIE and label.
 5. If no good match exists, leave the `ENVO:00000000` placeholder in place. Per `nmdc-curation-rules` Rule 4, write `outcome: "left_sentinel"` to the report — do not guess.
 

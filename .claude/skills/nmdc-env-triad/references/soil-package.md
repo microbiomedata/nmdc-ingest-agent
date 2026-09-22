@@ -2,11 +2,12 @@
 
 The NMDC submission schema restricts each env-triad slot to a curated value set for four MIxS packages — `SoilInterface`, `WaterInterface`, `SedimentInterface`, `PlantAssociatedInterface` (`EnvBroadScaleSoilEnum`, `EnvMediumWaterEnum`, …). Every other interface (hydrocarbon reservoirs, air, built environment, host-associated, biofilm, wastewater, miscellaneous) accepts any string, so there is nothing to enforce there and the honest report line is "no NMDC value set for `<interface>`".
 
-The value sets are **vendored** in `src/nmdc_ingest_agent/validators/env_triad_valuesets.tsv` (columns `interface`, `slot`, `enum`, `curie`, `label`; header comments record the `nmdc-submission-schema` version and generation date). You never need to import `nmdc-submission-schema` in the agent environment — its `rdflib<7` pin would downgrade the whole project. To list the allowed terms for a package + slot while curating:
+The value sets are **vendored** in `src/nmdc_ingest_agent/validators/env_triad_valuesets.tsv` (columns `interface`, `slot`, `enum`, `curie`, `label`, `text`; `#` header comments record the `nmdc-submission-schema` version and generation date). You never need to import `nmdc-submission-schema` in the agent environment — its `rdflib<7` pin would downgrade the whole project. To list the allowed terms for a package + slot while curating:
 
 ```bash
-# soil-package env_medium candidates (label + CURIE)
-grep -P "^SoilInterface\tenv_medium\t" src/nmdc_ingest_agent/validators/env_triad_valuesets.tsv | cut -f4,5
+# soil-package env_medium candidates (CURIE + label); awk is portable across macOS/Linux
+awk -F'\t' '$1=="SoilInterface" && $2=="env_medium" {print $4"\t"$5}' \
+    src/nmdc_ingest_agent/validators/env_triad_valuesets.tsv
 ```
 
 The batch validator (`nmdc-ingest-validate-terms`, `SKILL.md` §2) infers the interface from the biosample's `env_package.has_raw_value` (e.g. `MIMS.me.soil.6.0` → `SoilInterface`) and writes `valueset_ok` per row: `true` / `false` for the four packages, `null` with a "no NMDC value set" note otherwise.

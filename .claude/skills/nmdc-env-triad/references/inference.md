@@ -2,7 +2,7 @@
 
 The inference branch of the env-triad per-placeholder workflow. Reached when a sentinel's `has_raw_value` is empty and `name` is `"(not provided)"` — the source pipeline had nothing to lift, so predict from context, refusing if evidence is thin (per `nmdc-curation-rules` Rule 4).
 
-Anchor classes and the `runoak` invocation pattern are in the skill body (`SKILL.md` § Slot anchor classes, § Runoak setup); the soil-package valueset check is in [`soil-package.md`](soil-package.md).
+Anchor classes and the `runoak` invocation pattern are in the skill body (`SKILL.md` § Slot anchor classes, § Runoak setup); the package value-set check (soil / water / sediment / plant-associated) is in [`soil-package.md`](soil-package.md).
 
 **Inputs to gather** — from the curation inputs sidecar at `results/ncbi_<ACC>_nmdc_curation_inputs.json`, keyed by NMDC biosample id:
 
