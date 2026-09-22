@@ -528,8 +528,6 @@ def _to_doi_curie(raw: str) -> Optional[str]:
 
 def _build_provenance_metadata(now: datetime) -> nmdc.ProvenanceMetadata:
     return nmdc.ProvenanceMetadata(
-        add_date=now,
-        mod_date=now,
         source_system_of_record=nmdc.SourceSystemEnum.NCBI.text,
         git_url=INGEST_AGENT_GIT_URL,
         version=INGEST_AGENT_VERSION,
