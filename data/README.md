@@ -6,6 +6,11 @@ Computable data files consumed by the skills under [`.claude/skills/`](../.claud
 - **Shareable** — easy to cite, import into other curation projects, or load with standard tools (`pandas.read_csv`, `csv.DictReader`, `jq` after JSON conversion, etc.).
 - **Validatable** — every ontology CURIE in any file here passes `runoak info` + `runoak ancestors -p i` against its slot's anchor class.
 
+The NMDC submission-schema env-triad value sets consumed by the term validator and the
+`nmdc-env-triad` skill are *package* data rather than curation data, so they live next to the
+code that ships them: [`src/nmdc_ingest_agent/validators/env_triad_valuesets.tsv`](../src/nmdc_ingest_agent/validators/env_triad_valuesets.tsv)
+(regenerated, never hand-edited).
+
 This directory holds only **reusable, cross-project** computable data. Project-specific
 mapping artifacts live with their project instead — e.g. the MicroFlora Danica MFDO→NMDC
 crosswalk is at [`examples/microflora-danica/crosswalk/`](../examples/microflora-danica/crosswalk/),

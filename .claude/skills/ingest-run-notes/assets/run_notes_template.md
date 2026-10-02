@@ -36,6 +36,10 @@
 
 ## Validation
 
+- Ontology term QC (linkml-term-validator <version>): <n> term(s) checked, **<n> error(s)**, <n> warning(s); <prefix> terms unchecked (adapter not configured); <n> ENVO:00000000 sentinel(s) skipped; against ENVO <release>.
+  - <level> (<n>):
+    - <biosample_id> <slot> <CURIE> — <message>
+
 <!-- local linkml load result; runtime json:validate result; known failures -->
 
 ## Decisions for next run

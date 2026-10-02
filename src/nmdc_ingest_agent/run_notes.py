@@ -16,6 +16,7 @@ CLI:
     uv run python -m nmdc_ingest_agent.run_notes \
         --deliverable results/ncbi_<ACC>_nmdc.json \
         --curation-report results/ncbi_<ACC>_nmdc_curation_report.json \
+        --term-validation-report results/ncbi_<ACC>_nmdc_term_validation_report.json \
         --source ncbi --accession <ACC> --env dev \
         --command "uv run nmdc-ingest-ncbi <ACC>" --mint-mode placeholder \
         --out-dir runs/ncbi_<ACC>
@@ -64,6 +65,37 @@ def count_records(deliverable: dict) -> dict:
             if deliverable.get(c)}
 
 
+def summarize_term_validation(validation: dict) -> dict:
+    """Condense a ``*_term_validation_report.json`` (see
+    ``nmdc_ingest_agent.validators``) into what a curator needs: status, counts
+    and the findings grouped by level (capped per level)."""
+    status = validation.get("status") or "unknown"
+    summary = validation.get("summary") or {}
+    grouped: dict[str, list[str]] = {}
+    for f in validation.get("findings") or []:
+        grouped.setdefault(f.get("level", "other"), []).append(
+            f"{f.get('biosample_id')} {f.get('slot')} {f.get('term_id')} — {f.get('message')}"
+        )
+    # Hard failures first, then the advisory levels.
+    order = ["existence", "obsolete", "label", "anchor", "valueset", "other"]
+    grouped = {k: grouped[k] for k in sorted(grouped, key=lambda k: order.index(k) if k in order else len(order))}
+    return {
+        "status": status,
+        "reason": validation.get("reason"),
+        "tool": (validation.get("tool") or {}).get("linkml_term_validator"),
+        "ontology_versions": {k: v for k, v in ((validation.get("tool") or {}).get("ontology_versions") or {}).items() if v},
+        "adapter_failures": dict((validation.get("config") or {}).get("adapter_failures") or {}),
+        "checked": summary.get("checked", 0),
+        "terms": summary.get("terms", 0),
+        "errors": summary.get("errors", 0),
+        "warnings": summary.get("warnings", 0),
+        "unchecked_prefixes": summary.get("unchecked_prefixes") or [],
+        "skipped_sentinels": summary.get("skipped_sentinels", 0),
+        "by_level": {k: v for k, v in (summary.get("by_level") or {}).items() if v},
+        "findings": grouped,
+    }
+
+
 def _fmt_ids(ids: list) -> str:
     ids = [i for i in ids if i]
     if not ids:
@@ -74,7 +106,8 @@ def _fmt_ids(ids: list) -> str:
     return shown
 
 
-def render_run_notes(meta: dict, counts: dict, slots: dict) -> str:
+def render_run_notes(meta: dict, counts: dict, slots: dict,
+                     term_validation: Optional[dict] = None) -> str:
     """Render the RUN_NOTES.md markdown from computed data."""
     L: list[str] = []
     title = f"{meta.get('source', 'ingest')} {meta.get('accession', '')}".strip()
@@ -131,8 +164,10 @@ def render_run_notes(meta: dict, counts: dict, slots: dict) -> str:
     # Sections the agent annotates from run context (not derivable from artifacts).
     L += ["## Exclusions", "",
           "<!-- what was dropped and why (e.g. MAG-only biosamples with no SRA run) -->", ""]
-    L += ["## Validation", "",
-          "<!-- local linkml load result; runtime json:validate result; known failures -->", ""]
+    L += ["## Validation", ""]
+    if term_validation:
+        L += _render_term_validation(term_validation)
+    L += ["<!-- local linkml load result; runtime json:validate result; known failures -->", ""]
     L += ["## Decisions for next run", "",
           "Human steering lives in `DECISIONS.md` (free-form) and `overrides.tsv` "
           "(term overrides). This file is regenerated each run and does not read them back — "
@@ -140,13 +175,47 @@ def render_run_notes(meta: dict, counts: dict, slots: dict) -> str:
     return "\n".join(L)
 
 
-def write_run_notes(out_dir: Path, meta: dict, counts: dict, slots: dict) -> Path:
+def _render_term_validation(tv: dict) -> list[str]:
+    """Markdown lines for the ontology-term QC block of the Validation section."""
+    L: list[str] = []
+    tool = f" (linkml-term-validator {tv['tool']})" if tv.get("tool") else ""
+    if tv.get("status") != "ok":
+        L.append(f"- Ontology term QC{tool}: **{tv.get('status')}** — {tv.get('reason')}. "
+                 f"{tv.get('terms', 0)} term(s) were not checked.")
+        L.append("")
+        return L
+    line = (f"- Ontology term QC{tool}: {tv['checked']} term(s) checked, "
+            f"**{tv['errors']} error(s)**, {tv['warnings']} warning(s)")
+    extras = []
+    if tv.get("ontology_versions"):
+        extras.append("against " + ", ".join(f"{p} {v}" for p, v in tv["ontology_versions"].items()))
+    if tv.get("unchecked_prefixes"):
+        extras.append(f"{', '.join(tv['unchecked_prefixes'])} terms unchecked (adapter not configured)")
+    for prefix, why in (tv.get("adapter_failures") or {}).items():
+        extras.append(f"{prefix} adapter failed ({why})")
+    if tv.get("skipped_sentinels"):
+        extras.append(f"{tv['skipped_sentinels']} ENVO:00000000 sentinel(s) skipped")
+    if extras:
+        line += "; " + "; ".join(extras)
+    L.append(line + ".")
+    for level, items in (tv.get("findings") or {}).items():
+        shown = items[:_MAX_LISTED]
+        L.append(f"  - {level} ({len(items)}):")
+        L += [f"    - {item}" for item in shown]
+        if len(items) > _MAX_LISTED:
+            L.append(f"    - … (+{len(items) - _MAX_LISTED} more in the term validation report)")
+    L.append("")
+    return L
+
+
+def write_run_notes(out_dir: Path, meta: dict, counts: dict, slots: dict,
+                    term_validation: Optional[dict] = None) -> Path:
     """Write RUN_NOTES.md (overwrite) and seed DECISIONS.md / overrides.tsv if absent."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     notes_path = out_dir / "RUN_NOTES.md"
-    notes_path.write_text(render_run_notes(meta, counts, slots))
+    notes_path.write_text(render_run_notes(meta, counts, slots, term_validation))
 
     decisions = out_dir / "DECISIONS.md"
     if not decisions.exists():  # never clobber human-authored steering
@@ -181,6 +250,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Write a human-readable RUN_NOTES.md.")
     ap.add_argument("--deliverable", help="NMDC Database JSON (for record counts)")
     ap.add_argument("--curation-report", help="curation_report.json")
+    ap.add_argument("--term-validation-report",
+                    help="term_validation_report.json written by nmdc-ingest-ncbi / "
+                         "nmdc-ingest-validate-terms (ontology term QC block)")
     ap.add_argument("--out-dir", required=True, help="runs/<source>_<accession>/")
     ap.add_argument("--source", default="ingest")
     ap.add_argument("--accession", default="")
@@ -197,7 +269,9 @@ def main() -> None:
     }
     counts = count_records(_load(args.deliverable)) if args.deliverable else {}
     slots = summarize_report(_load(args.curation_report)) if args.curation_report else {}
-    path = write_run_notes(Path(args.out_dir), meta, counts, slots)
+    term_validation = (summarize_term_validation(_load(args.term_validation_report))
+                       if args.term_validation_report else None)
+    path = write_run_notes(Path(args.out_dir), meta, counts, slots, term_validation)
     print(f"Wrote {path}")
 
 

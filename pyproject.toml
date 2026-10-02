@@ -46,6 +46,9 @@ ontology = [
     # parse). Already present transitively via oaklib; pinned explicitly because the
     # skill's validator depends on it directly.
     "sssom",
+    # Ontology-term QC over the ingest output (term existence, ID/label concordance,
+    # env-triad anchor-class membership) via linkml-term-validator. Pulls oaklib>=0.7.4.
+    "linkml-term-validator>=0.4.5,<1",
 ]
 dev = [
     "pytest",
@@ -54,6 +57,7 @@ dev = [
 
 [project.scripts]
 nmdc-ingest-ncbi = "nmdc_ingest_agent.sources.ncbi.translate:main"
+nmdc-ingest-validate-terms = "nmdc_ingest_agent.validators.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/microbiomedata/nmdc-ingest-agent"

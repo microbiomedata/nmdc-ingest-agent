@@ -5,6 +5,7 @@
       "Bash(uv run ruff:*)",
       "Bash(uv run python:*)",
       "Bash(uv run nmdc-ingest-ncbi:*)",
+      "Bash(uv run nmdc-ingest-validate-terms:*)",
       "Bash(uv run --extra ontology runoak:*)",
       "Bash(uv run --extra ontology python:*)",
       "Bash(uv run --extra ontology sssom:*)",
