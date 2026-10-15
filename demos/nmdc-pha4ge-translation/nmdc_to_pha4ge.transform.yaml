@@ -1,0 +1,114 @@
+# linkml-map TransformationSpecification: NMDC Database -> PHA4GE Wastewater Contextual Data
+# Specification 4.4.4, class WastewaterPathogenAgnostic. One PHA4GE row per sequencing event.
+#
+# Source: the per-class tables written by prepare_nmdc_samples_for_linkml_map.py (Biosample is the
+# primary table; the others are joined on scalar keys). Target: PHA4GE's DataHarmonizer template schema.
+#
+# Conventions worth knowing before reading on:
+#   * `{x}` in an expression is null-propagating: if x is missing the whole expression is None.
+#   * PHA4GE picklist values are display strings pinned to the template ("Wastewater [ENVO:00002001]"),
+#     not canonical ontology labels, and several carry unreleased ENVO/GENEPIO ids; so NMDC CURIEs are
+#     mapped to the template's *strings* with case(), never copied through.
+#   * multivalued PHA4GE slots receive list literals.
+id: https://github.com/microbiomedata/nmdc-ingest-agent/demos/nmdc-pha4ge-translation
+title: NMDC Database -> PHA4GE WastewaterPathogenAgnostic 4.4.4
+source_schema:
+  name: nmdc
+target_schema:
+  name: Wastewater
+mapping_method: semapv:ManualMappingCuration
+
+# The three FK columns prepare_nmdc_samples_for_linkml_map.py adds to Biosample (NMDC stores these links inverse-only).
+source_schema_patches:
+  classes:
+    Biosample:
+      attributes:
+        sequencing:
+          range: NucleotideSequencing
+        data_object:
+          range: DataObject
+        instrument:
+          range: Instrument
+
+class_derivations:
+  WastewaterPathogenAgnostic:
+    populated_from: Biosample
+    joins:
+      Study:                {source_key: associated_studies, lookup_key: id}
+      LibraryPreparation:   {source_key: id,                 lookup_key: has_input}   # the one inverse link joinable without a FK column
+      NucleotideSequencing: {source_key: sequencing,         lookup_key: id}
+      DataObject:           {source_key: data_object,        lookup_key: id}
+      Instrument:           {source_key: instrument,         lookup_key: id}
+    slot_derivations:
+
+      # ---- identifiers --------------------------------------------------------------------------
+      specimen_sample_collector_sample_id:
+        populated_from: samp_name
+      biosample_accession:
+        expr: "{insdc_biosample_identifiers}[10:]"                         # strip 'biosample:'
+      bioproject_accession:
+        expr: "{NucleotideSequencing.insdc_bioproject_identifiers}[11:]"   # strip 'bioproject:'
+      insdc_sequence_read_accession:
+        expr: "{DataObject.insdc_run_identifiers}[10:]"                    # strip 'insdc.run:'
+      specimen_collector_project_id:
+        expr: "{Study.name}"                                               # joined-table values are read with expr
+      sampling_site_id:
+        populated_from: sample_collection_site
+
+      # ---- when / where -------------------------------------------------------------------------
+      sample_collection_date:
+        expr: "{collection_date.has_raw_value}"
+      geo_loc_name_country:
+        # NMDC geo_loc_name is MIxS text ("Kosovo"); PHA4GE wants its GAZ picklist string.
+        # Extend this table for each study (or generate it from the GeoLocNameCountryMenu enum).
+        expr: >-
+          case(({geo_loc_name.has_raw_value} == 'Canada',  'Canada [GAZ:00002560]'),
+               ({geo_loc_name.has_raw_value} == 'Ecuador', 'Ecuador [GAZ:00002912]'),
+               ({geo_loc_name.has_raw_value} == 'Kosovo',  'Kosovo [GAZ:00011337]'),
+               (True, None))
+      geo_loc_latitude:
+        expr: "str({lat_lon.latitude})"
+      geo_loc_longitude:
+        expr: "str({lat_lon.longitude})"
+
+      # ---- what -------------------------------------------------------------------------------
+      organism:
+        # PHA4GE means the surveillance target here; NMDC has the taxon of the DNA sample.
+        expr: "[{samp_taxon_id.term.name} + ' [' + {samp_taxon_id.term.id} + ']']"
+      environmental_site:
+        # Keyed on the verbatim MIxS sewage_type text rather than env_local_scale, because PHA4GE pins
+        # "Wastewater treatment plant" to ENVO:00002272 (ENVO label: waste treatment plant; NMDC uses
+        # ENVO:00002043) and "Sewer pipe" to a GENEPIO id ENVO does not have.
+        expr: >-
+          case(('treatment plant' in {sewage_type.has_raw_value}, ['Wastewater treatment plant [ENVO:00002272]']),
+               ({sewage_type.has_raw_value} == 'river',           ['River [ENVO:00000022]']),
+               ('sewer' in {sewage_type.has_raw_value} or 'manhole' in {sewage_type.has_raw_value}, ['Sewer pipe [GENEPIO:0102064]']),
+               (True, None))
+      environmental_material:
+        # lossy on purpose: PHA4GE's 10-term picklist has no "sewage", so ENVO:00002018 -> broader waste water
+        expr: "case(({env_medium.term.id} == 'ENVO:00002018', ['Wastewater [ENVO:00002001]']), ({env_medium.term.id} == 'ENVO:00002001', ['Wastewater [ENVO:00002001]']), (True, None))"
+      populated_area_type:
+        expr: "case(({env_broad_scale.term.id} == 'ENVO:01000249', 'Urban [GSSO:011080]'), (True, None))"
+
+      # ---- how it was sequenced -----------------------------------------------------------------
+      sequencing_instrument:
+        expr: "case(({Instrument.name} == 'Illumina HiSeq 3000', ['Illumina HiSeq 3000 [OBI:0002048]']), (True, None))"
+      sequencing_platform:
+        expr: "case(({Instrument.vendor} == 'illumina', ['Illumina [GENEPIO:0001923]']), (True, None))"
+      sequencing_assay_type:
+        expr: >-
+          case(({LibraryPreparation.library_strategy} == 'WGS' and {LibraryPreparation.library_source} == 'METAGENOMIC', 'Whole metagenome sequencing assay [OBI:0002623]'),
+               ({LibraryPreparation.library_strategy} == 'AMPLICON', 'Amplicon sequencing assay [OBI:0002767]'),
+               (True, None))
+
+      # ---- required by PHA4GE, never present in INSDC/NMDC: filled with the template's null menu ----
+      sample_collected_by:                          {expr: "'Not Provided [GENEPIO:0001668]'"}
+      sequenced_by:                                 {expr: "'Not Provided [GENEPIO:0001668]'"}
+      sequenced_by_contact_name:                    {expr: "'Not Provided [GENEPIO:0001668]'"}
+      sequenced_by_contact_email:                   {expr: "'Not Provided [GENEPIO:0001668]'"}
+      geo_loc_name_state_province_territory_region: {expr: "'Not Provided [GENEPIO:0001668]'"}
+      isolate_id:                                   {expr: "'Not Applicable [GENEPIO:0001619]'"}
+      purpose_of_sampling:                          {expr: "['Not Provided [GENEPIO:0001668]']"}
+      purpose_of_sequencing:                        {expr: "['Not Provided [GENEPIO:0001668]']"}
+      # read_mapping_software_name / _version are also required and have no null option; they can only
+      # come from an analysis step (e.g. an NMDC ReadBasedTaxonomyAnalysis), so they are left unset.

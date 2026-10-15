@@ -1,0 +1,443 @@
+{
+ "study_set": [
+  {
+   "id": "nmdc:sty-99-x9qhtg31",
+   "type": "nmdc:Study",
+   "name": "Global surveillance of infectious diseases and antimicrobial resistance from sewage",
+   "description": "Adequately monitoring of large populations and their environments is essential if we want to monitor pathogens and antimicrobial resistance around the globe. Recent developments in high‐throughput sequencing allow to rapidly identify nucleic acids from various organisms in clinical and environmental samples. Sewage systems are recognized as an important source of human pathogens, especially in crowded settings with poor infrastructure. A point‐prevalence metagenomic analysis is applied to sewage samples collected globally from the main sewage system of major cities prior to treatment plants inlet. The project is a proof‐of‐concept study for applying metagenomic approaches that could initiate a global surveillance of human infectious diseases including antimicrobial resistance from sewage collected in major cities around the world to detect, control, prevent and predict human infectious diseases.",
+   "study_category": "research_study",
+   "insdc_bioproject_identifiers": [
+    "bioproject:PRJEB13831"
+   ],
+   "provenance_metadata": {
+    "type": "nmdc:ProvenanceMetadata",
+    "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
+    "version": "1.0.0",
+    "source_system_of_record": "NCBI"
+   },
+   "title": "Global surveillance of infectious diseases and antimicrobial resistance from sewage"
+  }
+ ],
+ "biosample_set": [
+  {
+   "id": "nmdc:bsm-99-v02xr641",
+   "type": "nmdc:Biosample",
+   "name": "XK.60",
+   "associated_studies": [
+    "nmdc:sty-99-x9qhtg31"
+   ],
+   "env_broad_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+     "id": "ENVO:01000249",
+     "type": "nmdc:OntologyClass",
+     "name": "urban biome"
+    }
+   },
+   "env_local_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "has_raw_value": "",
+    "term": {
+     "id": "ENVO:00000000",
+     "type": "nmdc:OntologyClass",
+     "name": "(not provided)"
+    }
+   },
+   "env_medium": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+     "id": "ENVO:00002018",
+     "type": "nmdc:OntologyClass",
+     "name": "sewage"
+    }
+   },
+   "provenance_metadata": {
+    "type": "nmdc:ProvenanceMetadata",
+    "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
+    "version": "1.0.0",
+    "source_system_of_record": "NCBI"
+   },
+   "insdc_biosample_identifiers": [
+    "biosample:SAMEA4527676"
+   ],
+   "collection_date": {
+    "type": "nmdc:TimestampValue",
+    "has_raw_value": "2016-02-03"
+   },
+   "env_package": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Generic.1.0"
+   },
+   "geo_loc_name": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Kosovo"
+   },
+   "samp_name": "XK.60",
+   "samp_taxon_id": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+     "id": "NCBITaxon:527639",
+     "type": "nmdc:OntologyClass",
+     "name": "wastewater metagenome"
+    }
+   },
+   "sewage_type": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "manholes of sewage system"
+   },
+   "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": 42.645875,
+    "longitude": 21.169584
+   }
+  },
+  {
+   "id": "nmdc:bsm-99-akzvvg05",
+   "type": "nmdc:Biosample",
+   "name": "ECU.14",
+   "associated_studies": [
+    "nmdc:sty-99-x9qhtg31"
+   ],
+   "env_broad_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+     "id": "ENVO:01000249",
+     "type": "nmdc:OntologyClass",
+     "name": "urban biome"
+    }
+   },
+   "env_local_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+     "id": "ENVO:00000022",
+     "type": "nmdc:OntologyClass",
+     "name": "river"
+    }
+   },
+   "env_medium": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+     "id": "ENVO:00002018",
+     "type": "nmdc:OntologyClass",
+     "name": "sewage"
+    }
+   },
+   "provenance_metadata": {
+    "type": "nmdc:ProvenanceMetadata",
+    "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
+    "version": "1.0.0",
+    "source_system_of_record": "NCBI"
+   },
+   "insdc_biosample_identifiers": [
+    "biosample:SAMEA4527620"
+   ],
+   "collection_date": {
+    "type": "nmdc:TimestampValue",
+    "has_raw_value": "2016-02-01"
+   },
+   "env_package": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Generic.1.0"
+   },
+   "geo_loc_name": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Ecuador"
+   },
+   "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": -0.1807,
+    "longitude": -78.4678
+   },
+   "samp_name": "ECU.14",
+   "samp_taxon_id": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+     "id": "NCBITaxon:527639",
+     "type": "nmdc:OntologyClass",
+     "name": "wastewater metagenome"
+    }
+   },
+   "sewage_type": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "river"
+   }
+  },
+  {
+   "id": "nmdc:bsm-99-ccm6pt06",
+   "type": "nmdc:Biosample",
+   "name": "CAN.22c",
+   "associated_studies": [
+    "nmdc:sty-99-x9qhtg31"
+   ],
+   "env_broad_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+     "id": "ENVO:01000249",
+     "type": "nmdc:OntologyClass",
+     "name": "urban biome"
+    }
+   },
+   "env_local_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+     "id": "ENVO:00002043",
+     "type": "nmdc:OntologyClass",
+     "name": "wastewater treatment plant"
+    }
+   },
+   "env_medium": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+     "id": "ENVO:00002018",
+     "type": "nmdc:OntologyClass",
+     "name": "sewage"
+    }
+   },
+   "provenance_metadata": {
+    "type": "nmdc:ProvenanceMetadata",
+    "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
+    "version": "1.0.0",
+    "source_system_of_record": "NCBI"
+   },
+   "insdc_biosample_identifiers": [
+    "biosample:SAMEA4527610"
+   ],
+   "collection_date": {
+    "type": "nmdc:TimestampValue",
+    "has_raw_value": "2016-01-26"
+   },
+   "env_package": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Generic.1.0"
+   },
+   "geo_loc_name": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Canada"
+   },
+   "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": 45.4215,
+    "longitude": -75.6972
+   },
+   "samp_name": "CAN.22c",
+   "samp_taxon_id": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+     "id": "NCBITaxon:527639",
+     "type": "nmdc:OntologyClass",
+     "name": "wastewater metagenome"
+    }
+   },
+   "sewage_type": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "wastewater treatment plant"
+   }
+  }
+ ],
+ "material_processing_set": [
+  {
+   "id": "nmdc:libprp-99-4e4w9y28",
+   "type": "nmdc:LibraryPreparation",
+   "name": "Library preparation process for XK.60",
+   "has_input": [
+    "nmdc:bsm-99-v02xr641"
+   ],
+   "has_output": [
+    "nmdc:procsm-99-csk61163"
+   ],
+   "library_selection": "RANDOM",
+   "library_strategy": "WGS",
+   "library_source": "METAGENOMIC",
+   "lib_layout": "paired"
+  },
+  {
+   "id": "nmdc:libprp-99-afen4156",
+   "type": "nmdc:LibraryPreparation",
+   "name": "Library preparation process for ECU.14",
+   "has_input": [
+    "nmdc:bsm-99-akzvvg05"
+   ],
+   "has_output": [
+    "nmdc:procsm-99-zq13kg88"
+   ],
+   "library_selection": "RANDOM",
+   "library_strategy": "WGS",
+   "library_source": "METAGENOMIC",
+   "lib_layout": "paired"
+  },
+  {
+   "id": "nmdc:libprp-99-13314n88",
+   "type": "nmdc:LibraryPreparation",
+   "name": "Library preparation process for CAN.22c",
+   "has_input": [
+    "nmdc:bsm-99-ccm6pt06"
+   ],
+   "has_output": [
+    "nmdc:procsm-99-40d8x042"
+   ],
+   "library_selection": "RANDOM",
+   "library_strategy": "WGS",
+   "library_source": "METAGENOMIC",
+   "lib_layout": "paired"
+  }
+ ],
+ "processed_sample_set": [
+  {
+   "id": "nmdc:procsm-99-csk61163",
+   "type": "nmdc:ProcessedSample",
+   "name": "XK.60",
+   "description": "Library for sequencing for XK.60"
+  },
+  {
+   "id": "nmdc:procsm-99-zq13kg88",
+   "type": "nmdc:ProcessedSample",
+   "name": "ECU.14",
+   "description": "Library for sequencing for ECU.14"
+  },
+  {
+   "id": "nmdc:procsm-99-40d8x042",
+   "type": "nmdc:ProcessedSample",
+   "name": "CAN.22c",
+   "description": "Library for sequencing for CAN.22c"
+  }
+ ],
+ "data_generation_set": [
+  {
+   "id": "nmdc:dgns-99-mshfy323",
+   "type": "nmdc:NucleotideSequencing",
+   "name": "Run ERR1713408 for experiment ERX1783642 - XK.60",
+   "has_input": [
+    "nmdc:procsm-99-csk61163"
+   ],
+   "has_output": [
+    "nmdc:dobj-99-bjhn1z77"
+   ],
+   "analyte_category": "metagenome",
+   "associated_studies": [
+    "nmdc:sty-99-x9qhtg31"
+   ],
+   "instrument_used": [
+    "nmdc:inst-11-ezdsdp06"
+   ],
+   "provenance_metadata": {
+    "type": "nmdc:ProvenanceMetadata",
+    "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
+    "version": "1.0.0",
+    "source_system_of_record": "NCBI"
+   },
+   "insdc_bioproject_identifiers": [
+    "bioproject:PRJEB13831"
+   ],
+   "insdc_experiment_identifiers": [
+    "insdc.sra:ERX1783642"
+   ]
+  },
+  {
+   "id": "nmdc:dgns-99-makqvm21",
+   "type": "nmdc:NucleotideSequencing",
+   "name": "Run ERR1713352 for experiment ERX1783586 - ECU.14",
+   "has_input": [
+    "nmdc:procsm-99-zq13kg88"
+   ],
+   "has_output": [
+    "nmdc:dobj-99-f21fg023"
+   ],
+   "analyte_category": "metagenome",
+   "associated_studies": [
+    "nmdc:sty-99-x9qhtg31"
+   ],
+   "instrument_used": [
+    "nmdc:inst-11-ezdsdp06"
+   ],
+   "provenance_metadata": {
+    "type": "nmdc:ProvenanceMetadata",
+    "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
+    "version": "1.0.0",
+    "source_system_of_record": "NCBI"
+   },
+   "insdc_bioproject_identifiers": [
+    "bioproject:PRJEB13831"
+   ],
+   "insdc_experiment_identifiers": [
+    "insdc.sra:ERX1783586"
+   ]
+  },
+  {
+   "id": "nmdc:dgns-99-e618mc77",
+   "type": "nmdc:NucleotideSequencing",
+   "name": "Run ERR1713342 for experiment ERX1783576 - CAN.22c",
+   "has_input": [
+    "nmdc:procsm-99-40d8x042"
+   ],
+   "has_output": [
+    "nmdc:dobj-99-f8e0z443"
+   ],
+   "analyte_category": "metagenome",
+   "associated_studies": [
+    "nmdc:sty-99-x9qhtg31"
+   ],
+   "instrument_used": [
+    "nmdc:inst-11-ezdsdp06"
+   ],
+   "provenance_metadata": {
+    "type": "nmdc:ProvenanceMetadata",
+    "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
+    "version": "1.0.0",
+    "source_system_of_record": "NCBI"
+   },
+   "insdc_bioproject_identifiers": [
+    "bioproject:PRJEB13831"
+   ],
+   "insdc_experiment_identifiers": [
+    "insdc.sra:ERX1783576"
+   ]
+  }
+ ],
+ "data_object_set": [
+  {
+   "id": "nmdc:dobj-99-bjhn1z77",
+   "type": "nmdc:DataObject",
+   "name": "Data file for run accession ERR1713408",
+   "description": "Data file for run accession ERR1713408",
+   "data_category": "instrument_data",
+   "data_object_type": "SRA toolkit-accessible sequence data",
+   "insdc_run_identifiers": [
+    "insdc.run:ERR1713408"
+   ],
+   "was_generated_by": "nmdc:dgns-99-mshfy323"
+  },
+  {
+   "id": "nmdc:dobj-99-f21fg023",
+   "type": "nmdc:DataObject",
+   "name": "Data file for run accession ERR1713352",
+   "description": "Data file for run accession ERR1713352",
+   "data_category": "instrument_data",
+   "data_object_type": "SRA toolkit-accessible sequence data",
+   "insdc_run_identifiers": [
+    "insdc.run:ERR1713352"
+   ],
+   "was_generated_by": "nmdc:dgns-99-makqvm21"
+  },
+  {
+   "id": "nmdc:dobj-99-f8e0z443",
+   "type": "nmdc:DataObject",
+   "name": "Data file for run accession ERR1713342",
+   "description": "Data file for run accession ERR1713342",
+   "data_category": "instrument_data",
+   "data_object_type": "SRA toolkit-accessible sequence data",
+   "insdc_run_identifiers": [
+    "insdc.run:ERR1713342"
+   ],
+   "was_generated_by": "nmdc:dgns-99-e618mc77"
+  }
+ ],
+ "instrument_set": [
+  {
+   "id": "nmdc:inst-11-ezdsdp06",
+   "type": "nmdc:Instrument",
+   "model": "hiseq_3000",
+   "vendor": "illumina",
+   "name": "Illumina HiSeq 3000"
+  }
+ ]
+}
