@@ -61,6 +61,8 @@ uv run nmdc-ingest-ncbi <ACCESSION>
 uv run nmdc-ingest-ncbi PRJNA1071982 --env-triad-crosswalk examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv
 ```
 
+**If the request covers only some of the BioProject's BioSamples** (a stakeholder hands over a sample sheet, or the user names specific accessions), pass the roster with `--biosamples <FILE>` — a plain list of accessions or a CSV/TSV with a `biosample_accession` column, so a sample sheet can be passed as-is. The BioProject's BioSamples are discovered as usual and then filtered to the roster; a listed accession that is not linked to the BioProject is dropped with a warning — mention any in the run notes so the human can check the roster.
+
 Without a crosswalk, the script emits `ENVO:00000000` sentinels for every env-triad slot (preserving the raw submitter string in `has_raw_value` when one was provided, or empty + `name="(not provided)"` when the source had nothing); with one, matched biosamples arrive `resolved_at_pipeline`. Either way it only forwards taxon information that NCBI itself supplied. Resolving remaining sentinels and disambiguating hosts is the next two steps' job.
 
 The script also writes three sidecar files alongside the NMDC JSON:

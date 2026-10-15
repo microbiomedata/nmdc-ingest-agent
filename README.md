@@ -70,6 +70,10 @@ uv run nmdc-ingest-ncbi PRJNA1452545
 # Mint real persistent IDs via the NMDC Runtime API
 uv run nmdc-ingest-ncbi PRJNA1452545 --mint-real-ids
 
+# Translate only the BioSamples listed in a file (plain list, or a CSV/TSV with a
+# biosample_accession column — e.g. a stakeholder's sample sheet)
+uv run nmdc-ingest-ncbi PRJEB13831 --biosamples path/to/sample_sheet.csv
+
 # Resolve env-triad deterministically from a per-biosample crosswalk (e.g. MicroFlora Danica)
 uv run nmdc-ingest-ncbi PRJNA1071982 \
     --env-triad-crosswalk examples/microflora-danica/crosswalk/mfd_biosamples_annotated.tsv

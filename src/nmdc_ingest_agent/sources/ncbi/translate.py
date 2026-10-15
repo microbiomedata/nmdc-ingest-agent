@@ -12,6 +12,8 @@ Or as a module:
 """
 
 import argparse
+import csv
+import io
 import json
 import os
 import re
@@ -19,7 +21,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import requests
 from lxml import etree
@@ -366,7 +368,12 @@ def fetch_linked_biosample_uids(
 
 
 def _fetch_biosample_records(ids: List[str]) -> List[dict]:
-    """Fetch and parse BioSample records for the given UIDs or accessions."""
+    """Fetch and parse BioSample records for the given NCBI UIDs.
+
+    Accessions must be resolved to UIDs first (see ``fetch_biosamples``):
+    efetch reinterprets an accession whose prefix it does not expect as a bare
+    UID and silently returns an unrelated record.
+    """
     if not ids:
         return []
 
@@ -383,11 +390,19 @@ def _fetch_biosample_records(ids: List[str]) -> List[dict]:
                 if key:
                     attrs[key] = attr.text or ""
 
+            # The submitter's sample_name. NCBI promotes it to
+            # <Ids><Id db_label="Sample name"> for its own submissions (no
+            # attribute at all), but ENA-brokered records carry it only as the
+            # harmonized sample_name attribute; Submitter Id is the last resort.
             sample_name = ""
             for id_el in bs.findall(".//Ids/Id"):
                 if id_el.get("db_label") == "Sample name" and id_el.text:
                     sample_name = id_el.text.strip()
                     break
+            if not sample_name:
+                sample_name = (
+                    attrs.get("sample_name") or attrs.get("Submitter Id") or ""
+                ).strip()
 
             title_el = bs.find(".//Description/Title")
             organism_el = bs.find(".//Description/Organism")
@@ -417,19 +432,95 @@ def _fetch_biosample_records(ids: List[str]) -> List[dict]:
     return samples
 
 
-def fetch_biosamples(accessions: List[str]) -> List[dict]:
-    """Fetch BioSample records by accession (e.g. SAMN*).
+ACCESSION_ESEARCH_BATCH = 100
 
-    Passes accessions directly to efetch (db=biosample accepts accession
-    strings as ids). Earlier versions used an esearch round-trip to
-    translate accessions to internal UIDs, but that built ``OR``-joined
-    query strings that NCBI rejects with HTTP 414 for BioProjects with
-    >~150 linked BioSamples. ``efetch_xml`` already batches the id list,
-    so the comma-joined ``id=`` URL stays well under NCBI's limit.
+
+def fetch_biosamples(accessions: List[str]) -> List[dict]:
+    """Fetch BioSample records by accession (SAMN*, SAMEA*, SAMD*).
+
+    Resolves accessions to NCBI UIDs with a batched ``<acc>[Accession]``
+    esearch, then efetches by UID. Passing accessions straight to efetch is
+    only safe for SAMN ids: for ENA-brokered ``SAMEA`` ids NCBI strips the
+    prefix and serves the record whose *UID* is that number (observed:
+    ``id=SAMEA4527610`` returned SAMEA3597051, a mouse embryo sample, for a
+    sewage metagenome). The esearch is batched at ``ACCESSION_ESEARCH_BATCH``
+    accessions per query so the ``OR``-joined term stays under NCBI's URL
+    length limit (HTTP 414 above a few hundred).
+
+    Records whose accession was not requested are dropped, and accessions
+    NCBI did not return are reported, so a bad id can never be silently
+    substituted with someone else's sample.
     """
     if not accessions:
         return []
-    return _fetch_biosample_records(list(accessions))
+    requested = list(dict.fromkeys(a.strip() for a in accessions if a and a.strip()))
+    uids: List[str] = []
+    for i in range(0, len(requested), ACCESSION_ESEARCH_BATCH):
+        chunk = requested[i : i + ACCESSION_ESEARCH_BATCH]
+        term = " OR ".join(f"{acc}[Accession]" for acc in chunk)
+        uids.extend(esearch("biosample", term))
+    records = _fetch_biosample_records(uids)
+
+    wanted = set(requested)
+    kept = [r for r in records if r.get("accession") in wanted]
+    unexpected = sorted({r.get("accession", "") for r in records} - wanted)
+    if unexpected:
+        print(
+            f"  WARNING: dropped {len(unexpected)} BioSample record(s) NCBI returned "
+            f"that were not requested: {unexpected[:10]}"
+        )
+    missing = sorted(wanted - {r["accession"] for r in kept})
+    if missing:
+        print(
+            f"  WARNING: {len(missing)} requested BioSample accession(s) not found "
+            f"in NCBI: {missing[:10]}{' ...' if len(missing) > 10 else ''}"
+        )
+    return kept
+
+
+_BIOSAMPLE_ACCESSION_RE = re.compile(r"SAM(?:N|EA|D)\d+")
+
+
+def load_biosample_subset(path: Path) -> List[str]:
+    """Read the BioSample accessions that restrict an ingest (``--biosamples``).
+
+    Accepts either a plain list (one accession per line, ``#`` comments
+    allowed) or a CSV/TSV with a ``biosample_accession`` column — the latter
+    lets a stakeholder's sample sheet be passed as-is. Order is preserved and
+    duplicates collapse; anything that is not a SAMN/SAMEA/SAMD accession is
+    an error rather than a silent skip.
+    """
+    text = Path(path).read_text(encoding="utf-8-sig")
+    lines = [ln for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
+    if not lines:
+        raise ValueError(f"{path}: no BioSample accessions found")
+
+    header = lines[0]
+    delimiter = "\t" if "\t" in header else ","
+    if "biosample_accession" in [h.strip() for h in header.split(delimiter)]:
+        reader = csv.DictReader(io.StringIO("\n".join(lines)), delimiter=delimiter)
+        raw = [(row.get("biosample_accession") or "").strip() for row in reader]
+    else:
+        raw = [ln.strip() for ln in lines]
+
+    accessions: List[str] = []
+    bad: List[str] = []
+    for value in raw:
+        if not value:
+            continue
+        if _BIOSAMPLE_ACCESSION_RE.fullmatch(value):
+            if value not in accessions:
+                accessions.append(value)
+        else:
+            bad.append(value)
+    if bad:
+        raise ValueError(
+            f"{path}: {len(bad)} value(s) are not BioSample accessions "
+            f"(expected SAMN/SAMEA/SAMD…): {bad[:5]}"
+        )
+    if not accessions:
+        raise ValueError(f"{path}: no BioSample accessions found")
+    return accessions
 
 
 # ---------------------------------------------------------------------------
@@ -503,6 +594,52 @@ def parse_lat_lon(raw: str) -> Optional[Tuple[float, float]]:
         return (float(m2.group(1)), float(m2.group(2)))
 
     return None
+
+
+# ENA checklists record the coordinates as two attributes, which NCBI mirrors
+# without a harmonized_name (so they never land in ``lat_lon``).
+ENA_LATITUDE_ATTR = "geographic location (latitude)"
+ENA_LONGITUDE_ATTR = "geographic location (longitude)"
+
+# One coordinate: a signed decimal, optional junk (degree sign — often mangled
+# to U+FFFD in NCBI's mirror — and spaces), optional hemisphere letter, optional
+# trailing punctuation. e.g. '10.8231° N', '39.8714085 N', '-12.5', '42.6629� N,'
+_COORDINATE_RE = re.compile(r"^\s*([+-]?\d+(?:\.\d+)?)[^A-Za-z0-9+-]*([NSEWnsew])?[^A-Za-z0-9]*$")
+
+
+def _parse_coordinate(raw: str, hemispheres: str) -> Optional[float]:
+    """Parse one ENA-style coordinate; ``hemispheres`` is 'NS' or 'EW'.
+
+    A hemisphere letter from the wrong axis (a longitude marked 'N') means the
+    value is corrupt, so it is rejected rather than sign-guessed.
+    """
+    m = _COORDINATE_RE.match(raw or "")
+    if not m:
+        return None
+    value = float(m.group(1))
+    hemisphere = (m.group(2) or "").upper()
+    if hemisphere:
+        if hemisphere not in hemispheres:
+            return None
+        if hemisphere in "SW":
+            value = -abs(value)
+    return value
+
+
+def parse_split_lat_lon(lat_raw: str, lon_raw: str) -> Optional[Tuple[float, float]]:
+    """Parse ENA's separate latitude / longitude attributes into (lat, lon).
+
+    Returns None unless both halves parse and fall within range, so a
+    half-corrupt pair (observed: longitude holding a copy of the latitude,
+    '42.6629� N,') is omitted instead of committed.
+    """
+    lat = _parse_coordinate(lat_raw, "NS")
+    lon = _parse_coordinate(lon_raw, "EW")
+    if lat is None or lon is None:
+        return None
+    if abs(lat) > 90 or abs(lon) > 180:
+        return None
+    return (lat, lon)
 
 
 # ---------------------------------------------------------------------------
@@ -647,6 +784,10 @@ def build_biosample(
     lat_lon = None
     raw_latlon = attrs.get("lat_lon", "")
     parsed = parse_lat_lon(raw_latlon) if raw_latlon else None
+    if parsed is None and (attrs.get(ENA_LATITUDE_ATTR) or attrs.get(ENA_LONGITUDE_ATTR)):
+        parsed = parse_split_lat_lon(
+            attrs.get(ENA_LATITUDE_ATTR, ""), attrs.get(ENA_LONGITUDE_ATTR, "")
+        )
     if parsed:
         lat_lon = nmdc.GeolocationValue(
             latitude=nmdc.DecimalDegree(parsed[0]),
@@ -704,9 +845,20 @@ def build_biosample(
     habitat = _clean_str_attr("habitat")
     host_name = _clean_str_attr("host")
 
+    # MIxS wastewater/sludge term ENA's sewage checklist records verbatim.
+    sewage_type = None
+    raw_sewage_type = _clean_str_attr("sewage_type")
+    if raw_sewage_type:
+        sewage_type = nmdc.TextValue(has_raw_value=raw_sewage_type, type="nmdc:TextValue")
+
     title = sample_data.get("title", "")
     sample_name = sample_data.get("sample_name", "")
-    if not _is_missing(title):
+    # ENA fills Title with the organism name when the submitter gave none, which
+    # would leave every biosample in the study named e.g. "wastewater metagenome"
+    # (the runtime rejects duplicate names per study); the submitter's sample
+    # name is the informative label in that case.
+    title_is_organism = title.strip().lower() == (organism_name or "").strip().lower()
+    if not _is_missing(title) and not (title_is_organism and sample_name):
         biosample_name = title
     elif sample_name:
         biosample_name = sample_name
@@ -728,6 +880,7 @@ def build_biosample(
         geo_loc_name=geo_loc_name,
         habitat=habitat,
         host_name=host_name,
+        sewage_type=sewage_type,
         samp_taxon_id=samp_taxon_id,
         associated_studies=[study_id],
         insdc_biosample_identifiers=[f"biosample:{accession}"],
@@ -1008,7 +1161,7 @@ def build_library_records(
 # Main orchestration
 # ---------------------------------------------------------------------------
 
-def fetch_all(accession: str) -> dict:
+def fetch_all(accession: str, biosample_subset: Optional[Sequence[str]] = None) -> dict:
     print(f"Fetching BioProject {accession}...")
     project = fetch_bioproject(accession)
     print(f"  Title: {project['title']}")
@@ -1055,6 +1208,26 @@ def fetch_all(accession: str) -> dict:
         biosamples = fetch_biosamples(sorted(sra_biosample_accessions))
 
     print(f"  Retrieved {len(biosamples)} BioSample records.")
+
+    # An explicit roster (--biosamples) is a filter over the BioProject's own
+    # BioSamples, never a way to add samples to it: listed accessions that are
+    # not linked to the BioProject are dropped with a warning.
+    if biosample_subset:
+        wanted = set(biosample_subset)
+        found = {s["accession"] for s in biosamples}
+        not_linked = sorted(wanted - found)
+        if not_linked:
+            print(
+                f"  WARNING: {len(not_linked)} listed BioSample(s) are not linked to "
+                f"{accession} and were dropped: {not_linked[:10]}"
+                f"{' ...' if len(not_linked) > 10 else ''}"
+            )
+        biosamples = [s for s in biosamples if s["accession"] in wanted]
+        experiments = [e for e in experiments if e["biosample_accession"] in wanted]
+        print(
+            f"  Restricted to --biosamples roster: kept {len(biosamples)} of "
+            f"{len(found)} BioSample(s) and {len(experiments)} SRA experiment(s)."
+        )
 
     return {
         "bioproject": project,
@@ -1120,15 +1293,27 @@ def build_nmdc_database(
     biosample_acc_to_id: dict[str, str] = {}
     biosample_acc_to_name: dict[str, str] = {}
     nmdc_biosamples: list[nmdc.Biosample] = []
+    unparsed_coordinates: list[str] = []
     for sample, biosample_id in zip(biosamples, biosample_ids):
         bs = build_biosample(sample, study_id, biosample_id, now, crosswalk_resolver)
         nmdc_biosamples.append(bs)
+        if bs.lat_lon is None and any(
+            sample["attributes"].get(k) for k in ("lat_lon", ENA_LATITUDE_ATTR, ENA_LONGITUDE_ATTR)
+        ):
+            unparsed_coordinates.append(sample["accession"])
         biosample_acc_to_id[sample["accession"]] = bs.id
         # Name downstream material-processing records after the biosample's
         # stable sample identifier (samp_name, e.g. the MFD barcode), falling
         # back to the display name then accession when samp_name is absent.
         biosample_acc_to_name[sample["accession"]] = (
             bs.samp_name or bs.name or sample["accession"]
+        )
+
+    if unparsed_coordinates:
+        print(
+            f"  WARNING: {len(unparsed_coordinates)} BioSample(s) carry coordinates that "
+            f"do not parse (lat_lon omitted; raw values are in the curation inputs "
+            f"sidecar): {unparsed_coordinates[:10]}"
         )
 
     kept_experiments: list[dict] = []
@@ -1592,6 +1777,18 @@ def main():
         ),
     )
     parser.add_argument(
+        "--biosamples",
+        default=None,
+        metavar="FILE",
+        help=(
+            "Restrict the ingest to the BioSample accessions listed in FILE: a plain "
+            "list (one per line) or a CSV/TSV with a 'biosample_accession' column, "
+            "e.g. a stakeholder's sample sheet. The BioProject's BioSamples are "
+            "discovered as usual, then filtered to the roster; listed accessions not "
+            "linked to the BioProject are dropped with a warning."
+        ),
+    )
+    parser.add_argument(
         "--skip-term-validation",
         action="store_true",
         help=(
@@ -1634,7 +1831,15 @@ def main():
     else:
         minter = PlaceholderMinter()
 
-    data = fetch_all(accession)
+    biosample_subset = None
+    if args.biosamples:
+        try:
+            biosample_subset = load_biosample_subset(Path(args.biosamples))
+        except (OSError, ValueError) as e:
+            sys.exit(f"ERROR: --biosamples: {e}")
+        print(f"Restricting to {len(biosample_subset)} BioSample(s) listed in {args.biosamples}")
+
+    data = fetch_all(accession, biosample_subset)
 
     if args.fetch_only:
         intermediate_path = out_path.replace(".json", "_intermediate.json")
