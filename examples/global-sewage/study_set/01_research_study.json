@@ -1,0 +1,17 @@
+{
+  "id": "nmdc:sty-99-8f66c4d268",
+  "type": "nmdc:Study",
+  "name": "Global surveillance of infectious diseases and antimicrobial resistance from sewage",
+  "description": "Adequately monitoring of large populations and their environments is essential if we want to monitor pathogens and antimicrobial resistance around the globe. Recent developments in high\u2010throughput sequencing allow to rapidly identify nucleic acids from various organisms in clinical and environmental samples. Sewage systems are recognized as an important source of human pathogens, especially in crowded settings with poor infrastructure. A point\u2010prevalence metagenomic analysis is applied to sewage samples collected globally from the main sewage system of major cities prior to treatment plants inlet. The project is a proof\u2010of\u2010concept study for applying metagenomic approaches that could initiate a global surveillance of human infectious diseases including antimicrobial resistance from sewage collected in major cities around the world to detect, control, prevent and predict human infectious diseases.",
+  "study_category": "research_study",
+  "insdc_bioproject_identifiers": [
+    "bioproject:PRJEB13831"
+  ],
+  "provenance_metadata": {
+    "type": "nmdc:ProvenanceMetadata",
+    "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
+    "version": "1.0.0",
+    "source_system_of_record": "NCBI"
+  },
+  "title": "Global surveillance of infectious diseases and antimicrobial resistance from sewage"
+}

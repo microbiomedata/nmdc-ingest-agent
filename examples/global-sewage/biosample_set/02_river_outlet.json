@@ -1,0 +1,71 @@
+{
+  "id": "nmdc:bsm-99-42624eb7ce",
+  "type": "nmdc:Biosample",
+  "name": "ECU.14",
+  "associated_studies": [
+    "nmdc:sty-99-8f66c4d268"
+  ],
+  "env_broad_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+      "id": "ENVO:01000249",
+      "type": "nmdc:OntologyClass",
+      "name": "urban biome"
+    }
+  },
+  "env_local_scale": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+      "id": "ENVO:00000022",
+      "type": "nmdc:OntologyClass",
+      "name": "river"
+    }
+  },
+  "env_medium": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+      "id": "ENVO:00002018",
+      "type": "nmdc:OntologyClass",
+      "name": "sewage"
+    }
+  },
+  "provenance_metadata": {
+    "type": "nmdc:ProvenanceMetadata",
+    "git_url": "https://github.com/microbiomedata/nmdc-ingest-agent",
+    "version": "1.0.0",
+    "source_system_of_record": "NCBI"
+  },
+  "insdc_biosample_identifiers": [
+    "biosample:SAMEA4527620"
+  ],
+  "collection_date": {
+    "type": "nmdc:TimestampValue",
+    "has_raw_value": "2016-02-01"
+  },
+  "env_package": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Generic.1.0"
+  },
+  "geo_loc_name": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "Ecuador"
+  },
+  "lat_lon": {
+    "type": "nmdc:GeolocationValue",
+    "latitude": -0.1807,
+    "longitude": -78.4678
+  },
+  "samp_name": "ECU.14",
+  "samp_taxon_id": {
+    "type": "nmdc:ControlledIdentifiedTermValue",
+    "term": {
+      "id": "NCBITaxon:527639",
+      "type": "nmdc:OntologyClass",
+      "name": "wastewater metagenome"
+    }
+  },
+  "sewage_type": {
+    "type": "nmdc:TextValue",
+    "has_raw_value": "river"
+  }
+}
